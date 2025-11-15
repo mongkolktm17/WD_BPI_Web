@@ -991,10 +991,10 @@
                 });
 
                 // Calculate overall summary - percentage of NVRs passing the standard
-                const totalNvrCount = totalPassCount + totalFailCount;
-                const overallPercent = totalNvrCount > 0 ? Math.round((totalPassCount / totalNvrCount) * 100) : 0;
+                const totalExpectedNVRs = data.total_expected_nvrs || 0;
+                const overallPercent = totalExpectedNVRs > 0 ? Math.round((totalPassCount / totalExpectedNVRs) * 100) : 0;
 
-                document.getElementById('nvr-summary-total').textContent = `${totalPassCount}/${totalNvrCount} (${overallPercent}%)`;
+                document.getElementById('nvr-summary-total').textContent = `${totalPassCount}/${totalExpectedNVRs} (${overallPercent}%)`;
                 document.getElementById('nvr-summary-pass').textContent = totalPassCount;
                 document.getElementById('nvr-summary-fail').textContent = totalFailCount;
                 document.getElementById('nvr-summary-percentage').textContent = overallPercent;

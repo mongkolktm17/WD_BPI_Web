@@ -33,6 +33,8 @@ $expectedNvrCounts = [
     'B.8' => 1
 ];
 
+$total_expected_nvrs = array_sum($expectedNvrCounts);
+
 // Aggregate data per building from latest reports
 foreach ($latest_reports as $building => $report_time) {
     // Get all NVR details from the latest report for this building
@@ -101,6 +103,7 @@ foreach ($latest_reports as $building => $report_time) {
 }
 
 $response['last_update'] = $last;
+$response['total_expected_nvrs'] = $total_expected_nvrs;
 $conn->close();
 
 echo json_encode($response, JSON_UNESCAPED_UNICODE);
