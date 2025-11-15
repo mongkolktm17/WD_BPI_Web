@@ -93,9 +93,8 @@
         <p class="text-sm text-gray-600">06:00 - 18:00</p>
         <p class="text-xs text-green-600 font-medium mt-1">✓ Full Coverage</p>
        </div>
-       <div class="text-blue-400">
-        <svg class="w-12 h-12" fill="currentColor" viewbox="0 0 20 20"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
-        </svg>
+       <div>
+        <img src="report_assets/Images/security-officer.png" alt="Day Shift" class="w-12 h-12 object-contain" />
        </div>
       </div>
      </div>
@@ -109,9 +108,8 @@
         <p class="text-sm text-gray-600">18:00 - 06:00</p>
         <p class="text-xs text-yellow-600 font-medium mt-1">⚠ Reduced Staff</p>
        </div>
-       <div class="text-blue-400">
-        <svg class="w-12 h-12" fill="currentColor" viewbox="0 0 20 20"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
-        </svg>
+       <div>
+        <img src="report_assets/Images/security-officer.png" alt="Night Shift" class="w-12 h-12 object-contain" />
        </div>
       </div>
      </div>
@@ -123,138 +121,105 @@
         <p class="text-sm font-medium" id="current-shift-status">Day Shift Active</p>
         <p class="text-xs text-gray-500 mt-1" id="shift-change-time">Next change: 18:00</p>
        </div>
-       <div class="text-green-500">
-        <svg class="w-12 h-12" fill="currentColor" viewbox="0 0 20 20"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
-        </svg>
+       <div>
+        <img src="report_assets/Images/security-officer.png" alt="Total Active" class="w-12 h-12 object-contain" />
        </div>
       </div>
      </div>
     </div>
    </section><!-- NVR Status Section -->
    <section class="mb-8">
-    <h3 id="nvr-section-title" class="text-2xl font-bold text-blue-900 mb-4">NVR Recording Status <span class="text-sm text-gray-500 ml-2">(Last Update: <span id="nvr-last-update"></span>)</span></h3>
-        <!-- Summary cards (match Security Personnel style) -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
-         <div class="bg-white rounded-lg p-6 card-shadow">
-          <div class="flex items-center justify-between">
-           <div>
-            <h4 class="text-lg font-semibold text-blue-800">NVRs Passing Standard</h4>
-            <p class="text-3xl font-bold text-blue-600" id="nvr-online-total">0</p>
-            <p class="text-sm text-gray-600">NVRs meeting the 62-day criteria</p>
-           </div>
-           <div class="text-green-400">
-            <svg class="w-12 h-12" fill="currentColor" viewbox="0 0 20 20"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
-           </div>
-          </div>
+    <h3 id="nvr-section-title" class="text-2xl font-bold text-blue-900 mb-4">NVR Recording Status</h3>
+    <div class="mb-4 p-4 bg-blue-50 rounded-lg">
+     <div class="flex items-center text-sm text-blue-800">
+      <svg class="w-5 h-5 mr-2" fill="currentColor" viewbox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+      </svg><span><strong>Last Update:</strong> <span id="nvr-last-update">-</span></span>
+     </div>
+    </div>
+    <!-- Summary Card with Gradient -->
+    <div class="mb-6 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 text-white card-shadow">
+     <div class="flex items-center justify-between flex-wrap">
+      <div>
+       <h4 class="text-xl font-semibold mb-2">NVR Recording Status Summary</h4>
+       <div class="text-3xl font-bold" id="nvr-summary-total">
+        0/0 (<span id="nvr-summary-percentage">0</span>%)
+       </div>
+       <div class="text-blue-100 text-sm">
+        NVR ที่ผ่านเกณฑ์ / รวม (เปอร์เซ็นต์)
+       </div>
+      </div>
+      <div class="text-right">
+       <div class="grid grid-cols-2 gap-4 text-sm">
+        <div class="text-center">
+         <div class="text-2xl font-bold text-green-300" id="nvr-summary-pass">
+          0
          </div>
-         <div class="bg-white rounded-lg p-6 card-shadow">
-          <div class="flex items-center justify-between">
-           <div>
-            <h4 class="text-lg font-semibold text-blue-800">NVRs Below Standard</h4>
-            <p class="text-3xl font-bold text-blue-600" id="nvr-offline-total">0</p>
-            <p class="text-sm text-gray-600">NVRs not meeting the 62-day criteria</p>
-           </div>
-           <div class="text-red-400">
-            <svg class="w-12 h-12" fill="currentColor" viewbox="0 0 20 20"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
-           </div>
-          </div>
-         </div>
-         <div class="bg-white rounded-lg p-6 card-shadow border-2 border-blue-300">
-          <div class="flex items-center justify-between">
-           <div>
-            <h4 class="text-lg font-semibold text-blue-800">Total NVRs Monitored</h4>
-            <p class="text-3xl font-bold text-blue-600" id="nvr-total-devices">0</p>
-            <p class="text-sm font-medium" id="nvr-summary-percent">0%</p>
-           </div>
-           <div class="text-green-500">
-            <svg class="w-12 h-12" fill="currentColor" viewbox="0 0 20 20"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
-           </div>
-          </div>
+         <div class="text-blue-100">
+          ผ่านเกณฑ์
          </div>
         </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div class="bg-white rounded-lg p-6 card-shadow" data-building="B.2">
-         <h4 class="text-lg font-semibold text-blue-800 mb-4">Building B.2</h4>
-         <div class="mb-4">
-          <div class="flex flex-wrap justify-between text-sm mb-2"><span class="text-gray-600 min-w-0">Pass Standard</span> <span class="font-semibold min-w-0"><span id="nvr-pass-B_2">0</span>/<span id="nvr-total-B_2">0</span> (<span id="nvr-percent-B_2">0%</span>)</span>
-          </div>
-          <div class="w-full bg-gray-200 rounded-full h-3">
-           <div id="nvr-bar-B_2" class="bg-green-500 h-3 rounded-full" style="width: 0%"></div>
-          </div>
+        <div class="text-center">
+         <div class="text-2xl font-bold text-red-300" id="nvr-summary-fail">
+          0
          </div>
-         <div class="grid grid-cols-2 gap-4 text-sm">
-          <div class="text-center p-2 bg-green-50 rounded">
-           <div id="nvr-passcount-B_2" class="text-green-600 font-bold">0</div>
-           <div class="text-green-700 text-xs">Pass</div>
-          </div>
-          <div class="text-center p-2 bg-red-50 rounded">
-           <div id="nvr-belowcount-B_2" class="text-red-600 font-bold">0</div>
-           <div class="text-red-700 text-xs">Below</div>
-          </div>
+         <div class="text-blue-100">
+          ไม่ผ่านเกณฑ์
          </div>
         </div>
-    <div class="bg-white rounded-lg p-6 card-shadow" data-building="B.3">
-    <h4 class="text-lg font-semibold text-blue-800 mb-4">Building B.3</h4>
-    <div class="mb-4">
-               <div class="flex flex-wrap justify-between text-sm mb-2"><span class="text-gray-600 min-w-0">Pass Standard</span> <span class="font-semibold min-w-0"><span id="nvr-pass-B_3">0</span>/<span id="nvr-total-B_3">0</span> (<span id="nvr-percent-B_3">0%</span>)</span>
-     </div>
-     <div class="w-full bg-gray-200 rounded-full h-3">
-      <div id="nvr-bar-B_3" class="bg-green-500 h-3 rounded-full" style="width: 0%"></div>
-     </div>
-    </div>
-    <div class="grid grid-cols-2 gap-4 text-sm">
-     <div class="text-center p-2 bg-green-50 rounded">
-      <div id="nvr-passcount-B_3" class="text-green-600 font-bold">0</div>
-      <div class="text-green-700 text-xs">Pass</div>
-     </div>
-     <div class="text-center p-2 bg-gray-50 rounded">
-      <div id="nvr-belowcount-B_3" class="text-gray-600 font-bold">0</div>
-      <div class="text-gray-700 text-xs">Below</div>
-     </div>
-    </div>
-    </div>
-    <div class="bg-white rounded-lg p-6 card-shadow" data-building="B.4">
-     <h4 class="text-lg font-semibold text-blue-800 mb-4">Building B.4</h4>
-     <div class="mb-4">
-                <div class="flex flex-wrap justify-between text-sm mb-2"><span class="text-gray-600 min-w-0">Pass Standard</span> <span class="font-semibold min-w-0"><span id="nvr-pass-B_4">0</span>/<span id="nvr-total-B_4">0</span> (<span id="nvr-percent-B_4">0%</span>)</span>
-      </div>
-      <div class="w-full bg-gray-200 rounded-full h-3">
-       <div id="nvr-bar-B_4" class="bg-green-500 h-3 rounded-full" style="width: 0%"></div>
-      </div>
-     </div>
-     <div class="grid grid-cols-2 gap-4 text-sm">
-      <div class="text-center p-2 bg-green-50 rounded">
-       <div id="nvr-passcount-B_4" class="text-green-600 font-bold">0</div>
-       <div class="text-green-700 text-xs">Pass</div>
-      </div>
-      <div class="text-center p-2 bg-red-50 rounded">
-       <div id="nvr-belowcount-B_4" class="text-red-600 font-bold">0</div>
-       <div class="text-red-700 text-xs">Below</div>
+       </div>
       </div>
      </div>
     </div>
-    <div class="bg-white rounded-lg p-6 card-shadow" data-building="B.8">
-     <h4 class="text-lg font-semibold text-blue-800 mb-4">Building B.8</h4>
-     <div class="mb-4">
-                <div class="flex flex-wrap justify-between text-sm mb-2"><span class="text-gray-600 min-w-0">Pass Standard</span> <span class="font-semibold min-w-0"><span id="nvr-pass-B_8">0</span>/<span id="nvr-total-B_8">0</span> (<span id="nvr-percent-B_8">0%</span>)</span>
-      </div>
-      <div class="w-full bg-gray-200 rounded-full h-3">
-       <div id="nvr-bar-B_8" class="bg-green-500 h-3 rounded-full" style="width: 0%"></div>
-      </div>
-     </div>
-     <div class="grid grid-cols-2 gap-4 text-sm">
-      <div class="text-center p-2 bg-green-50 rounded">
-       <div id="nvr-passcount-B_8" class="text-green-600 font-bold">0</div>
-       <div class="text-green-700 text-xs">Pass</div>
-      </div>
-      <div class="text-center p-2 bg-gray-50 rounded">
-       <div id="nvr-belowcount-B_8" class="text-gray-600 font-bold">0</div>
-       <div class="text-gray-700 text-xs">Below</div>
-      </div>
-     </div>
+    <!-- Building Cards Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        <div class="bg-white rounded-lg p-4 md:p-6 card-shadow" data-building="B.2">
+            <h4 class="text-base md:text-lg font-semibold text-blue-800 mb-3 md:mb-4">Building B.2</h4>
+            <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2 mb-1" id="nvr-progressbar-62-B_2">
+                <div class="h-2.5 rounded-full" id="nvr-progressbar-fill-62-B_2" style="width: 0%"></div>
+            </div>
+            <p class="text-sm text-slate-500 mt-2">
+                <span class="font-bold text-green-600" id="nvr-passcount-62-B_2">0</span> / <span id="nvr-totalcount-62-B_2">0</span> ผ่านเกณฑ์
+            </p>
+            <div class="mt-2 md:mt-3 text-xs text-gray-500">
+                <div id="nvr-count-62-B_2">รวม NVR: 0 เครื่อง</div>
+            </div>
+        </div>
+    <div class="bg-white rounded-lg p-4 md:p-6 card-shadow" data-building="B.3">
+        <h4 class="text-base md:text-lg font-semibold text-blue-800 mb-3 md:mb-4">Building B.3</h4>
+        <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2 mb-1" id="nvr-progressbar-62-B_3">
+            <div class="h-2.5 rounded-full" id="nvr-progressbar-fill-62-B_3" style="width: 0%"></div>
+        </div>
+        <p class="text-sm text-slate-500 mt-2">
+            <span class="font-bold text-green-600" id="nvr-passcount-62-B_3">0</span> / <span id="nvr-totalcount-62-B_3">0</span> ผ่านเกณฑ์
+        </p>
+        <div class="mt-2 md:mt-3 text-xs text-gray-500">
+            <div id="nvr-count-62-B_3">รวม NVR: 0 เครื่อง</div>
+        </div>
     </div>
+    <div class="bg-white rounded-lg p-4 md:p-6 card-shadow" data-building="B.4">
+        <h4 class="text-base md:text-lg font-semibold text-blue-800 mb-3 md:mb-4">Building B.4</h4>
+        <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2 mb-1" id="nvr-progressbar-62-B_4">
+            <div class="h-2.5 rounded-full" id="nvr-progressbar-fill-62-B_4" style="width: 0%"></div>
+        </div>
+        <p class="text-sm text-slate-500 mt-2">
+            <span class="font-bold text-green-600" id="nvr-passcount-62-B_4">0</span> / <span id="nvr-totalcount-62-B_4">0</span> ผ่านเกณฑ์
+        </p>
+        <div class="mt-2 md:mt-3 text-xs text-gray-500">
+            <div id="nvr-count-62-B_4">รวม NVR: 0 เครื่อง</div>
+        </div>
     </div>
+        <div class="bg-white rounded-lg p-4 md:p-6 card-shadow" data-building="B.8">
+            <h4 class="text-base md:text-lg font-semibold text-blue-800 mb-3 md:mb-4">Building B.8</h4>
+            <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2 mb-1" id="nvr-progressbar-62-B_8">
+                <div class="h-2.5 rounded-full" id="nvr-progressbar-fill-62-B_8" style="width: 0%"></div>
+            </div>
+            <p class="text-sm text-slate-500 mt-2">
+                <span class="font-bold text-green-600" id="nvr-passcount-62-B_8">0</span> / <span id="nvr-totalcount-62-B_8">0</span> ผ่านเกณฑ์
+            </p>
+            <div class="mt-2 md:mt-3 text-xs text-gray-500">
+                <div id="nvr-count-62-B_8">รวม NVR: 0 เครื่อง</div>
+            </div>
+        </div>    </div>
    </section><!-- Camera Status Section -->
    <section class="mb-8">
     <h3 id="camera-section-title" class="text-2xl font-bold text-blue-900 mb-4">Camera Online Status <span class="text-sm text-gray-500 ml-2">(Last Update: <span id="camera-last-update"></span>)</span></h3>
@@ -969,88 +934,77 @@
         async function fetchNvrStatus() {
             console.log('fetchNvrStatus called');
             try {
-                const response = await fetch('get_nvr_recording_status.php'); // Changed endpoint
+                const response = await fetch('get_nvr_status.php');
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                const nvrData = await response.json();
-                console.log('NVR Recording data received:', nvrData);
+                const data = await response.json();
+                console.log('NVR Status data received:', data);
 
-                const buildingNvrCounts = {
-                    'B.2': 10,
-                    'B.3': 2,
-                    'B.4': 6,
-                    'B.8': 1
-                };
+                const buildings = data.buildings || {};
+                let totalOnline = 0;
+                let totalChannels = 0;
+                let totalPassCount = 0;
+                let totalFailCount = 0;
 
-                let totalNvrsAcrossBuildings = 0;
-                let totalNvrsPassingStandard = 0;
-
-                // Process building-specific data
-                // Iterate over the building keys defined in buildingNvrCounts to ensure all expected buildings are processed
-                Object.keys(buildingNvrCounts).forEach(buildingKey => {
-                    // Get the actual NVRs returned for this building from the PHP script
-                    const actualBuildingNvrs = nvrData[buildingKey] || [];
-                    const totalNvrsForBuilding = buildingNvrCounts[buildingKey]; 
-
-                    let nvrsPassingStandard = 0;
-                    actualBuildingNvrs.forEach(nvr => {
-                        if (nvr.recording_days >= nvr.target_days) {
-                            nvrsPassingStandard++;
-                        }
-                    });
-
-                    const nvrsBelowStandard = totalNvrsForBuilding - nvrsPassingStandard;
-                    const percentage = totalNvrsForBuilding > 0 ? (nvrsPassingStandard / totalNvrsForBuilding) * 100 : 0;
-                    const cappedPercentage = Math.min(100, percentage);
-
-                    totalNvrsAcrossBuildings += totalNvrsForBuilding;
-                    totalNvrsPassingStandard += nvrsPassingStandard;
-
-                    // Sanitize building key for DOM IDs (e.g., B.2 -> B_2)
+                // Process each building
+                Object.entries(buildings).forEach(([buildingKey, buildingData]) => {
                     const sanitizedBuildingKey = buildingKey.replace(/\./g, '_');
+                    const online = buildingData.online || 0;
+                    const total = buildingData.total || 0;
+                    const offline = buildingData.offline || 0;
+                    const percent = buildingData.percent || 0;
+                    const nvrPassCount = buildingData.nvr_pass_count || 0;
+                    const nvrFailCount = buildingData.nvr_fail_count || 0;
+                    const nvrCount = buildingData.nvr_count || 0; // Use nvr_count from PHP response
 
+                    totalOnline += online;
+                    totalChannels += total;
+                    totalPassCount += nvrPassCount;
+                    totalFailCount += nvrFailCount;
+
+                    // Update elements for the NVR status summary (if they exist)
                     const passEl = document.getElementById(`nvr-pass-${sanitizedBuildingKey}`);
                     const totalEl = document.getElementById(`nvr-total-${sanitizedBuildingKey}`);
                     const percentEl = document.getElementById(`nvr-percent-${sanitizedBuildingKey}`);
-                    const barEl = document.getElementById(`nvr-bar-${sanitizedBuildingKey}`);
-                    const passCountEl = document.getElementById(`nvr-passcount-${sanitizedBuildingKey}`);
-                    const belowCountEl = document.getElementById(`nvr-belowcount-${sanitizedBuildingKey}`);
+                    if (passEl) passEl.textContent = online;
+                    if (totalEl) totalEl.textContent = total;
+                    if (percentEl) percentEl.textContent = Math.round(percent);
 
-                    if (passEl) passEl.textContent = nvrsPassingStandard;
-                    if (totalEl) totalEl.textContent = totalNvrsForBuilding;
-                    if (percentEl) percentEl.textContent = `${cappedPercentage.toFixed(0)}%`;
-                    if (barEl) {
-                        barEl.style.width = `${cappedPercentage}%`;
-                        if (cappedPercentage >= 95) barEl.className = 'bg-green-500 h-3 rounded-full';
-                        else if (cappedPercentage >= 80) barEl.className = 'bg-yellow-500 h-3 rounded-full';
-                        else barEl.className = 'bg-red-500 h-3 rounded-full';
-                    }
-                    if (passCountEl) passCountEl.textContent = nvrsPassingStandard;
-                    if (belowCountEl) belowCountEl.textContent = nvrsBelowStandard;
-                    
-                    // Ensure below count background is red-50 for consistency
-                    if (belowCountEl && nvrsBelowStandard > 0) {
-                        belowCountEl.parentElement.className = 'text-center p-2 bg-red-50 rounded';
-                    } else if (belowCountEl) {
-                        belowCountEl.parentElement.className = 'text-center p-2 bg-green-50 rounded';
+                    // Update elements for the 62-day criteria
+                    const nvrPassCountEl = document.getElementById(`nvr-passcount-62-${sanitizedBuildingKey}`);
+                    const nvrTotalCountEl = document.getElementById(`nvr-totalcount-62-${sanitizedBuildingKey}`);
+                    const nvrProgressBarEl = document.getElementById(`nvr-progressbar-62-${sanitizedBuildingKey}`);
+                    const nvrProgressBarFillEl = document.getElementById(`nvr-progressbar-fill-62-${sanitizedBuildingKey}`);
+                    const nvrCountTextEl = document.getElementById(`nvr-count-62-${sanitizedBuildingKey}`);
+
+                    if (nvrPassCountEl) nvrPassCountEl.textContent = nvrPassCount;
+                    if (nvrTotalCountEl) nvrTotalCountEl.textContent = nvrCount; // Use nvrCount from PHP
+                    if (nvrCountTextEl) nvrCountTextEl.textContent = `${nvrPassCount} / ${nvrCount} ผ่านเกณฑ์`;
+
+                    if (nvrProgressBarFillEl && nvrCount > 0) {
+                        const progressPercentage = Math.round((nvrPassCount / nvrCount) * 100);
+                        nvrProgressBarFillEl.style.width = `${progressPercentage}%`;
+                        nvrProgressBarFillEl.className = `h-2.5 rounded-full ${progressPercentage === 100 ? 'bg-green-600' : 'bg-red-600'}`;
+                    } else if (nvrProgressBarFillEl) {
+                        nvrProgressBarFillEl.style.width = '0%';
+                        nvrProgressBarFillEl.className = 'h-2.5 rounded-full bg-red-600';
                     }
                 });
 
-                // Calculate overall totals based on fixed buildingNvrCounts
-                const totalConfiguredNvrs = Object.values(buildingNvrCounts).reduce((a, b) => a + b, 0);
-                const overallPercentage = totalConfiguredNvrs > 0 ? (totalNvrsPassingStandard / totalConfiguredNvrs) * 100 : 0;
-                const cappedOverallPercentage = Math.min(100, overallPercentage);
+                // Calculate overall summary - percentage of NVRs passing the standard
+                const totalNvrCount = totalPassCount + totalFailCount;
+                const overallPercent = totalNvrCount > 0 ? Math.round((totalPassCount / totalNvrCount) * 100) : 0;
 
-                document.getElementById('nvr-online-total').textContent = totalNvrsPassingStandard;
-                document.getElementById('nvr-offline-total').textContent = totalConfiguredNvrs - totalNvrsPassingStandard;
-                document.getElementById('nvr-total-devices').textContent = totalConfiguredNvrs;
-                document.getElementById('nvr-summary-percent').textContent = `${cappedOverallPercentage.toFixed(0)}%`;
+                document.getElementById('nvr-summary-total').textContent = `${totalPassCount}/${totalNvrCount} (${overallPercent}%)`;
+                document.getElementById('nvr-summary-pass').textContent = totalPassCount;
+                document.getElementById('nvr-summary-fail').textContent = totalFailCount;
+                document.getElementById('nvr-summary-percentage').textContent = overallPercent;
 
-                // Update last update label (assuming the API doesn't return a specific timestamp for this aggregated data)
-                document.getElementById('nvr-last-update').textContent = formatRelativeTime(new Date().toISOString());
+                // Update last update label
+                const lastUpdate = data.last_update ? new Date(data.last_update).toLocaleTimeString('th-TH') : '-';
+                document.getElementById('nvr-last-update').textContent = lastUpdate;
 
             } catch (err) {
                 console.error('Error fetching NVR status:', err);
-                // Optionally, display an error message on the dashboard
             }
         }
 

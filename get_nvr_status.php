@@ -4,113 +4,100 @@ header('Content-Type: application/json; charset=utf-8');
 
 $response = ['buildings' => [], 'last_update' => null];
 
-// Choose time column: prefer `created_at`, else fall back to `report_time`.
-$time_col = 'created_at';
-$check = $conn->query("SHOW COLUMNS FROM cctv_reports LIKE 'created_at'");
+// Detect time column
+$time_col = 'report_time';
+$check = $conn->query("SHOW COLUMNS FROM cctv_reports LIKE 'report_time'");
 if (!$check || $check->num_rows === 0) {
-    $time_col = 'report_time';
+    $time_col = 'created_at';
 }
 
-// Get latest report per building using chosen time column
-$sql = "SELECT t.building, t.total_channels, t.online_channels, t.offline_channels, t.online_percentage, t.$time_col AS timecol
-        FROM cctv_reports t
-        INNER JOIN (
-            SELECT building, MAX($time_col) AS m
-            FROM cctv_reports
-            GROUP BY building
-        ) s ON t.building = s.building AND t.$time_col = s.m
-        ORDER BY t.building";
+// Get latest report per building
+$latest_sql = "SELECT building, MAX($time_col) AS latest_time
+               FROM cctv_reports
+               GROUP BY building";
+$latest_res = $conn->query($latest_sql);
+$latest_reports = [];
+if ($latest_res) {
+    while ($row = $latest_res->fetch_assoc()) {
+        $latest_reports[$row['building']] = $row['latest_time'];
+    }
+}
 
-// Prefer aggregation from report details (per-NVR rows) because cctv_reports may contain per-NVR rows
 $last = null;
-$agg_sql = "SELECT cr.building, cr.id AS report_id, cr.$time_col AS timecol, SUM(d.online_channels) AS online_sum
-    FROM cctv_reports cr
-    JOIN cctv_report_details d ON cr.id = d.report_id
-    INNER JOIN (
-        SELECT building, MAX($time_col) AS m
-        FROM cctv_reports
-        GROUP BY building
-    ) s ON cr.building = s.building AND cr.$time_col = s.m
-    GROUP BY cr.building, cr.id, cr.$time_col
-    ORDER BY cr.building";
 
-$resAgg = $conn->query($agg_sql);
-if ($resAgg) {
-    while ($r = $resAgg->fetch_assoc()) {
-        $b = $r['building'];
-        $online = isset($r['online_sum']) ? (int)$r['online_sum'] : 0;
-        $created = $r['timecol'] ?? null;
+// Expected NVR counts per building (based on actual setup)
+$expectedNvrCounts = [
+    'B.2' => 10,
+    'B.3' => 2,
+    'B.4' => 6,
+    'B.8' => 1
+];
 
-        // Compute total channels from devices table for the building
-        $total = 0;
-        $stmt = $conn->prepare("SELECT SUM(channels) AS device_total FROM cctv_devices WHERE building = ?");
-        if ($stmt) {
-            $stmt->bind_param('s', $b);
-            $stmt->execute();
-            $tmp = $stmt->get_result()->fetch_assoc();
-            $total = isset($tmp['device_total']) ? (int)$tmp['device_total'] : 0;
-            $stmt->close();
-        }
-
-        $offline = max(0, $total - $online);
-        $percent = $total > 0 ? round(($online / $total) * 100, 1) : 0;
-        // sanitize percent to [0,100]
-        if ($percent < 0) $percent = 0;
-        if ($percent > 100) $percent = 100;
-
-        if ($created && (!$last || strtotime($created) > strtotime($last))) $last = $created;
-        $response['buildings'][$b] = [
-            'total' => $total,
-            'online' => $online,
-            'offline' => $offline,
-            'percent' => $percent,
-            'last_update' => $created
-        ];
-    }
-}
-// If no rows found, try fallback aggregation from cctv_report_details
-if (empty($response['buildings'])) {
-    $fallback_sql = "SELECT cr.building, cr.id AS report_id, cr.total_channels, cr.created_at, SUM(d.online_channels) AS online_sum
-        FROM cctv_reports cr
-        JOIN cctv_report_details d ON cr.id = d.report_id
-        INNER JOIN (
-            SELECT building, MAX(created_at) AS m
-            FROM cctv_reports
-            GROUP BY building
-        ) s ON cr.building = s.building AND cr.created_at = s.m
-        GROUP BY cr.building, cr.id, cr.total_channels, cr.created_at
-        ORDER BY cr.building";
-
-    $res2 = $conn->query($fallback_sql);
-    if ($res2) {
-        while ($r = $res2->fetch_assoc()) {
-            $b = $r['building'];
-            $total = isset($r['total_channels']) ? (int)$r['total_channels'] : 0;
-            $online = isset($r['online_sum']) ? (int)$r['online_sum'] : 0;
-            // If total is missing, try to compute from cctv_devices table
-            if ($total === 0) {
-                $stmt = $conn->prepare("SELECT SUM(channels) AS device_total FROM cctv_devices WHERE building = ?");
-                if ($stmt) {
-                    $stmt->bind_param('s', $b);
-                    $stmt->execute();
-                    $tmp = $stmt->get_result()->fetch_assoc();
-                    $total = isset($tmp['device_total']) ? (int)$tmp['device_total'] : 0;
-                    $stmt->close();
-                }
-            }
-            $offline = max(0, $total - $online);
-            $percent = $total > 0 ? round(($online / $total) * 100, 1) : 0;
-            $created = $r['created_at'] ?? null;
-            if ($created && (!$last || strtotime($created) > strtotime($last))) $last = $created;
-            $response['buildings'][$b] = [
-                'total' => $total,
-                'online' => $online,
-                'offline' => $offline,
-                'percent' => $percent,
-                'last_update' => $created
-            ];
+// Aggregate data per building from latest reports
+foreach ($latest_reports as $building => $report_time) {
+    // Get all NVR details from the latest report for this building
+    $detail_sql = "SELECT d.nvr_name, d.online_channels
+                   FROM cctv_reports cr
+                   JOIN cctv_report_details d ON cr.id = d.report_id
+                   WHERE cr.building = ? AND cr.$time_col = ?";
+    $stmt = $conn->prepare($detail_sql);
+    $stmt->bind_param('ss', $building, $report_time);
+    $stmt->execute();
+    $detail_res = $stmt->get_result();
+    
+    $online_sum = 0;
+    $nvr_pass_count = 0;
+    $nvr_data = [];
+    
+    while ($row = $detail_res->fetch_assoc()) {
+        $online_days = (int)$row['online_channels'];
+        $nvr_name = $row['nvr_name'];
+        $online_sum += $online_days;
+        $nvr_data[$nvr_name] = $online_days;
+        
+        // Count NVRs that meet the target (≥62 days)
+        if ($online_days >= 62) {
+            $nvr_pass_count++;
         }
     }
+    $stmt->close();
+    
+    // Get expected NVR count for this building (from config, not from DB)
+    $expected_nvr_count = isset($expectedNvrCounts[$building]) ? $expectedNvrCounts[$building] : 0;
+    
+    // Calculate fail count based on submitted data
+    $nvr_fail_count = max(0, count($nvr_data) - $nvr_pass_count);
+    
+    // Get total channels for the building
+    $total = 0;
+    $total_stmt = $conn->prepare("SELECT SUM(channels) AS device_total FROM cctv_devices WHERE building = ?");
+    if ($total_stmt) {
+        $total_stmt->bind_param('s', $building);
+        $total_stmt->execute();
+        $total_tmp = $total_stmt->get_result()->fetch_assoc();
+        $total = isset($total_tmp['device_total']) ? (int)$total_tmp['device_total'] : 0;
+        $total_stmt->close();
+    }
+    
+    $offline = max(0, $total - $online_sum);
+    $percent = $total > 0 ? round(($online_sum / $total) * 100, 1) : 0;
+    $percent = max(0, min(100, $percent));
+    
+    if (!$last || strtotime($report_time) > strtotime($last)) {
+        $last = $report_time;
+    }
+    
+    $response['buildings'][$building] = [
+        'total' => $total,
+        'online' => $online_sum,
+        'offline' => $offline,
+        'percent' => $percent,
+        'last_update' => $report_time,
+        'nvr_count' => $expected_nvr_count,
+        'nvr_pass_count' => $nvr_pass_count,
+        'nvr_fail_count' => $nvr_fail_count,
+        'nvr_submitted_count' => count($nvr_data)
+    ];
 }
 
 $response['last_update'] = $last;

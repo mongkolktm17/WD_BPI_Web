@@ -133,6 +133,53 @@ if ($result_history && $result_history->num_rows > 0) {
     }
 }
 
+// --- NVR Status Counts for 62-day criteria ---
+$nvr_status_counts = [
+    'B.2' => ['total' => 10, 'passed' => 0],
+    'B.3' => ['total' => 2, 'passed' => 0],
+    'B.4' => ['total' => 6, 'passed' => 0],
+    'B.8' => ['total' => 1, 'passed' => 0],
+];
+
+$sql_latest_nvr_data = "
+    SELECT
+        cr.building,
+        crd.nvr_name,
+        crd.online_channels
+    FROM
+        cctv_reports cr
+    JOIN
+        cctv_report_details crd ON cr.id = crd.report_id
+    WHERE
+        (cr.building, crd.nvr_name, cr.report_time) IN (
+            SELECT
+                cr_inner.building,
+                crd_inner.nvr_name,
+                MAX(cr_inner.report_time)
+            FROM
+                cctv_reports cr_inner
+            JOIN
+                cctv_report_details crd_inner ON cr_inner.id = crd_inner.report_id
+            GROUP BY
+                cr_inner.building,
+                crd_inner.nvr_name
+        )
+";
+
+$result_latest_nvr_data = $conn->query($sql_latest_nvr_data);
+
+if ($result_latest_nvr_data && $result_latest_nvr_data->num_rows > 0) {
+    while ($row = $result_latest_nvr_data->fetch_assoc()) {
+        $building = $row['building'];
+        $online_channels = (int)$row['online_channels'];
+
+        // Check if the building is one of the specified ones and if it passes the 62-day criteria
+        if (isset($nvr_status_counts[$building]) && $online_channels >= 62) {
+            $nvr_status_counts[$building]['passed']++;
+        }
+    }
+}
+
 $conn->close();
 ?>
 <link rel="stylesheet" href="theme.css">
@@ -160,6 +207,27 @@ $conn->close();
             </div>
 
             <?php echo $report_message; ?>
+
+            <div class="glass-card rounded-3xl shadow-xl p-8 mb-8">
+                <h2 class="text-2xl font-bold section-title mb-4">สรุปสถานะ NVR (≥ 62 วัน)</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <?php foreach ($nvr_status_counts as $building_key => $counts): ?>
+                        <div class="bg-white/50 border border-slate-200/50 rounded-lg p-4 text-center">
+                            <p class="text-lg font-semibold text-slate-700">อาคาร <?php echo htmlspecialchars($building_key); ?></p>
+                            <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2 mb-1">
+                                <?php
+                                    $percentage = ($counts['total'] > 0) ? round(($counts['passed'] / $counts['total']) * 100) : 0;
+                                    $bar_color = ($percentage == 100) ? 'bg-green-600' : 'bg-red-600';
+                                ?>
+                                <div class="<?php echo $bar_color; ?> h-2.5 rounded-full" style="width: <?php echo $percentage; ?>%"></div>
+                            </div>
+                            <p class="text-sm text-slate-500 mt-2">
+                                <span class="font-bold <?php echo ($counts['passed'] == $counts['total']) ? 'text-green-600' : 'text-red-600'; ?>"><?php echo $counts['passed']; ?></span> / <?php echo $counts['total']; ?> ผ่านเกณฑ์
+                            </p>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
 
             <div id="buildingTabsContainer" class="flex items-center border-b border-sky-200 mb-4 overflow-x-auto pb-2"></div>
 
@@ -311,7 +379,8 @@ $conn->close();
         document.querySelectorAll('.nvr-days-input').forEach(input => {
             input.addEventListener('input', (e) => {
                 const card = document.getElementById(e.target.dataset.cardId);
-                const target = parseInt(e.target.dataset.target, 10);
+                // Use 62 as the target for coloring, as per user's request
+                const target = 62; 
                 const value = e.target.value;
                 card.classList.remove('bg-green-200/50', 'border-green-300/50', 'bg-red-200/50', 'border-red-300/50', 'bg-slate-100/50', 'border-slate-200/50');
                 if (value === '' || value === null) {
