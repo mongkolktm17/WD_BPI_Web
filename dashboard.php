@@ -223,6 +223,40 @@
    </section><!-- Camera Status Section -->
    <section class="mb-8">
     <h3 id="camera-section-title" class="text-2xl font-bold text-blue-900 mb-4">Camera Online Status <span class="text-sm text-gray-500 ml-2">(Last Update: <span id="camera-last-update"></span>)</span></h3>
+    <!-- Summary Card with Gradient -->
+    <div class="mb-6 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 text-white card-shadow">
+     <div class="flex items-center justify-between flex-wrap">
+      <div>
+       <h4 class="text-xl font-semibold mb-2">Camera Online Status Summary</h4>
+       <div class="text-3xl font-bold" id="camera-summary-total">
+        0/0 (<span id="camera-summary-percentage">0</span>%)
+       </div>
+       <div class="text-blue-100 text-sm">
+        กล้องออนไลน์ / กล้องทั้งหมด (เปอร์เซ็นต์)
+       </div>
+      </div>
+      <div class="text-right">
+       <div class="grid grid-cols-2 gap-4 text-sm">
+        <div class="text-center">
+         <div class="text-2xl font-bold text-green-300" id="camera-summary-online">
+          0
+         </div>
+         <div class="text-blue-100">
+          ออนไลน์
+         </div>
+        </div>
+        <div class="text-center">
+         <div class="text-2xl font-bold text-red-300" id="camera-summary-offline">
+          0
+         </div>
+         <div class="text-blue-100">
+          ออฟไลน์
+         </div>
+        </div>
+       </div>
+      </div>
+     </div>
+    </div>
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6" id="camera-status-container">
      <div class="bg-white rounded-lg p-6 card-shadow">
       <h4 class="text-xl font-semibold text-blue-800 mb-4">Building B.3</h4>
@@ -1193,6 +1227,9 @@
                 if (cameraStatusContainer) {
                     cameraStatusContainer.innerHTML = ''; // Clear existing content
 
+                    let totalOnlineCameras = 0;
+                    let totalCameras = 0;
+
                     for (const building in data.buildings) {
                         const buildingData = data.buildings[building];
                         const buildingDiv = document.createElement('div');
@@ -1213,6 +1250,8 @@
                                     </div>
                                 </div>
                             `;
+                            totalOnlineCameras += nvr.online_channels;
+                            totalCameras += nvr.total_channels;
                         });
 
                         buildingDiv.innerHTML = `
@@ -1223,6 +1262,15 @@
                         `;
                         cameraStatusContainer.appendChild(buildingDiv);
                     }
+
+                    // Update Camera Summary
+                    const totalOfflineCameras = totalCameras - totalOnlineCameras;
+                    const overallCameraPercentage = totalCameras > 0 ? Math.round((totalOnlineCameras / totalCameras) * 100) : 0;
+
+                    document.getElementById('camera-summary-total').textContent = `${totalOnlineCameras}/${totalCameras} (${overallCameraPercentage}%)`;
+                    document.getElementById('camera-summary-online').textContent = totalOnlineCameras;
+                    document.getElementById('camera-summary-offline').textContent = totalOfflineCameras;
+                    document.getElementById('camera-summary-percentage').textContent = overallCameraPercentage;
                 }
 
                 // Update last update label
