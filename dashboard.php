@@ -1218,10 +1218,18 @@
         async function fetchCameraStatus() {
             console.log('fetchCameraStatus called');
             try {
-                const response = await fetch('get_camera_status.php');
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                const data = await response.json();
-                console.log('Camera data received:', data);
+                const [cameraStatusResponse, recordingDataResponse] = await Promise.all([
+                    fetch('get_camera_status.php'),
+                    fetch('get_nvr_recording_data.php') // Fetch recording history
+                ]);
+
+                if (!cameraStatusResponse.ok) throw new Error(`HTTP error! status: ${cameraStatusResponse.status}`);
+                if (!recordingDataResponse.ok) throw new Error(`HTTP error! status: ${recordingDataResponse.status}`);
+
+                const cameraData = await cameraStatusResponse.json();
+                const recordingData = await recordingDataResponse.json(); // Parse recording history
+                console.log('Camera data received:', cameraData);
+                console.log('Recording data received:', recordingData);
 
                 const cameraStatusContainer = document.getElementById('camera-status-container');
                 if (cameraStatusContainer) {
@@ -1230,8 +1238,8 @@
                     let totalOnlineCameras = 0;
                     let totalCameras = 0;
 
-                    for (const building in data.buildings) {
-                        const buildingData = data.buildings[building];
+                    for (const building in cameraData.buildings) {
+                        const buildingData = cameraData.buildings[building];
                         const buildingDiv = document.createElement('div');
                         buildingDiv.className = 'bg-white rounded-lg p-6 card-shadow';
                         
@@ -1239,6 +1247,14 @@
                         buildingData.forEach(nvr => {
                             const barColor = nvr.percentage >= 95 ? 'bg-green-500' : nvr.percentage >= 80 ? 'bg-yellow-500' : 'bg-red-500';
                             const cappedPercentage = Math.min(100, nvr.percentage);
+
+                            // Get recording history for this NVR
+                            const nvrRecordingHistory = recordingData[building] && recordingData[building][nvr.nvr_name] ? recordingData[building][nvr.nvr_name] : null;
+                            const lastRecordedText = nvrRecordingHistory ? `Last Recorded: ${nvrRecordingHistory.last_recorded}` : 'Recording history N/A';
+                            const recordingStatusClass = nvrRecordingHistory && nvrRecordingHistory.status === 'Recording' ? 'text-green-600' : 'text-red-600';
+                            const recordingStatusText = nvrRecordingHistory ? `Status: <span class="${recordingStatusClass}">${nvrRecordingHistory.status}</span>` : '';
+
+
                             nvrHtml += `
                                 <div class="p-3 bg-blue-50 rounded">
                                     <div class="flex flex-wrap justify-between items-center mb-2">
@@ -1247,6 +1263,10 @@
                                     </div>
                                     <div class="w-full bg-gray-200 rounded-full h-2">
                                         <div class="${barColor} h-2 rounded-full" style="width: ${cappedPercentage}%"></div>
+                                    </div>
+                                    <div class="text-xs text-gray-500 mt-2">
+                                        <div>${lastRecordedText}</div>
+                                        <div>${recordingStatusText}</div>
                                     </div>
                                 </div>
                             `;
@@ -1274,8 +1294,8 @@
                 }
 
                 // Update last update label
-                if (data.last_update) {
-                    let ds = data.last_update;
+                if (cameraData.last_update) { // Use cameraData for last_update
+                    let ds = cameraData.last_update;
                     if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(ds)) ds = ds.replace(' ', 'T');
                     document.getElementById('camera-last-update').textContent = formatRelativeTime(ds);
                 }
