@@ -978,7 +978,7 @@
 
                     if (nvrPassCountEl) nvrPassCountEl.textContent = nvrPassCount;
                     if (nvrTotalCountEl) nvrTotalCountEl.textContent = nvrCount; // Use nvrCount from PHP
-                    if (nvrCountTextEl) nvrCountTextEl.textContent = `${nvrPassCount} / ${nvrCount} ผ่านเกณฑ์`;
+                    if (nvrCountTextEl) nvrCountTextEl.textContent = `รวม NVR: ${nvrCount} เครื่อง`;
 
                     if (nvrProgressBarFillEl && nvrCount > 0) {
                         const progressPercentage = Math.round((nvrPassCount / nvrCount) * 100);
@@ -992,11 +992,12 @@
 
                 // Calculate overall summary - percentage of NVRs passing the standard
                 const totalExpectedNVRs = data.total_expected_nvrs || 0;
+                const calculatedFailCount = totalExpectedNVRs - totalPassCount;
                 const overallPercent = totalExpectedNVRs > 0 ? Math.round((totalPassCount / totalExpectedNVRs) * 100) : 0;
 
                 document.getElementById('nvr-summary-total').textContent = `${totalPassCount}/${totalExpectedNVRs} (${overallPercent}%)`;
                 document.getElementById('nvr-summary-pass').textContent = totalPassCount;
-                document.getElementById('nvr-summary-fail').textContent = totalFailCount;
+                document.getElementById('nvr-summary-fail').textContent = calculatedFailCount;
                 document.getElementById('nvr-summary-percentage').textContent = overallPercent;
 
                 // Update last update label
