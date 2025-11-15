@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SDK Test Page</title>
+  <script src="/_sdk/element_sdk.js"></script>
+  <script src="/_sdk/data_sdk.js"></script>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; padding: 24px; background:#f7fafc }
+    .card { background: white; border-radius:8px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.06); max-width:800px }
+    pre { background:#0f172a; color:#e6fffa; padding:12px; border-radius:6px; overflow:auto }
+    .kbd { font-family:monospace; background:#e2e8f0; padding:2px 6px; border-radius:4px }
+    .success { color: #059669 }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>SDK Stub Test</h1>
+    <p>This page demonstrates calling the local stub SDKs at <span class="kbd">/_sdk/element_sdk.js</span> and <span class="kbd">/_sdk/data_sdk.js</span>.</p>
+
+    <h3>Element SDK</h3>
+    <div id="element-status">Not initialized</div>
+
+    <h3>Data SDK</h3>
+    <div>
+      <button id="set-data">Set key <code>demo.key</code></button>
+      <button id="get-data">Get key <code>demo.key</code></button>
+    </div>
+    <div id="data-result" style="margin-top:12px">--</div>
+
+    <h3>Console Log</h3>
+    <pre id="log-output">(logs appear here)</pre>
+
+  </div>
+
+<script>
+// Simple logger into the page
+function log(msg){
+  const el = document.getElementById('log-output');
+  el.textContent = msg + "\n" + el.textContent;
+  console.log(msg);
+}
+
+// Try to call elementSdk.init
+if (window.elementSdk && typeof window.elementSdk.init === 'function'){
+  log('[page] elementSdk detected, calling init()');
+  try{
+    window.elementSdk.init({
+      defaultConfig: {dashboard_title:'Test Dashboard'},
+      onConfigChange: function(cfg){
+        document.getElementById('element-status').innerHTML = '<span class="success">Initialized</span> — Config applied: ' + JSON.stringify(cfg);
+        log('[elementSdk] onConfigChange called with: ' + JSON.stringify(cfg));
+      }
+    });
+  }catch(e){
+    log('[page] elementSdk.init error: ' + e.message);
+  }
+} else {
+  log('[page] elementSdk not available');
+}
+
+// Data SDK demo
+const setBtn = document.getElementById('set-data');
+const getBtn = document.getElementById('get-data');
+const result = document.getElementById('data-result');
+
+setBtn.addEventListener('click', ()=>{
+  try{
+    if (window.dataSdk && typeof window.dataSdk.set === 'function'){
+      window.dataSdk.set('demo.key','hello from sdk_test at ' + new Date().toISOString());
+      log('[dataSdk] set demo.key');
+      result.textContent = 'Set demo.key (see console/log)';
+    } else {
+      log('[page] dataSdk.set not found');
+      result.textContent = 'dataSdk not available';
+    }
+  }catch(e){ log('[dataSdk] set error: '+e.message); }
+});
+
+getBtn.addEventListener('click', ()=>{
+  try{
+    if (window.dataSdk && typeof window.dataSdk.get === 'function'){
+      const v = window.dataSdk.get('demo.key');
+      log('[dataSdk] get demo.key => ' + String(v));
+      result.textContent = 'Get demo.key => ' + String(v);
+    } else {
+      log('[page] dataSdk.get not found');
+      result.textContent = 'dataSdk not available';
+    }
+  }catch(e){ log('[dataSdk] get error: '+e.message); }
+});
+
+log('[page] sdk_test loaded, SDK globals: elementSdk=' + (typeof window.elementSdk) + ', dataSdk=' + (typeof window.dataSdk));
+</script>
+</body>
+</html>
