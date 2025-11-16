@@ -33,7 +33,8 @@ try {
                             cr.online_channels, 
                             cr.offline_channels, 
                             cr.online_percentage,
-                            cd.nvr_name,
+                            cr.report_time, /* Added report_time */
+                            crd.nvr_name,
                             cd.target_days
                         FROM cctv_reports cr
                         JOIN cctv_report_details crd ON cr.id = crd.report_id
@@ -57,25 +58,7 @@ try {
                 $total_channels = (int)$row['total_channels'];
                 $online_channels_reported = (int)$row['online_channels']; // This is the 'days' input from the form
                 $target_days = (int)$row['target_days'];
-
-                // Determine 'pass' status based on recorded_days (online_channels_reported) vs target_days
-                $nvr_online_status = ($online_channels_reported >= $target_days) ? $total_channels : 0; // If recorded days meet target, consider all channels online for this NVR
-                $nvr_below_status = ($online_channels_reported < $target_days) ? $total_channels : 0; // If recorded days are below target, consider all channels offline for this NVR
-
-                // Calculate percentage for this NVR based on recorded_days vs target_days
-                // This is a bit tricky. The dashboard shows "Pass Standard (online/total) (percent)".
-                // Let's define "online" for the dashboard as channels meeting the target days.
-                // If recorded_days >= target_days, then 100% pass for this NVR.
-                // If recorded_days < target_days, then 0% pass for this NVR.
-                // This might need adjustment based on how "online_channels" was intended in cctv_reports.
-                // For now, let's use the online_percentage from cctv_reports if it's meaningful,
-                // otherwise, we'll calculate based on the 'pass' logic.
-
-                // Re-evaluating: The dashboard NVR section has "Pass Standard (online/total) (percent)".
-                // The `nvr_recording_days.php` calculates `online_channels` as the `days` input.
-                // And `online_percentage` as `($days / $total_channels) * 100`.
-                // This means `online_channels` in `cctv_reports` is actually the `recorded_days` for that NVR.
-                // So, for the dashboard, "Pass Standard" should be based on `recorded_days` >= `target_days`.
+                $report_time = $row['report_time']; // Get report_time
 
                 if (!isset($building_data[$building])) {
                     $building_data[$building] = [
@@ -97,13 +80,17 @@ try {
                     $building_data[$building]['below'] += $total_channels;
                 }
 
+                $nvr_status_text = $nvr_pass_status ? "Recording (Passed)" : "Recording (Failed)";
+
                 $building_data[$building]['nvrs'][] = [
                     'nvr_name' => $nvr_name,
                     'total_channels' => $total_channels,
                     'recorded_days' => $online_channels_reported, // This is the 'days' input
                     'target_days' => $target_days,
                     'pass_standard' => $nvr_pass_status,
-                    'percentage' => $nvr_pass_status ? 100 : 0 // Percentage for this NVR based on pass/fail
+                    'percentage' => $nvr_pass_status ? 100 : 0, // Percentage for this NVR based on pass/fail
+                    'last_recorded' => $report_time, // Added last_recorded
+                    'status' => $nvr_status_text // Added status
                 ];
             }
         }

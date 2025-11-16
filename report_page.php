@@ -177,7 +177,7 @@ if ($stmt) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard ระบบความปลอดภัย</title>
+    <title>ศูนย์รวมรายงานอาคารและ ระบบความปลอดภัย</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="theme.css">
 </head>
@@ -188,10 +188,11 @@ if ($stmt) {
         <div class="glass-card rounded-3xl shadow-xl p-8 mb-8">
             <div class="flex justify-between items-center">
                 <div>
-                    <h1 class="text-3xl font-bold section-title mb-2">Dashboard</h1>
+                    <h1 class="text-3xl font-bold section-title mb-2">ศูนย์รวมรายงาน</h1>
                     <p class="text-gray-600 text-lg">ยินดีต้อนรับ, <?php echo htmlspecialchars($_SESSION["username"]); ?>!</p>
                 </div>
                 <div class="flex items-center space-x-2">
+                    <a href="dashboard.php" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-xl transition-colors">กลับ Dashboard</a>
                     <?php if (isset($_SESSION['permissions']) && in_array('all', $_SESSION['permissions'])) : ?>
                         <a href="manage_officers.php" class="submit-btn-modern text-white text-sm font-semibold py-2 px-4 rounded-xl">จัดการเจ้าหน้าที่</a>
                         <a href="manage_roles.php" class="submit-btn-modern text-white text-sm font-semibold py-2 px-4 rounded-xl">จัดการ Role</a>

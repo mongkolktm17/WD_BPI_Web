@@ -9,6 +9,19 @@
 // This handles session, DB connection, and ensures only admins can access.
 require_once "check_permissions.php";
 
+// --- Determine backlink ---
+$back_link = 'dashboard.php'; // Default link
+$back_link_text = 'กลับ Dashboard';
+if (isset($_SERVER['HTTP_REFERER'])) {
+    $referer_path = parse_url($_SERVER['HTTP_REFERER'], PHP_URL_PATH);
+    if (basename($referer_path) == 'report_page.php') {
+        $back_link = 'report_page.php';
+        $back_link_text = 'กลับไปหน้ารายงาน';
+    } elseif (basename($referer_path) == 'dashboard.php') {
+        $back_link = 'dashboard.php';
+    }
+}
+
 // --- CSRF Protection ---
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
@@ -177,7 +190,7 @@ $conn->close();
         <header class="mb-8">
             <div class="flex justify-between items-center">
                  <h1 class="text-3xl font-bold text-gray-800">จัดการเจ้าหน้าที่</h1>
-                 <a href="report_page.php" class="text-sm bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">กลับ Dashboard</a>
+                 <a href="<?php echo $back_link; ?>" class="text-sm bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"><?php echo $back_link_text; ?></a>
             </div>
         </header>
 

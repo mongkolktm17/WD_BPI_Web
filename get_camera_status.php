@@ -1,4 +1,7 @@
 <?php
+ob_start(); // Start output buffering
+error_reporting(E_ALL); // Display all errors for debugging
+ini_set('display_errors', 1); // Display errors on screen
 require_once 'config.php';
 
 header('Content-Type: application/json; charset=utf-8');
@@ -9,7 +12,7 @@ $response = [
 ];
 
 // Get the latest report_id for each building
-$latest_report_ids_sql = "SELECT building, MAX(created_at) as latest_created_at
+$latest_report_ids_sql = "SELECT building, MAX(report_time) as latest_created_at
                           FROM cctv_reports
                           GROUP BY building";
 $latest_report_ids_result = $conn->query($latest_report_ids_sql);
@@ -23,7 +26,7 @@ if ($latest_report_ids_result && $latest_report_ids_result->num_rows > 0) {
         $latest_created_at = $row['latest_created_at'];
         
         // Find the actual report_id for this latest timestamp and building
-        $report_id_sql = "SELECT id FROM cctv_reports WHERE building = ? AND created_at = ? LIMIT 1";
+        $report_id_sql = "SELECT id FROM cctv_reports WHERE building = ? AND report_time = ? LIMIT 1";
         $stmt_report_id = $conn->prepare($report_id_sql);
         $stmt_report_id->bind_param("ss", $building, $latest_created_at);
         $stmt_report_id->execute();
@@ -80,5 +83,6 @@ $response['last_update'] = $overall_latest_update;
 
 $conn->close();
 
+ob_clean(); // Clean (discard) the output buffer
 echo json_encode($response, JSON_UNESCAPED_UNICODE);
 ?>

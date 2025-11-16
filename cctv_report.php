@@ -11,7 +11,10 @@ $current_username = $_SESSION["username"];
 
 // Handle POST requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $data = json_decode(file_get_contents('php://input'), true);
+    $raw_input = file_get_contents('php://input');
+    $data = json_decode($raw_input, true);
+    error_log("PHP POST RAW INPUT: " . $raw_input); // NEW DEBUG LOG
+    error_log("PHP POST DECODED DATA: " . json_encode($data)); // NEW DEBUG LOG
 
     if (isset($data['action']) && $data['action'] === 'save_report') {
         $stats = $data['stats'];
@@ -26,9 +29,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $report_id = $stmt->insert_id;
             $stmt->close();
 
-            $stmt_details = $conn->prepare("INSERT INTO cctv_report_details (report_id, nvr_name, online_channels) VALUES (?, ?, ?)");
-            foreach ($stats['nvrStats'] as $nvr_name => $online_channels) {
-                $stmt_details->bind_param("isi", $report_id, $nvr_name, $online_channels);
+            $stmt_details = $conn->prepare("INSERT INTO cctv_report_details (report_id, nvr_name, online_channels, total_channels, channel_statuses_json) VALUES (?, ?, ?, ?, ?)");
+            foreach ($stats['nvrStats'] as $nvr_name => $nvr_data) {
+                $full_channel_status_data = $data['stats']['fullChannelStatusByNVR'] ?? null; // Get the whole object
+                $nvr_channel_statuses = $full_channel_status_data[$nvr_name] ?? []; // Access specific NVR
+
+                $serialized_channel_statuses = json_encode($nvr_channel_statuses);
+                error_log("PHP POST DEBUG: nvr_name: " . $nvr_name . 
+                          ", data['stats']['fullChannelStatusByNVR']: " . json_encode($full_channel_status_data) . 
+                          ", nvr_channel_statuses: " . json_encode($nvr_channel_statuses) .
+                          ", serialized_channel_statuses: " . $serialized_channel_statuses); // UPDATED DEBUG LOG
+
+                $stmt_details->bind_param("isiss", $report_id, $nvr_name, $nvr_data['online_channels'], $nvr_data['total_channels'], $serialized_channel_statuses);
                 $stmt_details->execute();
             }
             $stmt_details->close();
@@ -61,10 +73,15 @@ $report_history_result = $conn->query("
 $report_history = [];
 while ($row = $report_history_result->fetch_assoc()) {
     $report_id = $row['id'];
-    $details_result = $conn->query("SELECT nvr_name, online_channels FROM cctv_report_details WHERE report_id = $report_id");
+    $details_result = $conn->query("SELECT nvr_name, online_channels, total_channels, channel_statuses_json FROM cctv_report_details WHERE report_id = $report_id");
     $details = [];
     while ($detail_row = $details_result->fetch_assoc()) {
-        $details[$detail_row['nvr_name']] = $detail_row['online_channels'];
+        error_log("Raw channel_statuses_json for NVR " . $detail_row['nvr_name'] . ": " . ($detail_row['channel_statuses_json'] ?? 'NULL')); // Debug log
+        $details[$detail_row['nvr_name']] = [
+            'online_channels' => $detail_row['online_channels'],
+            'total_channels' => $detail_row['total_channels'],
+            'channel_statuses' => json_decode($detail_row['channel_statuses_json'] ?? '[]', true) // Deserialize
+        ];
     }
     $row['details'] = $details;
     $report_history[] = $row;
@@ -192,6 +209,7 @@ $conn->close();
   </main>
   <script>
         const buildingConfigs = <?php echo json_encode($building_configs); ?>;
+        console.log('buildingConfigs:', buildingConfigs);
         let reportHistory = <?php echo json_encode($report_history); ?>;
         let currentBuilding = 'B.4';
 
@@ -201,10 +219,25 @@ $conn->close();
             channelStatus = {};
             const config = buildingConfigs[currentBuilding];
             
+            console.log('initializeChannels: reportHistory', reportHistory); // Debug log 1
+            const latestReportForBuilding = reportHistory.find(report => report.building === currentBuilding);
+            console.log('initializeChannels: latestReportForBuilding', latestReportForBuilding); // Debug log 2
+
             config.nvrs.forEach(nvr => {
-                for (let i = 1; i <= nvr.channels; i++) {
-                    const channelId = `${currentBuilding}-nvr${nvr.id}-ch${i}`;
-                    channelStatus[channelId] = Math.random() > 0.3;
+                if (latestReportForBuilding && latestReportForBuilding.details[nvr.nvr_name] && latestReportForBuilding.details[nvr.nvr_name].channel_statuses) {
+                    const savedChannelStatuses = latestReportForBuilding.details[nvr.nvr_name].channel_statuses;
+                    console.log(`initializeChannels: Using saved channel statuses for ${nvr.nvr_name}`, savedChannelStatuses); // Debug log 3
+                    for (let i = 1; i <= nvr.channels; i++) {
+                        const channelId = `${currentBuilding}-nvr${nvr.id}-ch${i}`;
+                        channelStatus[channelId] = savedChannelStatuses[i] !== undefined ? savedChannelStatuses[i] : false;
+                    }
+                } else {
+                    console.log(`initializeChannels: Randomizing channel statuses for ${nvr.nvr_name} (no latest report or channel statuses found)`); // Debug log 4
+                    // If no latest report or no specific channel statuses, randomize
+                    for (let i = 1; i <= nvr.channels; i++) {
+                        const channelId = `${currentBuilding}-nvr${nvr.id}-ch${i}`;
+                        channelStatus[channelId] = Math.random() > 0.3;
+                    }
                 }
             });
         }
@@ -350,17 +383,12 @@ $conn->close();
             refreshText.textContent = '🔄 กำลังรีเฟรช...';
             
             setTimeout(() => {
-                Object.keys(channelStatus).forEach(channelId => {
-                    if (channelId.startsWith(currentBuilding) && Math.random() < 0.1) {
-                        channelStatus[channelId] = !channelStatus[channelId];
-                    }
-                });
-                
+                initializeChannels(); // Re-initialize channels from the latest report
                 renderNVRCards();
                 updateStatistics();
                 
                 refreshBtn.disabled = false;
-                refreshText.textContent = '🔄 รีเฟรชสถานะ';
+                refreshText.textContent = 'อัพเดตข้อมูล';
             }, 1500);
         }
 
@@ -372,6 +400,7 @@ $conn->close();
             reportText.textContent = '📊 กำลังส่งรายงาน...';
             
             try {
+                console.log('sendStatusReport: channelStatus before getCurrentStatistics', channelStatus); // Debug log
                 const stats = getCurrentStatistics();
                 
                 const response = await fetch(window.location.href, {
@@ -404,20 +433,28 @@ $conn->close();
             let totalChannels = 0;
             let onlineChannels = 0;
             const nvrStats = {};
+            const fullChannelStatusByNVR = {}; // New structure
 
             config.nvrs.forEach(nvr => {
                 let nvrOnline = 0;
                 totalChannels += parseInt(nvr.channels);
+                fullChannelStatusByNVR[nvr.nvr_name] = {}; // Initialize for this NVR
                 
                 for (let i = 1; i <= nvr.channels; i++) {
                     const channelId = `${currentBuilding}-nvr${nvr.id}-ch${i}`;
-                    if (channelStatus[channelId]) {
+                    const isOnline = channelStatus[channelId]; // Get status from global channelStatus
+                    console.log(`getCurrentStatistics: channelId: ${channelId}, channelStatus[channelId]: ${channelStatus[channelId]}, isOnline: ${isOnline}`); // Debug log
+                    if (isOnline) {
                         onlineChannels++;
                         nvrOnline++;
                     }
+                    fullChannelStatusByNVR[nvr.nvr_name][i] = isOnline; // Store individual channel status
                 }
                 
-                nvrStats[nvr.nvr_name] = nvrOnline;
+                nvrStats[nvr.nvr_name] = {
+                    online_channels: nvrOnline,
+                    total_channels: parseInt(nvr.channels)
+                };
             });
 
             const offlineChannels = totalChannels - onlineChannels;
@@ -428,7 +465,8 @@ $conn->close();
                 online: onlineChannels,
                 offline: offlineChannels,
                 percentage: onlinePercentage,
-                nvrStats: nvrStats
+                nvrStats: nvrStats,
+                fullChannelStatusByNVR: fullChannelStatusByNVR // Send this
             };
         }
 
@@ -489,8 +527,8 @@ $conn->close();
                 historyItem.className = 'bg-gray-50 rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow duration-200';
                 
                 let nvrStatusHtml = '';
-                for (const [nvr_name, online_channels] of Object.entries(report.details)) {
-                    nvrStatusHtml += `<span class="bg-blue-100 text-blue-800 px-2 py-1 rounded">${nvr_name}: ${online_channels}</span>`;
+                for (const [nvr_name, details] of Object.entries(report.details)) {
+                    nvrStatusHtml += `<span class="bg-blue-100 text-blue-800 px-2 py-1 rounded">${nvr_name}: ${details.online_channels}/${details.total_channels}</span>`;
                 }
 
                 historyItem.innerHTML = `

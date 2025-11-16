@@ -207,6 +207,8 @@ try {
             `report_id` INT NOT NULL,
             `nvr_name` VARCHAR(255) NOT NULL,
             `online_channels` INT NOT NULL,
+            `total_channels` INT NOT NULL DEFAULT 0,
+            `channel_statuses_json` TEXT NULL,
             FOREIGN KEY (`report_id`) REFERENCES `cctv_reports`(`id`) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
@@ -269,18 +271,35 @@ try {
         }
     }
 
-    // --- 3.4. Ensure `submitted_by_id` column exists in `security_guard_counts` ---
-    $sql_check_column = "SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '$dbname' AND TABLE_NAME = 'security_guard_counts' AND COLUMN_NAME = 'submitted_by_id'";
-    $result_check_column = $conn->query($sql_check_column);
-    if ($result_check_column->num_rows == 0) {
-        $sql_alter_table = "ALTER TABLE `security_guard_counts` 
-                            ADD COLUMN `submitted_by_id` INT NULL AFTER `total`,
-                            ADD FOREIGN KEY (`submitted_by_id`) REFERENCES `users`(`id`) ON DELETE SET NULL";
+    // --- 3.5. Ensure `total_channels` column exists in `cctv_report_details` ---
+    $sql_check_column_total_channels = "SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '$dbname' AND TABLE_NAME = 'cctv_report_details' AND COLUMN_NAME = 'total_channels'";
+    $result_check_column_total_channels = $conn->query($sql_check_column_total_channels);
+    if ($result_check_column_total_channels->num_rows == 0) {
+        $sql_alter_table = "ALTER TABLE `cctv_report_details` ADD COLUMN `total_channels` INT NOT NULL DEFAULT 0 AFTER `online_channels`";
         if ($conn->query($sql_alter_table) !== TRUE) {
-            throw new Exception("Error altering `security_guard_counts` table: " . $conn->error);
+            throw new Exception("Error altering `cctv_report_details` table: " . $conn->error);
         }
     }
 
+    // --- 3.6. Ensure `channel_statuses_json` column exists in `cctv_report_details` ---
+    $sql_check_column = "SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '$dbname' AND TABLE_NAME = 'cctv_report_details' AND COLUMN_NAME = 'channel_statuses_json'";
+    $result_check_column = $conn->query($sql_check_column);
+    if ($result_check_column->num_rows == 0) {
+        $sql_alter_table = "ALTER TABLE `cctv_report_details` ADD COLUMN `channel_statuses_json` TEXT NULL AFTER `total_channels`";
+        if ($conn->query($sql_alter_table) !== TRUE) {
+            throw new Exception("Error altering `cctv_report_details` table for `channel_statuses_json`: " . $conn->error);
+        }
+    }
+
+    // Temporarily disable foreign key checks
+    $conn->query("SET FOREIGN_KEY_CHECKS = 0;");
+
+    // --- Truncate CCTV report tables for clean slate during setup ---
+    $conn->query("TRUNCATE TABLE `cctv_report_details`");
+    $conn->query("TRUNCATE TABLE `cctv_reports`");
+
+    // Re-enable foreign key checks
+    $conn->query("SET FOREIGN_KEY_CHECKS = 1;");
 
     // --- 4. Truncate and Re-seed CCTV Devices with new detailed data ---
     $conn->query("TRUNCATE TABLE `cctv_devices`");

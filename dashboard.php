@@ -69,7 +69,12 @@
         System Administrator
        </div>
       </div>
-     </div><!-- Settings Button --> <button id="settings-btn" class="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-lg card-shadow transition-colors">
+     </div><!-- Report Button -->
+     <a href="report_page.php" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg card-shadow transition-colors flex items-center">
+        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"></path></svg>
+        <span>รายงาน</span>
+     </a>
+     <!-- Settings Button --> <button id="settings-btn" class="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-lg card-shadow transition-colors">
       <svg class="w-5 h-5" fill="currentColor" viewbox="0 0 20 20"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"></path>
       </svg></button>
     </div><!-- Main Header Content -->
@@ -228,8 +233,8 @@
      <div class="flex items-center justify-between flex-wrap">
       <div>
        <h4 class="text-xl font-semibold mb-2">Camera Online Status Summary</h4>
-       <div class="text-3xl font-bold" id="camera-summary-total">
-        0/0 (<span id="camera-summary-percentage">0</span>%)
+       <div class="text-3xl font-bold">
+        <span id="camera-summary-online-total">0/0</span> (<span id="camera-summary-percentage">0</span>%)
        </div>
        <div class="text-blue-100 text-sm">
         กล้องออนไลน์ / กล้องทั้งหมด (เปอร์เซ็นต์)
@@ -257,6 +262,7 @@
       </div>
      </div>
     </div>
+
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6" id="camera-status-container">
      <div class="bg-white rounded-lg p-6 card-shadow">
       <h4 class="text-xl font-semibold text-blue-800 mb-4">Building B.3</h4>
@@ -334,10 +340,10 @@
        <div>
         <h4 class="text-xl font-semibold mb-2 flex items-center">
          <img src="report_assets/Images/car2.png" alt="Car Icon" class="w-8 h-8 mr-3" /> Car Parking Total</h4>
-        <div class="text-3xl font-bold">
+        <div class="text-3xl font-bold" id="car-parking-total">
          749/990
         </div>
-        <div class="text-blue-100 text-sm">
+        <div class="text-blue-100 text-sm" id="car-parking-percentage">
          76% Occupied
         </div>
        </div>
@@ -353,10 +359,10 @@
        <div>
         <h4 class="text-xl font-semibold mb-2 flex items-center">
          <img src="report_assets/Images/motorcycle.png" alt="Motorcycle Icon" class="w-8 h-8 mr-3" /> Motorcycle Parking Total</h4>
-        <div class="text-3xl font-bold">
+        <div class="text-3xl font-bold" id="motorcycle-parking-total">
          590/757
         </div>
-        <div class="text-green-100 text-sm">
+        <div class="text-green-100 text-sm" id="motorcycle-parking-percentage">
          78% Occupied
         </div>
        </div>
@@ -925,28 +931,24 @@
                 const evening = Number(data.evening_shift) || 0;
                 const total = Number(data.total) || (morning + evening);
 
-                document.getElementById('day-shift-count').textContent = morning;
-                document.getElementById('night-shift-count').textContent = evening;
+                const dayShiftCountElement = document.getElementById('day-shift-count');
+                if (dayShiftCountElement) dayShiftCountElement.textContent = morning;
+
+                const nightShiftCountElement = document.getElementById('night-shift-count');
+                if (nightShiftCountElement) nightShiftCountElement.textContent = evening;
 
                 const currentShiftCountElement = document.getElementById('current-shift-count');
-                const currentShiftStatusElement = document.getElementById('current-shift-status');
-                const shiftChangeTimeElement = document.getElementById('shift-change-time');
+                if (currentShiftCountElement) currentShiftCountElement.textContent = total;
 
-                currentShiftCountElement.textContent = total;
-                // The currentShiftStatusElement and shiftChangeTimeElement are updated by updateShiftStatus based on current time.
-                // The following lines are commented out as their functionality is now handled by updateShiftStatus.
-                // currentShiftStatusElement.textContent = 'Total Active';
-                // currentShiftStatusElement.className = 'text-sm font-medium text-green-600';
-                // shiftChangeTimeElement.textContent = 'Updated Regularly';
-
-                if (data.last_update) {
+                const securityLastUpdateElement = document.getElementById('security-last-update');
+                if (data.last_update && securityLastUpdateElement) {
                     // Normalize MySQL datetime to ISO so Date parsing is reliable in browsers
                     let ds = data.last_update;
                     if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(ds)) ds = ds.replace(' ', 'T');
                     const formattedTime = formatRelativeTime(ds);
-                    document.getElementById('security-last-update').textContent = formattedTime;
+                    securityLastUpdateElement.textContent = formattedTime;
                     console.log('security-last-update set to:', formattedTime, ' (normalized:', ds, ')');
-                } else {
+                } else if (securityLastUpdateElement) {
                     console.log('data.last_update is null or undefined.');
                 }
 
@@ -1014,13 +1016,15 @@
                     if (nvrTotalCountEl) nvrTotalCountEl.textContent = nvrCount; // Use nvrCount from PHP
                     if (nvrCountTextEl) nvrCountTextEl.textContent = `รวม NVR: ${nvrCount} เครื่อง`;
 
-                    if (nvrProgressBarFillEl && nvrCount > 0) {
-                        const progressPercentage = Math.round((nvrPassCount / nvrCount) * 100);
-                        nvrProgressBarFillEl.style.width = `${progressPercentage}%`;
-                        nvrProgressBarFillEl.className = `h-2.5 rounded-full ${progressPercentage === 100 ? 'bg-green-600' : 'bg-red-600'}`;
-                    } else if (nvrProgressBarFillEl) {
-                        nvrProgressBarFillEl.style.width = '0%';
-                        nvrProgressBarFillEl.className = 'h-2.5 rounded-full bg-red-600';
+                    if (nvrProgressBarFillEl) {
+                        if (nvrCount > 0) {
+                            const progressPercentage = Math.round((nvrPassCount / nvrCount) * 100);
+                            nvrProgressBarFillEl.style.width = `${progressPercentage}%`;
+                            nvrProgressBarFillEl.className = `h-2.5 rounded-full ${progressPercentage === 100 ? 'bg-green-600' : 'bg-red-600'}`;
+                        } else {
+                            nvrProgressBarFillEl.style.width = '0%';
+                            nvrProgressBarFillEl.className = 'h-2.5 rounded-full bg-red-600';
+                        }
                     }
                 });
 
@@ -1029,14 +1033,24 @@
                 const calculatedFailCount = totalExpectedNVRs - totalPassCount;
                 const overallPercent = totalExpectedNVRs > 0 ? Math.round((totalPassCount / totalExpectedNVRs) * 100) : 0;
 
-                document.getElementById('nvr-summary-total').textContent = `${totalPassCount}/${totalExpectedNVRs} (${overallPercent}%)`;
-                document.getElementById('nvr-summary-pass').textContent = totalPassCount;
-                document.getElementById('nvr-summary-fail').textContent = calculatedFailCount;
-                document.getElementById('nvr-summary-percentage').textContent = overallPercent;
+                const nvrSummaryTotalElement = document.getElementById('nvr-summary-total');
+                if (nvrSummaryTotalElement) nvrSummaryTotalElement.textContent = `${totalPassCount}/${totalExpectedNVRs} (${overallPercent}%)`;
+
+                const nvrSummaryPassElement = document.getElementById('nvr-summary-pass');
+                if (nvrSummaryPassElement) nvrSummaryPassElement.textContent = totalPassCount;
+
+                const nvrSummaryFailElement = document.getElementById('nvr-summary-fail');
+                if (nvrSummaryFailElement) nvrSummaryFailElement.textContent = calculatedFailCount;
+
+                const nvrSummaryPercentageElement = document.getElementById('nvr-summary-percentage');
+                if (nvrSummaryPercentageElement) nvrSummaryPercentageElement.textContent = overallPercent;
 
                 // Update last update label
-                const lastUpdate = data.last_update ? new Date(data.last_update).toLocaleTimeString('th-TH') : '-';
-                document.getElementById('nvr-last-update').textContent = lastUpdate;
+                const nvrLastUpdateElement = document.getElementById('nvr-last-update');
+                if (nvrLastUpdateElement) {
+                    const lastUpdate = data.last_update ? new Date(data.last_update).toLocaleTimeString('th-TH') : '-';
+                    nvrLastUpdateElement.textContent = lastUpdate;
+                }
 
             } catch (err) {
                 console.error('Error fetching NVR status:', err);
@@ -1055,13 +1069,25 @@
                 console.log('Parking data received:', data);
 
                 // Update summary cards
-                document.getElementById('car-parking-total').textContent = `${data.total_car_occupied}/${data.total_car_slots}`;
+                const carParkingTotalElement = document.getElementById('car-parking-total');
+                if (carParkingTotalElement) {
+                    carParkingTotalElement.textContent = `${data.total_car_occupied}/${data.total_car_slots}`;
+                }
                 const carOccupancy = Math.min(100, data.total_car_slots > 0 ? Math.round((data.total_car_occupied / data.total_car_slots) * 100) : 0);
-                document.getElementById('car-parking-percentage').textContent = `${carOccupancy}% Occupied`;
+                const carParkingPercentageElement = document.getElementById('car-parking-percentage');
+                if (carParkingPercentageElement) {
+                    carParkingPercentageElement.textContent = `${carOccupancy}% Occupied`;
+                }
 
-                document.getElementById('motorcycle-parking-total').textContent = `${data.total_motorcycle_occupied}/${data.total_motorcycle_slots}`;
+                const motorcycleParkingTotalElement = document.getElementById('motorcycle-parking-total');
+                if (motorcycleParkingTotalElement) {
+                    motorcycleParkingTotalElement.textContent = `${data.total_motorcycle_occupied}/${data.total_motorcycle_slots}`;
+                }
                 const motorcycleOccupancy = Math.min(100, data.total_motorcycle_slots > 0 ? Math.round((data.total_motorcycle_occupied / data.total_motorcycle_slots) * 100) : 0);
-                document.getElementById('motorcycle-parking-percentage').textContent = `${motorcycleOccupancy}% Occupied`;
+                const motorcycleParkingPercentageElement = document.getElementById('motorcycle-parking-percentage');
+                if (motorcycleParkingPercentageElement) {
+                    motorcycleParkingPercentageElement.textContent = `${motorcycleOccupancy}% Occupied`;
+                }
 
                 // Update individual car lots
                 data.car_lots_data.forEach(lot => {
@@ -1106,10 +1132,11 @@
                 });
 
                 // Update last update label
-                if (data.last_update) {
+                const parkingLastUpdateElement = document.getElementById('parking-last-update');
+                if (parkingLastUpdateElement && data.last_update) {
                     let ds = data.last_update;
                     if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(ds)) ds = ds.replace(' ', 'T');
-                    document.getElementById('parking-last-update').textContent = formatRelativeTime(ds);
+                    parkingLastUpdateElement.textContent = formatRelativeTime(ds);
                 }
 
             } catch (err) {
@@ -1218,16 +1245,19 @@
         async function fetchCameraStatus() {
             console.log('fetchCameraStatus called');
             try {
-                const [cameraStatusResponse, recordingDataResponse] = await Promise.all([
-                    fetch('get_camera_status.php'),
-                    fetch('get_nvr_recording_data.php') // Fetch recording history
-                ]);
+                const cameraStatusResponse = await fetch('get_camera_status.php');
 
                 if (!cameraStatusResponse.ok) throw new Error(`HTTP error! status: ${cameraStatusResponse.status}`);
-                if (!recordingDataResponse.ok) throw new Error(`HTTP error! status: ${recordingDataResponse.status}`);
 
-                const cameraData = await cameraStatusResponse.json();
-                const recordingData = await recordingDataResponse.json(); // Parse recording history
+                const rawCameraResponseText = await cameraStatusResponse.text();
+                console.log('Raw Camera Status Response:', rawCameraResponseText); // Log raw text
+                const cameraData = JSON.parse(rawCameraResponseText); // Manually parse JSON
+
+                // Temporarily comment out recordingDataResponse to isolate
+                // const recordingDataResponse = await fetch('get_nvr_recording_data.php');
+                // if (!recordingDataResponse.ok) throw new Error(`HTTP error! status: ${recordingDataResponse.status}`);
+                // const recordingData = await recordingDataResponse.json(); // Parse recording history
+                const recordingData = { buildings: {} }; // Dummy data for now
                 console.log('Camera data received:', cameraData);
                 console.log('Recording data received:', recordingData);
 
@@ -1244,15 +1274,23 @@
                         buildingDiv.className = 'bg-white rounded-lg p-6 card-shadow';
                         
                         let nvrHtml = '';
+                        let buildingOnlineCameras = 0; // Initialize for current building
+                        let buildingTotalCameras = 0; // Initialize for current building
+
                         buildingData.forEach(nvr => {
                             const barColor = nvr.percentage >= 95 ? 'bg-green-500' : nvr.percentage >= 80 ? 'bg-yellow-500' : 'bg-red-500';
                             const cappedPercentage = Math.min(100, nvr.percentage);
 
                             // Get recording history for this NVR
-                            const nvrRecordingHistory = recordingData[building] && recordingData[building][nvr.nvr_name] ? recordingData[building][nvr.nvr_name] : null;
-                            const lastRecordedText = nvrRecordingHistory ? `Last Recorded: ${nvrRecordingHistory.last_recorded}` : 'Recording history N/A';
-                            const recordingStatusClass = nvrRecordingHistory && nvrRecordingHistory.status === 'Recording' ? 'text-green-600' : 'text-red-600';
-                            const recordingStatusText = nvrRecordingHistory ? `Status: <span class="${recordingStatusClass}">${nvrRecordingHistory.status}</span>` : '';
+                            const buildingRecordingData = recordingData.buildings[building];
+                            let nvrRecordingHistory = null;
+                            if (buildingRecordingData && buildingRecordingData.nvrs) {
+                                nvrRecordingHistory = buildingRecordingData.nvrs.find(recNvr => recNvr.nvr_name === nvr.nvr_name);
+                            }
+                            
+                            const lastRecordedText = nvrRecordingHistory && nvrRecordingHistory.last_recorded ? `Last Recorded: ${nvrRecordingHistory.last_recorded}` : 'Recording history N/A';
+                            const recordingStatusClass = nvrRecordingHistory && nvrRecordingHistory.status && nvrRecordingHistory.status.includes('Passed') ? 'text-green-600' : 'text-red-600';
+                            const recordingStatusText = nvrRecordingHistory && nvrRecordingHistory.status ? `Status: <span class="${recordingStatusClass}">${nvrRecordingHistory.status}</span>` : '';
 
 
                             nvrHtml += `
@@ -1270,12 +1308,22 @@
                                     </div>
                                 </div>
                             `;
+                            buildingOnlineCameras += nvr.online_channels; // Accumulate for current building
+                            buildingTotalCameras += nvr.total_channels; // Accumulate for current building
                             totalOnlineCameras += nvr.online_channels;
                             totalCameras += nvr.total_channels;
                         });
 
+                        const buildingOverallPercentage = buildingTotalCameras > 0 ? Math.round((buildingOnlineCameras / buildingTotalCameras) * 100) : 0;
+
+                        // Log the camera counts for Building B.3 to the console
+                        if (building === 'B.3') {
+                            console.log(`Building B.3 Camera Summary: Online - ${buildingOnlineCameras}, Total - ${buildingTotalCameras}, Percentage - ${buildingOverallPercentage}%`);
+                        }
+
                         buildingDiv.innerHTML = `
-                            <h4 class="text-xl font-semibold text-blue-800 mb-4">Building ${building}</h4>
+                            <h4 class="text-xl font-semibold text-blue-800 mb-2">Building ${building}</h4>
+                            <p class="text-sm text-gray-600 mb-4">Online Cameras: ${buildingOnlineCameras}/${buildingTotalCameras} (${buildingOverallPercentage}%)</p>
                             <div class="space-y-4">
                                 ${nvrHtml}
                             </div>
@@ -1287,17 +1335,25 @@
                     const totalOfflineCameras = totalCameras - totalOnlineCameras;
                     const overallCameraPercentage = totalCameras > 0 ? Math.round((totalOnlineCameras / totalCameras) * 100) : 0;
 
-                    document.getElementById('camera-summary-total').textContent = `${totalOnlineCameras}/${totalCameras} (${overallCameraPercentage}%)`;
-                    document.getElementById('camera-summary-online').textContent = totalOnlineCameras;
-                    document.getElementById('camera-summary-offline').textContent = totalOfflineCameras;
-                    document.getElementById('camera-summary-percentage').textContent = overallCameraPercentage;
+                    const cameraSummaryOnlineTotalElement = document.getElementById('camera-summary-online-total');
+                    if (cameraSummaryOnlineTotalElement) cameraSummaryOnlineTotalElement.textContent = `${totalOnlineCameras}/${totalCameras}`;
+
+                    const cameraSummaryOnlineElement = document.getElementById('camera-summary-online');
+                    if (cameraSummaryOnlineElement) cameraSummaryOnlineElement.textContent = totalOnlineCameras;
+
+                    const cameraSummaryOfflineElement = document.getElementById('camera-summary-offline');
+                    if (cameraSummaryOfflineElement) cameraSummaryOfflineElement.textContent = totalOfflineCameras;
+
+                    const cameraSummaryPercentageElement = document.getElementById('camera-summary-percentage');
+                    if (cameraSummaryPercentageElement) cameraSummaryPercentageElement.textContent = overallCameraPercentage;
                 }
 
                 // Update last update label
-                if (cameraData.last_update) { // Use cameraData for last_update
+                const cameraLastUpdateElement = document.getElementById('camera-last-update');
+                if (cameraLastUpdateElement && cameraData.last_update) { // Use cameraData for last_update
                     let ds = cameraData.last_update;
                     if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(ds)) ds = ds.replace(' ', 'T');
-                    document.getElementById('camera-last-update').textContent = formatRelativeTime(ds);
+                    cameraLastUpdateElement.textContent = formatRelativeTime(ds);
                 }
 
             } catch (err) {
