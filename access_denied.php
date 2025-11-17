@@ -19,6 +19,7 @@
             background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
         }
     </style>
+    <link rel="icon" href="report_assets/Images/PCS_logo.png" type="image/png">
 </head>
 <body class="gradient-bg flex items-center justify-center min-h-screen">
 

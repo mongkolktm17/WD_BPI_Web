@@ -4,16 +4,7 @@ require_once "config.php";
 
 // If the user is already logged in, redirect based on their role.
 if (isset($_SESSION["loggedin"]) && $_SESSION["loggedin"] === true) {
-    if (isset($_SESSION["role_id"])) {
-        if ($_SESSION["role_id"] == 1) { // Assuming role_id 1 is Security Officer
-            header("location: report_page.php");
-        } else { // All other roles
-            header("location: dashboard.php");
-        }
-    } else {
-        // Fallback if role_id is not set in session, redirect to dashboard
-        header("location: dashboard.php");
-    }
+    header("location: dashboard.php");
     exit;
 }
 
@@ -88,12 +79,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         $_SESSION['permissions'] = $permissions;
 
                         // --- 6. Role-Based Redirect ---
-                        // If user is a Security Officer (assuming role_id 1)
-                        if ($row['role_id'] == 1) { // Assuming role_id 1 is Security Officer
-                            header("location: report_page.php");
-                        } else { // All other roles
-                            header("location: dashboard.php");
-                        }
+                        header("location: dashboard.php");
                         exit; // Crucial to exit after a header redirect.
 
                     } else {

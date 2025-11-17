@@ -14,6 +14,7 @@ $building_options = [
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>เลือกอาคาร</title>
+    <link rel="icon" href="public/assets/favicon.ico" type="image/x-icon">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="theme.css">
 </head>

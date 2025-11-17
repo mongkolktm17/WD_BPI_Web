@@ -226,6 +226,7 @@ $walkthrough_status = get_walkthrough_status($conn);
         .status-warning { background-color: #f59e0b; }
     </style>
   <style>@view-transition { navigation: auto; }</style>
+  <link rel="icon" href="report_assets/Images/PCS_logo.png" type="image/png">
   <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
  </head>
  <body class="gradient-bg min-h-full">

@@ -97,6 +97,7 @@ $conn->close();
   <title>NVR Multi-Building Monitor</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="theme.css">
+  <link rel="icon" href="report_assets/Images/PCS_logo.png" type="image/png">
  </head>
  <body class="custom-font" style="background: linear-gradient(135deg, #e0f2fe 0%, #b3e5fc 100%);">
   <main class="min-h-full py-8 px-4">

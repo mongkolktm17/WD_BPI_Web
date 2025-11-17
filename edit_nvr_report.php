@@ -107,6 +107,7 @@ $conn->close();
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Edit NVR Report</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="icon" href="report_assets/Images/PCS_logo.png" type="image/png">
 </head>
 <body class="bg-slate-50 text-slate-800">
   <div class="container mx-auto px-4 py-8">

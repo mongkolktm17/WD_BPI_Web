@@ -107,6 +107,7 @@ $conn->close();
             100% { transform: rotate(360deg); }
         }
     </style>
+    <link rel="icon" href="report_assets/Images/PCS_logo.png" type="image/png">
  </head>
  <body class="h-full gradient-bg font-sans custom-font">
   <main class="min-h-full flex items-center justify-center p-4">

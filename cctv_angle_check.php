@@ -269,6 +269,7 @@ $conn->close();
       border-radius: 0 0 4px 4px;
     }
   </style>
+  <link rel="icon" href="report_assets/Images/PCS_logo.png" type="image/png">
  </head>
  <body class="min-h-full bg-blue-50 text-slate-800">
   <div class="min-h-full p-4 sm:p-6">

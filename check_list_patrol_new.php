@@ -194,6 +194,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && empty($error)) {
         }
     </style>
   <style>@view-transition { navigation: auto; }</style>
+  <link rel="icon" href="report_assets/Images/PCS_logo.png" type="image/png">
  </head>
  <body class="h-full custom-font" style="background: linear-gradient(135deg, #e0f2fe 0%, #b3e5fc 100%);">
   <main class="min-h-full py-4 px-4">

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Daily NVR Report</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="icon" href="report_assets/Images/PCS_logo.png" type="image/png">
  </head>
  <?php
 require_once 'config.php';
