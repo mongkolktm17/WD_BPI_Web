@@ -9,7 +9,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 }
 ?>
 <!doctype html>
-<html lang="th">
+<html lang="en">
  <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -68,42 +68,48 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
  </head>
  <body class="gradient-bg min-h-full">
   <div class="container mx-auto px-4 py-6"><!-- Header -->
-   <header class="relative mb-8"><!-- Login Status and Settings -->
-    <div class="flex flex-col items-center space-y-2 md:flex-row md:space-x-4 md:space-y-0 md:absolute md:top-0 md:right-0">
-     <!-- User Status -->
-     <div class="flex items-center bg-white rounded-lg px-4 py-2 card-shadow">
-      <div class="w-3 h-3 bg-green-500 rounded-full mr-2 pulse-animation"></div>
-      <div class="text-sm">
-       <div class="font-semibold text-blue-900" id="user-name">
-        Admin User
-       </div>
-       <div class="text-blue-600 text-xs" id="user-role">
-        System Administrator
-       </div>
-      </div>
-     </div>
-     <!-- Report Button -->
-     <a href="report_page.php" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg card-shadow transition-colors flex items-center">
-        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"></path></svg>
-        <span>รายงาน</span>
-     </a>
-     <!-- Settings Button --> <button id="settings-btn" class="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-lg card-shadow transition-colors">
-      <svg class="w-5 h-5" fill="currentColor" viewbox="0 0 20 20"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"></path>
-      </svg></button>
-     <!-- Logout Button -->
-     <a href="logout.php" class="bg-red-600 hover:bg-red-700 text-white p-3 rounded-lg card-shadow transition-colors">
-      <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-      </svg>
-     </a>
-    </div><!-- Main Header Content -->
-    <div class="text-center flex flex-col items-center">
-     <h1 id="dashboard-title" class="text-4xl font-bold text-blue-900 mb-2">Security System Dashboard</h1>
-     <h2 id="company-name" class="text-2xl text-blue-700">Western Digital Factory</h2>
-     <div class="mt-4 text-blue-600"><span id="current-time" class="text-lg font-medium"></span>
-     </div>
+   <header class="mb-8">
+    <div class="flex flex-col md:flex-row justify-between md:items-center">
+        <!-- Main Header Content -->
+        <div class="text-center md:text-left">
+            <h1 id="dashboard-title" class="text-4xl font-bold text-blue-900 mb-2">Security System Dashboard</h1>
+            <h2 id="company-name" class="text-2xl text-blue-700">BPI Western Digital Storage Technologies (Thailand) Ltd.</h2>
+            <div class="mt-4 text-blue-600">
+                <span id="current-time" class="text-lg font-medium"></span>
+            </div>
+        </div>
+        <!-- Login Status and Settings -->
+        <div class="flex flex-wrap items-center justify-center gap-2 mt-4 md:mt-0">
+            <!-- User Status -->
+            <div class="flex items-center bg-white rounded-lg px-4 py-2 card-shadow">
+                <div class="w-3 h-3 bg-green-500 rounded-full mr-2 pulse-animation"></div>
+                <div class="text-sm">
+                    <div class="font-semibold text-blue-900" id="user-name">
+                        Admin User
+                    </div>
+                    <div class="text-blue-600 text-xs" id="user-role">
+                        System Administrator
+                    </div>
+                </div>
+            </div>
+            <!-- Report Button -->
+            <a href="report_page.php" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg card-shadow transition-colors flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"></path></svg>
+                <span>Report</span>
+            </a>
+            <!-- Settings Button -->
+            <button id="settings-btn" class="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-lg card-shadow transition-colors">
+                <svg class="w-5 h-5" fill="currentColor" viewbox="0 0 20 20"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"></path></svg>
+            </button>
+            <!-- Logout Button -->
+            <a href="logout.php" class="bg-red-600 hover:bg-red-700 text-white p-3 rounded-lg card-shadow transition-colors">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                </svg>
+            </a>
+        </div>
     </div>
-   </header><!-- Security Personnel Section -->
+</header><!-- Security Personnel Section -->
    <section class="mb-8">
     <h3 id="security-section-title" class="text-2xl font-bold text-blue-900 mb-4">Security Personnel Status <span class="text-sm text-gray-500 ml-2">(Last Update: <span id="security-last-update"></span>)</span></h3>
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -169,7 +175,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
         0/0 (<span id="nvr-summary-percentage">0</span>%)
        </div>
        <div class="text-blue-100 text-sm">
-        NVR ที่ผ่านเกณฑ์ / รวม (เปอร์เซ็นต์)
+        NVRs Passed / Total (Percentage)
        </div>
       </div>
       <div class="text-right">
@@ -179,7 +185,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
           0
          </div>
          <div class="text-blue-100">
-          ผ่านเกณฑ์
+          Passed
          </div>
         </div>
         <div class="text-center">
@@ -187,7 +193,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
           0
          </div>
          <div class="text-blue-100">
-          ไม่ผ่านเกณฑ์
+          Failed
          </div>
         </div>
        </div>
@@ -202,10 +208,10 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
                 <div class="h-2.5 rounded-full" id="nvr-progressbar-fill-62-B_2" style="width: 0%"></div>
             </div>
             <p class="text-sm text-slate-500 mt-2">
-                <span class="font-bold text-green-600" id="nvr-passcount-62-B_2">0</span> / <span id="nvr-totalcount-62-B_2">0</span> ผ่านเกณฑ์
+                <span class="font-bold text-green-600" id="nvr-passcount-62-B_2">0</span> / <span id="nvr-totalcount-62-B_2">0</span> Passed
             </p>
             <div class="mt-2 md:mt-3 text-xs text-gray-500">
-                <div id="nvr-count-62-B_2">รวม NVR: 0 เครื่อง</div>
+                <div id="nvr-count-62-B_2">Total NVRs: 0</div>
             </div>
         </div>
     <div class="bg-white rounded-lg p-4 md:p-6 card-shadow" data-building="B.3">
@@ -214,10 +220,10 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
             <div class="h-2.5 rounded-full" id="nvr-progressbar-fill-62-B_3" style="width: 0%"></div>
         </div>
         <p class="text-sm text-slate-500 mt-2">
-            <span class="font-bold text-green-600" id="nvr-passcount-62-B_3">0</span> / <span id="nvr-totalcount-62-B_3">0</span> ผ่านเกณฑ์
+            <span class="font-bold text-green-600" id="nvr-passcount-62-B_3">0</span> / <span id="nvr-totalcount-62-B_3">0</span> Passed
         </p>
         <div class="mt-2 md:mt-3 text-xs text-gray-500">
-            <div id="nvr-count-62-B_3">รวม NVR: 0 เครื่อง</div>
+            <div id="nvr-count-62-B_3">Total NVRs: 0</div>
         </div>
     </div>
     <div class="bg-white rounded-lg p-4 md:p-6 card-shadow" data-building="B.4">
@@ -226,10 +232,10 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
             <div class="h-2.5 rounded-full" id="nvr-progressbar-fill-62-B_4" style="width: 0%"></div>
         </div>
         <p class="text-sm text-slate-500 mt-2">
-            <span class="font-bold text-green-600" id="nvr-passcount-62-B_4">0</span> / <span id="nvr-totalcount-62-B_4">0</span> ผ่านเกณฑ์
+            <span class="font-bold text-green-600" id="nvr-passcount-62-B_4">0</span> / <span id="nvr-totalcount-62-B_4">0</span> Passed
         </p>
         <div class="mt-2 md:mt-3 text-xs text-gray-500">
-            <div id="nvr-count-62-B_4">รวม NVR: 0 เครื่อง</div>
+            <div id="nvr-count-62-B_4">Total NVRs: 0</div>
         </div>
     </div>
         <div class="bg-white rounded-lg p-4 md:p-6 card-shadow" data-building="B.8">
@@ -238,10 +244,10 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
                 <div class="h-2.5 rounded-full" id="nvr-progressbar-fill-62-B_8" style="width: 0%"></div>
             </div>
             <p class="text-sm text-slate-500 mt-2">
-                <span class="font-bold text-green-600" id="nvr-passcount-62-B_8">0</span> / <span id="nvr-totalcount-62-B_8">0</span> ผ่านเกณฑ์
+                <span class="font-bold text-green-600" id="nvr-passcount-62-B_8">0</span> / <span id="nvr-totalcount-62-B_8">0</span> Passed
             </p>
             <div class="mt-2 md:mt-3 text-xs text-gray-500">
-                <div id="nvr-count-62-B_8">รวม NVR: 0 เครื่อง</div>
+                <div id="nvr-count-62-B_8">Total NVRs: 0</div>
             </div>
         </div>    </div>
    </section><!-- Camera Status Section -->
@@ -256,7 +262,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
         <span id="camera-summary-online-total">0/0</span> (<span id="camera-summary-percentage">0</span>%)
        </div>
        <div class="text-blue-100 text-sm">
-        กล้องออนไลน์ / กล้องทั้งหมด (เปอร์เซ็นต์)
+        Online Cameras / Total Cameras (Percentage)
        </div>
       </div>
       <div class="text-right">
@@ -266,7 +272,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
           0
          </div>
          <div class="text-blue-100">
-          ออนไลน์
+          Online
          </div>
         </div>
         <div class="text-center">
@@ -274,7 +280,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
           0
          </div>
          <div class="text-blue-100">
-          ออฟไลน์
+          Offline
          </div>
         </div>
        </div>
@@ -821,7 +827,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
         // Configuration object
         const defaultConfig = {
             dashboard_title: "Security System Dashboard",
-            company_name: "Western Digital Factory",
+            company_name: "BPI Western Digital Storage Technologies (Thailand) Ltd.",
             security_section_title: "Security Personnel Status",
             nvr_section_title: "NVR Recording Status",
             camera_section_title: "Camera Online Status",
@@ -854,7 +860,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
         // Update time display and shift status
         function updateTime() {
             const now = new Date();
-            const timeString = now.toLocaleString('th-TH', {
+            const timeString = now.toLocaleString('en-US', {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',
@@ -914,25 +920,25 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 
             let interval = seconds / 31536000; // years
             if (interval > 1) {
-                return Math.floor(interval) + " ปีที่แล้ว";
+                return Math.floor(interval) + " years ago";
             }
             interval = seconds / 2592000; // months
             if (interval > 1) {
-                return Math.floor(interval) + " เดือนที่แล้ว";
+                return Math.floor(interval) + " months ago";
             }
             interval = seconds / 86400; // days
             if (interval > 1) {
-                return Math.floor(interval) + " วันที่แล้ว";
+                return Math.floor(interval) + " days ago";
             }
             interval = seconds / 3600; // hours
             if (interval > 1) {
-                return Math.floor(interval) + " ชั่วโมงที่แล้ว";
+                return Math.floor(interval) + " hours ago";
             }
             interval = seconds / 60; // minutes
             if (interval > 1) {
-                return Math.floor(interval) + " นาทีที่แล้ว";
+                return Math.floor(interval) + " minutes ago";
             }
-            return Math.floor(seconds) + " วินาทีที่แล้ว";
+            return Math.floor(seconds) + " seconds ago";
         }
 
         async function fetchSecurityStatus() {
@@ -1033,7 +1039,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 
                     if (nvrPassCountEl) nvrPassCountEl.textContent = nvrPassCount;
                     if (nvrTotalCountEl) nvrTotalCountEl.textContent = nvrCount; // Use nvrCount from PHP
-                    if (nvrCountTextEl) nvrCountTextEl.textContent = `รวม NVR: ${nvrCount} เครื่อง`;
+                    if (nvrCountTextEl) nvrCountTextEl.textContent = `Total NVRs: ${nvrCount}`;
 
                     if (nvrProgressBarFillEl) {
                         if (nvrCount > 0) {
@@ -1067,7 +1073,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
                 // Update last update label
                 const nvrLastUpdateElement = document.getElementById('nvr-last-update');
                 if (nvrLastUpdateElement) {
-                    const lastUpdate = data.last_update ? new Date(data.last_update).toLocaleTimeString('th-TH') : '-';
+                    const lastUpdate = data.last_update ? new Date(data.last_update).toLocaleTimeString('en-US') : '-';
                     nvrLastUpdateElement.textContent = lastUpdate;
                 }
 
