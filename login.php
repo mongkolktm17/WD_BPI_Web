@@ -32,10 +32,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // --- 2. Database Verification ---
     // Proceed only if there are no validation errors.
     if (empty($username_err) && empty($password_err)) {
-        
+
         // Prepare a select statement to get user details including name and employee ID.
         $sql = "SELECT id, username, password, user_type, role_id, first_name, last_name, employee_id FROM users WHERE username = ?";
-        
+
         if ($stmt = $conn->prepare($sql)) {
             $stmt->bind_param("s", $username);
 
@@ -44,10 +44,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                 if ($result->num_rows == 1) {
                     $row = $result->fetch_assoc();
-                    
+
                     // --- 3. Password Verification ---
                     if (password_verify($password, $row['password'])) {
-                        
+
                         // --- 4. Session Creation ---
                         // Store all necessary user data in the session.
                         $_SESSION["loggedin"] = true;
@@ -106,22 +106,23 @@ $conn->close();
 ?>
 <!DOCTYPE html>
 <html>
+
 <head>
-	<title>Login</title>
-	<link rel="icon" href="report_assets/Images/PCS_logo.png" type="image/png">
-	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
-	<style>
+    <title>Login</title>
+    <link rel="icon" href="report_assets/Images/PCS_logo.png" type="image/png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
         @import url('https://fonts.googleapis.com/css?family=Raleway:400,700');
 
         * {
             box-sizing: border-box;
             margin: 0;
-            padding: 0;	
+            padding: 0;
             font-family: Raleway, sans-serif;
         }
 
         body {
-            background: linear-gradient(90deg, #5DA7FB, #995DFF);		
+            background: linear-gradient(90deg, #5DA7FB, #995DFF);
         }
 
         .container {
@@ -131,21 +132,21 @@ $conn->close();
             min-height: 100vh;
         }
 
-        .screen {		
-            background: linear-gradient(90deg, #995DFF, #5DA7FB);		
-            position: relative;	
+        .screen {
+            background: linear-gradient(90deg, #995DFF, #5DA7FB);
+            position: relative;
             height: 600px;
-            width: 360px;	
+            width: 360px;
             box-shadow: 0px 0px 24px #5C5696;
         }
 
         .screen__content {
             z-index: 1;
-            position: relative;	
+            position: relative;
             height: 100%;
         }
 
-        .screen__background {		
+        .screen__background {
             position: absolute;
             top: 0;
             left: 0;
@@ -153,7 +154,7 @@ $conn->close();
             bottom: 0;
             z-index: 0;
             -webkit-clip-path: inset(0 0 0 0);
-            clip-path: inset(0 0 0 0);	
+            clip-path: inset(0 0 0 0);
         }
 
         .screen__background__shape {
@@ -164,18 +165,18 @@ $conn->close();
         .screen__background__shape1 {
             height: 520px;
             width: 520px;
-            background: #FFF;	
+            background: #FFF;
             top: -50px;
-            right: 120px;	
+            right: 120px;
             border-radius: 0 72px 0 0;
         }
 
         .screen__background__shape2 {
             height: 220px;
             width: 220px;
-            background: #995DFF;	
+            background: #995DFF;
             top: -172px;
-            right: 0;	
+            right: 0;
             border-radius: 32px;
         }
 
@@ -184,28 +185,29 @@ $conn->close();
             width: 190px;
             background: linear-gradient(270deg, #5DA7FB, #995DFF);
             top: -24px;
-            right: 0;	
+            right: 0;
             border-radius: 32px;
         }
 
         .screen__background__shape4 {
             height: 400px;
             width: 200px;
-            background: #FF195A;	
+            background: #FF195A;
             top: 420px;
-            right: 50px;	
+            right: 50px;
             border-radius: 60px;
         }
 
         .login {
             width: 320px;
             padding: 30px;
-            padding-top: 40px; /* Adjusted position */
+            padding-top: 40px;
+            /* Adjusted position */
         }
 
         .login__field {
-            padding: 20px 0px;	
-            position: relative;	
+            padding: 20px 0px;
+            position: relative;
         }
 
         .login__icon {
@@ -243,7 +245,8 @@ $conn->close();
             font-weight: 700;
             display: flex;
             align-items: center;
-            width: 80%; /* Reduced width */
+            width: 80%;
+            /* Reduced width */
             color: #995DFF;
             box-shadow: 0px 2px 2px #5C5696;
             cursor: pointer;
@@ -263,7 +266,7 @@ $conn->close();
             color: #FF195A;
         }
 
-        .social-login {	
+        .social-login {
             position: absolute;
             height: 140px;
             width: 160px;
@@ -282,12 +285,12 @@ $conn->close();
         .social-login__icon {
             padding: 20px 10px;
             color: #fff;
-            text-decoration: none;	
+            text-decoration: none;
             text-shadow: 0px 0px 8px #7875B5;
         }
 
         .social-login__icon:hover {
-            transform: scale(1.5);	
+            transform: scale(1.5);
         }
 
         .login__error {
@@ -299,53 +302,64 @@ $conn->close();
             margin-bottom: 20px;
             font-weight: bold;
         }
-
-	</style>
+    </style>
 </head>
-<body>
-<div class="container">
-	<div class="screen">
-		<div class="screen__content">
-            <form class="login" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
-                <div style="margin-bottom: 0; padding-top: 20px; margin-left: 0;">
-                    <img src="report_assets/Images/western-digital-new-logo.png.thumb.1280.1280.png" alt="Logo" style="width: 200px;">
-                </div>
 
-                <?php 
-                    if(!empty($login_err)){
+<body>
+    <div class="container">
+        <div class="screen">
+            <div class="screen__content">
+                <form class="login" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
+                    <div style="margin-bottom: 0; padding-top: 20px; margin-left: 0;">
+                        <img src="report_assets/Images/western-digital-new-logo.png.thumb.1280.1280.png" alt="Logo"
+                            style="width: 200px;">
+                    </div>
+
+                    <?php
+                    if (!empty($login_err)) {
                         echo '<div class="login__error">' . htmlspecialchars($login_err) . '</div>';
                     }
-                ?>
+                    ?>
 
-				<div class="login__field">
-					<i class="login__icon fas fa-user"></i>
-					<input type="text" name="username" class="login__input" placeholder="Username" value="<?php echo htmlspecialchars($username); ?>">
-				</div>
-				<div class="login__field">
-					<i class="login__icon fas fa-lock"></i>
-					<input type="password" name="password" class="login__input" placeholder="Password">
-				</div>
-				<button class="button login__submit">
-					<span class="button__text">Log In Now</span>
-					<i class="button__icon fas fa-chevron-right"></i>
-				</button>				
-			</form>
-			<div class="social-login">
-				<h3>log in via</h3>
-				<div class="social-icons">
-					<a href="#" class="social-login__icon fab fa-instagram"></a>
-					<a href="#" class="social-login__icon fab fa-facebook"></a>
-					<a href="#" class="social-login__icon fab fa-twitter"></a>
-				</div>
-			</div>
-		</div>
-		<div class="screen__background">
-			<span class="screen__background__shape screen__background__shape4"></span>
-			<span class="screen__background__shape screen__background__shape3"></span>		
-			<span class="screen__background__shape screen__background__shape2"></span>
-			<span class="screen__background__shape screen__background__shape1"></span>
-		</div>		
-	</div>
-</div>
+                    <div class="login__field">
+                        <i class="login__icon fas fa-user"></i>
+                        <input type="text" name="username" class="login__input" placeholder="Username"
+                            value="<?php echo htmlspecialchars($username); ?>">
+                    </div>
+                    <div class="login__field">
+                        <i class="login__icon fas fa-lock"></i>
+                        <input type="password" name="password" class="login__input" placeholder="Password">
+                    </div>
+                    <button class="button login__submit">
+                        <span class="button__text">Log In Now</span>
+                        <i class="button__icon fas fa-chevron-right"></i>
+                    </button>
+                </form>
+                <div class="social-login">
+                    <h3>log in via</h3>
+                    <div class="social-icons">
+                        <a href="#" class="social-login__icon fab fa-instagram"></a>
+                        <a href="#" class="social-login__icon fab fa-facebook"></a>
+                        <a href="#" class="social-login__icon fab fa-twitter"></a>
+                    </div>
+                </div>
+            </div>
+            <div class="screen__background">
+                <span class="screen__background__shape screen__background__shape4"></span>
+                <span class="screen__background__shape screen__background__shape3"></span>
+                <span class="screen__background__shape screen__background__shape2"></span>
+                <span class="screen__background__shape screen__background__shape1"></span>
+            </div>
+        </div>
+    </div>
+    <div
+        style="position: fixed; bottom: 10px; width: 100%; text-align: center; color: rgba(255,255,255,0.8); font-size: 12px; z-index: 10;">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 4px;">
+            <img src="report_assets/Images/PCS_logo.png" alt="PCS Logo" style="height: 24px; opacity: 0.9;">
+            <span style="font-weight: 600; letter-spacing: 0.5px;">PCS Engineering Solution</span>
+        </div>
+        &copy; 2025 PCS Engineering Solution. All rights reserved.
+    </div>
 </body>
+
 </html>

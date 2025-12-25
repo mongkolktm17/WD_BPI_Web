@@ -152,7 +152,7 @@ $conn->close();
                         class="toggle-btn flex-1 px-6 py-4 border-2 border-gray-200 text-gray-600 rounded-2xl font-medium">
                         🏢 อาคาร B9 </button>
                 </div>
-                <div class="flex justify-center">
+                <div class="flex flex-col sm:flex-row gap-4 justify-center">
                     <button id="refresh-btn"
                         class="submit-btn-modern text-white px-8 py-3 rounded-full font-semibold text-lg shadow-lg">
                         <span id="refresh-text">🔄 รีเฟรชสถานะ</span> </button>
@@ -211,11 +211,14 @@ $conn->close();
                 </div>
             </div>
 
-            <!-- NVR Summary by Building -->
-            <div class="glass-card rounded-3xl shadow-xl p-8 mb-8">
-                <h2 class="text-2xl font-bold section-title mb-4">สรุปสถานะ NVR แยกตามอาคาร</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="nvr-summary-container">
-                    <!-- Will be populated by JavaScript -->
+            <!-- NVR Summary Section -->
+            <div class="glass-card rounded-3xl shadow-xl p-6 mb-8">
+                <h3 class="text-xl font-bold section-title mb-4 flex items-center">
+                    <span class="mr-2">📋</span> สรุปสถานะกล้องแยกตาม NVR (Building <span
+                        id="summary-building-name"></span>)
+                </h3>
+                <div id="nvr-summary-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- NVR Comparison cards will be inserted here -->
                 </div>
             </div>
 
@@ -260,28 +263,60 @@ $conn->close();
         let reportHistory = <?php echo json_encode($report_history); ?>;
         let currentBuilding = 'B2';
         const cameraNames = <?php echo json_encode($camera_names); ?>;
-        const channelId = `${building}-nvr${nvr.id}-ch${channelNum}`;
-        const div = document.createElement('div');
-        div.id = channelId;
 
-        const statusClasses = isOnline ?
-            'bg-green-500' :
-            'bg-red-500';
+        let channelStatus = {};
 
-        div.className = `channel-status p-2 rounded-lg text-center text-white font-semibold text-xs cursor-pointer transition-all duration-300 ${statusClasses}`;
+        function initializeChannels() {
+            channelStatus = {};
+            const config = buildingConfigs[currentBuilding];
 
-        const cameraKey = `${building}_${nvr.nvr_name}_${channelNum}`;
-        const cameraName = cameraNames[cameraKey] || `CH${channelNum}`;
-        div.innerHTML = `<div class="font-bold text-sm">${channelNum}</div><div class="text-[9px] leading-tight mt-0.5 opacity-90 line-clamp-2">${cameraName}</div>`;
-        div.title = `${cameraName}`;
+            console.log('initializeChannels: reportHistory', reportHistory); // Debug log 1
+            const latestReportForBuilding = reportHistory.find(report => report.building === currentBuilding);
+            console.log('initializeChannels: latestReportForBuilding', latestReportForBuilding); // Debug log 2
 
-        div.addEventListener('click', () => {
-            channelStatus[channelId] = !channelStatus[channelId];
-            updateChannelDisplay(div, channelStatus[channelId], building);
-            updateStatistics();
-        });
+            config.nvrs.forEach(nvr => {
+                if (latestReportForBuilding && latestReportForBuilding.details[nvr.nvr_name] && latestReportForBuilding.details[nvr.nvr_name].channel_statuses) {
+                    const savedChannelStatuses = latestReportForBuilding.details[nvr.nvr_name].channel_statuses;
+                    console.log(`initializeChannels: Using saved channel statuses for ${nvr.nvr_name}`, savedChannelStatuses); // Debug log 3
+                    for (let i = 1; i <= nvr.channels; i++) {
+                        const channelId = `${currentBuilding}-nvr${nvr.id}-ch${i}`;
+                        channelStatus[channelId] = savedChannelStatuses[i] !== undefined ? savedChannelStatuses[i] : false;
+                    }
+                } else {
+                    console.log(`initializeChannels: Randomizing channel statuses for ${nvr.nvr_name} (no latest report or channel statuses found)`); // Debug log 4
+                    // If no latest report or no specific channel statuses, randomize
+                    for (let i = 1; i <= nvr.channels; i++) {
+                        const channelId = `${currentBuilding}-nvr${nvr.id}-ch${i}`;
+                        channelStatus[channelId] = Math.random() > 0.3;
+                    }
+                }
+            });
+        }
 
-        return div;
+        function createChannelElement(building, nvr, channelNum, isOnline) {
+            const config = buildingConfigs[building];
+            const channelId = `${building}-nvr${nvr.id}-ch${channelNum}`;
+            const div = document.createElement('div');
+            div.id = channelId;
+
+            const statusClasses = isOnline ?
+                'bg-green-500' :
+                'bg-red-500';
+
+            div.className = `channel-status p-2 rounded-lg text-center text-white font-semibold text-xs cursor-pointer transition-all duration-300 ${statusClasses}`;
+
+            const cameraKey = `${building}_${nvr.nvr_name}_${channelNum}`;
+            const cameraName = cameraNames[cameraKey] || `CH${channelNum}`;
+            div.innerHTML = `<div class="font-bold text-sm">${channelNum}</div><div class="text-[9px] leading-tight mt-0.5 opacity-90 line-clamp-2">${cameraName}</div>`;
+            div.title = `${cameraName}`;
+
+            div.addEventListener('click', () => {
+                channelStatus[channelId] = !channelStatus[channelId];
+                updateChannelDisplay(div, channelStatus[channelId], building);
+                updateStatistics();
+            });
+
+            return div;
         }
 
         function updateChannelDisplay(element, isOnline, building) {
@@ -391,55 +426,6 @@ $conn->close();
             document.getElementById('online-count').textContent = onlineChannels;
             document.getElementById('offline-count').textContent = offlineChannels;
             document.getElementById('online-percentage').textContent = `${onlinePercentage}%`;
-
-            updateNVRSummary();
-        }
-
-        function updateNVRSummary() {
-            const summaryContainer = document.getElementById('nvr-summary-container');
-            summaryContainer.innerHTML = '';
-
-            const buildings = ['B2', 'B3', 'B4', 'B9'];
-
-            buildings.forEach(building => {
-                if (!buildingConfigs[building]) return;
-
-                const config = buildingConfigs[building];
-                let nvrListHTML = '';
-
-                config.nvrs.forEach(nvr => {
-                    let onlineCount = 0;
-                    const totalChannels = parseInt(nvr.channels);
-
-                    for (let i = 1; i <= nvr.channels; i++) {
-                        const channelId = `${building}-nvr${nvr.id}-ch${i}`;
-                        if (channelStatus[channelId]) {
-                            onlineCount++;
-                        }
-                    }
-
-                    const percentage = totalChannels > 0 ? Math.round((onlineCount / totalChannels) * 100) : 0;
-                    const statusColor = percentage === 100 ? 'text-green-600' : percentage >= 50 ? 'text-yellow-600' : 'text-red-600';
-                    const bgColor = percentage === 100 ? 'bg-green-50' : percentage >= 50 ? 'bg-yellow-50' : 'bg-red-50';
-
-                    nvrListHTML += `
-                        <div class="${bgColor} border border-slate-200 rounded px-3 py-2 flex justify-between items-center">
-                            <span class="text-sm font-medium text-slate-700">${nvr.nvr_name}</span>
-                            <span class="text-sm font-bold ${statusColor}">${onlineCount}/${totalChannels}</span>
-                        </div>
-                    `;
-                });
-
-                const buildingCard = document.createElement('div');
-                buildingCard.className = 'bg-white/50 border border-slate-200/50 rounded-lg p-4';
-                buildingCard.innerHTML = `
-                    <p class="text-lg font-semibold text-slate-700 mb-3 text-center">อาคาร ${building}</p>
-                    <div class="space-y-2 max-h-80 overflow-y-auto">
-                        ${nvrListHTML}
-                    </div>
-                `;
-                summaryContainer.appendChild(buildingCard);
-            });
         }
 
         function switchBuilding(building) {
@@ -453,14 +439,14 @@ $conn->close();
             if (building === 'B2') description = `ศูนย์กลางโรงงาน • ${config.nvrs.length} NVRs`;
             else if (building === 'B3') description = `อาคารสำนักงาน • ${config.nvrs.length} NVRs`;
             else if (building === 'B4') description = `อาคารผลิต • ${config.nvrs.length} NVRs`;
-            else if (building === 'B9') description = `Bio Building • ${config.nvrs.length} NVR`;
+            else if (building === 'B9') description = `Bio Building • ${config.nvrs.length} NVRs`;
             document.getElementById('building-description').textContent = description;
 
             toggleBuildingButton(building);
 
             initializeChannels();
             renderNVRCards();
-            updateStatistics();
+            updateStatistics(); // Ensure summary is rendered
         }
 
         function refreshStatus() {
@@ -503,7 +489,6 @@ $conn->close();
 
                 if (result.status === 'success') {
                     showToast('ส่งรายงานสถานะเรียบร้อยแล้ว', 'success');
-                    localStorage.setItem('selectedBuilding', currentBuilding);
                     location.reload();
                 } else {
                     showToast('เกิดข้อผิดพลาดในการส่งรายงาน', 'error');
@@ -555,8 +540,59 @@ $conn->close();
                 offline: offlineChannels,
                 percentage: onlinePercentage,
                 nvrStats: nvrStats,
-                fullChannelStatusByNVR: fullChannelStatusByNVR // Send this
+                fullChannelStatusByNVR: fullChannelStatusByNVR
             };
+        }
+
+        function renderNVRSummary() {
+            const container = document.getElementById('nvr-summary-list');
+            const summaryBuildingName = document.getElementById('summary-building-name');
+            if (!container) return;
+
+            summaryBuildingName.textContent = currentBuilding;
+            container.innerHTML = '';
+
+            const config = buildingConfigs[currentBuilding];
+            config.nvrs.forEach(nvr => {
+                let onlineCount = 0;
+                let total = parseInt(nvr.channels);
+
+                for (let i = 1; i <= total; i++) {
+                    const channelId = `${currentBuilding}-nvr${nvr.id}-ch${i}`;
+                    if (channelStatus[channelId]) onlineCount++;
+                }
+
+                const percentage = Math.round((onlineCount / total) * 100);
+                const colorClass = percentage === 100 ? 'bg-green-100 text-green-800' : (percentage >= 50 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800');
+
+                const card = document.createElement('div');
+                card.className = `p-4 rounded-xl border ${colorClass.replace('bg-', 'border-').replace('text-', 'border-opacity-30 ')} ${colorClass}`;
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="font-bold text-lg">${nvr.nvr_name}</span>
+                        <span class="text-sm font-semibold px-2 py-1 rounded bg-white bg-opacity-50">${percentage}%</span>
+                    </div>
+                    <div class="flex justify-between items-end">
+                        <span class="text-xs opacity-80">${nvr.area}</span>
+                        <span class="text-xl font-bold">${onlineCount}<span class="text-sm font-normal opacity-75">/${total}</span></span>
+                    </div>
+                    <div class="w-full bg-white bg-opacity-30 rounded-full h-2.5 mt-2">
+                        <div class="bg-current h-2.5 rounded-full" style="width: ${percentage}%"></div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function updateStatistics() {
+            const stats = getCurrentStatistics();
+
+            document.getElementById('total-channels').textContent = stats.total;
+            document.getElementById('online-count').textContent = stats.online;
+            document.getElementById('offline-count').textContent = stats.offline;
+            document.getElementById('online-percentage').textContent = `${stats.percentage}%`;
+
+            renderNVRSummary();
         }
 
         function showToast(message, type = 'info') {
@@ -626,7 +662,7 @@ $conn->close();
                                 <span class="text-2xl mr-3">📊</span>
                                 <div>
                                     <h3 class="font-semibold text-gray-800">รายงานสถานะ ${report.building} #${report.id}</h3>
-                         <p class="text-sm text-gray-600">${formattedDate} (โดย: ${report.username || 'N/A'})</p>
+                                    <p class="text-sm text-gray-600">${formattedDate} (โดย: ${report.username || 'N/A'})</p>
                                 </div>
                             </div>
                             <div class="ml-11">
@@ -648,23 +684,39 @@ $conn->close();
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
+            // Restore selected building from localStorage or default to B2
             const savedBuilding = localStorage.getItem('selectedBuilding') || 'B2';
-            if (localStorage.getItem('selectedBuilding')) {
-                localStorage.removeItem('selectedBuilding');
-            }
-            switchBuilding(savedBuilding);
-            toggleBuildingButton(savedBuilding);
+            const validBuildings = ['B2', 'B3', 'B4', 'B9'];
+            const buildingToLoad = validBuildings.includes(savedBuilding) ? savedBuilding : 'B2';
 
-            document.getElementById('select-b2').addEventListener('click', () => switchBuilding('B2'));
-            document.getElementById('select-b3').addEventListener('click', () => switchBuilding('B3'));
-            document.getElementById('select-b4').addEventListener('click', () => switchBuilding('B4'));
-            document.getElementById('select-b9').addEventListener('click', () => switchBuilding('B9'));
+            switchBuilding(buildingToLoad);
+            toggleBuildingButton(buildingToLoad);
+
+            document.getElementById('select-b2').addEventListener('click', () => { switchBuilding('B2'); localStorage.setItem('selectedBuilding', 'B2'); });
+            document.getElementById('select-b3').addEventListener('click', () => { switchBuilding('B3'); localStorage.setItem('selectedBuilding', 'B3'); });
+            document.getElementById('select-b4').addEventListener('click', () => { switchBuilding('B4'); localStorage.setItem('selectedBuilding', 'B4'); });
+            document.getElementById('select-b9').addEventListener('click', () => { switchBuilding('B9'); localStorage.setItem('selectedBuilding', 'B9'); });
             document.getElementById('refresh-btn').addEventListener('click', refreshStatus);
             document.getElementById('report-btn').addEventListener('click', sendStatusReport);
 
             renderHistoryList();
         });
     </script>
+</body>
+
+<!-- Footer -->
+<footer class="mt-12 mb-6 text-center">
+    <div class="flex flex-col items-center justify-center gap-2">
+        <div class="flex items-center gap-2">
+            <img src="report_assets/Images/PCS_logo.png" alt="PCS Engineering Solution"
+                class="h-10 w-auto opacity-90 hover:opacity-100 transition-opacity">
+            <span class="font-semibold text-slate-600 text-lg tracking-tight">PCS Engineering Solution</span>
+        </div>
+        <p class="text-sm text-slate-400">
+            &copy; 2025 PCS Engineering Solution. All rights reserved.
+        </p>
+    </div>
+</footer>
 </body>
 
 </html>

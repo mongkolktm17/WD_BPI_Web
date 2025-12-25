@@ -46,7 +46,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['sync_data'])) {
                 $last_name = trim($data[3]);
                 $eng_first_name = trim($data[4]);
                 $eng_last_name = trim($data[5]);
-                $username = trim($data[6]);
+                // Generate username from English name + 2 chars from last name
+                $base_username = strtolower($eng_first_name);
+                $last_name_suffix = strtolower(substr($eng_last_name, 0, 2));
+                $username = $base_username . $last_name_suffix;
                 $password = trim($data[7]); // Plain text from CSV
 
                 // Check if officer exists in database
@@ -83,25 +86,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['sync_data'])) {
                     $updates[] = "นามสกุลอังกฤษ";
                 }
 
-                // Check if username needs updating and handle duplicates
-                $final_username = $username;
+                // Check if username needs updating (with new format)
                 if ($officer['username'] != $username) {
-                    // Check if this new username already exists for another user
-                    $sql_check_username = "SELECT id FROM users WHERE username = ? AND id != ?";
-                    $stmt_check_user = $conn->prepare($sql_check_username);
-                    $stmt_check_user->bind_param("si", $username, $officer['id']);
-                    $stmt_check_user->execute();
-                    $username_result = $stmt_check_user->get_result();
-
-                    if ($username_result->num_rows > 0) {
-                        // Username exists, append last 4 digits of employee_id
-                        $final_username = $username . substr($employee_id, -4);
-                        $updates[] = "ชื่อผู้ใช้ (แก้ซ้ำ: $final_username)";
-                    } else {
-                        $updates[] = "ชื่อผู้ใช้";
-                    }
-                    $stmt_check_user->close();
                     $needs_update = true;
+                    $updates[] = "ชื่อผู้ใช้ (ใหม่: $username)";
                 }
 
                 // Always update password if sync is requested (hash it properly)
@@ -127,9 +115,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['sync_data'])) {
                     $stmt_update = $conn->prepare($sql_update);
 
                     if (isset($_POST['update_passwords'])) {
-                        $stmt_update->bind_param("sssssi", $last_name, $eng_first_name, $eng_last_name, $final_username, $hashed_password, $officer['id']);
+                        $stmt_update->bind_param("sssssi", $last_name, $eng_first_name, $eng_last_name, $username, $hashed_password, $officer['id']);
                     } else {
-                        $stmt_update->bind_param("ssssi", $last_name, $eng_first_name, $eng_last_name, $final_username, $officer['id']);
+                        $stmt_update->bind_param("ssssi", $last_name, $eng_first_name, $eng_last_name, $username, $officer['id']);
                     }
 
                     if ($stmt_update->execute()) {

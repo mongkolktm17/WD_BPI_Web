@@ -59,7 +59,23 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['import_officers'])) {
                 $last_name = trim($fields[3]);
                 $eng_first_name = trim($fields[4]);
                 $eng_last_name = trim($fields[5]);
-                $username = trim($fields[6]);
+
+                // Clean and normalize English names (remove special characters, extra spaces)
+                $eng_first_name = preg_replace('/[^a-zA-Z]/', '', $eng_first_name);
+                $eng_last_name = preg_replace('/[^a-zA-Z]/', '', $eng_last_name);
+
+                // Generate base username from English name + 2 chars from last name
+                $base_username = strtolower($eng_first_name);
+                $last_name_suffix = strtolower(substr($eng_last_name, 0, 2));
+                $username = $base_username . $last_name_suffix;
+
+                // Validate username (must not be empty)
+                if (empty($username) || strlen($username) < 3) {
+                    $import_results[] = "แถวที่ " . ($line_num + 1) . " ($employee_id): ชื่ออังกฤษไม่ถูกต้องหรือสั้นเกินไป (ข้ามไป)";
+                    $error_count++;
+                    continue;
+                }
+
                 $password = trim($fields[7]);
 
                 // Validate employee_id (8 digits)
@@ -75,29 +91,58 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['import_officers'])) {
                     $phone_number = "0000000000"; // Fallback
                 }
 
-                // Check if user already exists
-                $sql_check = "SELECT id FROM users WHERE employee_id = ? OR username = ?";
+                // Check if employee_id already exists
+                $sql_check = "SELECT id FROM users WHERE employee_id = ?";
                 $stmt_check = $conn->prepare($sql_check);
-                $stmt_check->bind_param("ss", $employee_id, $username);
+                $stmt_check->bind_param("s", $employee_id);
                 $stmt_check->execute();
                 if ($stmt_check->get_result()->num_rows > 0) {
-                    $import_results[] = "แถวที่ " . ($line_num + 1) . " ($employee_id - $username): มีอยู่แล้วในระบบ (ข้ามไป)";
+                    $import_results[] = "แถวที่ " . ($line_num + 1) . " ($employee_id - $first_name $last_name): รหัสพนักงานมีอยู่แล้ว (ข้ามไป)";
                     $stmt_check->close();
                     $skipped_count++;
                     continue;
                 }
                 $stmt_check->close();
 
+                // Handle username uniqueness by adding numeric suffix if needed
+                $final_username = $username;
+                $suffix = 1;
+                while (true) {
+                    $sql_check_username = "SELECT id FROM users WHERE username = ?";
+                    $stmt_check_username = $conn->prepare($sql_check_username);
+                    $stmt_check_username->bind_param("s", $final_username);
+                    $stmt_check_username->execute();
+
+                    if ($stmt_check_username->get_result()->num_rows == 0) {
+                        // Username is available
+                        $stmt_check_username->close();
+                        break;
+                    }
+
+                    $stmt_check_username->close();
+                    // Username exists, try with numeric suffix
+                    $final_username = $username . $suffix;
+                    $suffix++;
+
+                    // Safety limit to prevent infinite loop
+                    if ($suffix > 99) {
+                        $import_results[] = "แถวที่ " . ($line_num + 1) . " ($employee_id): ไม่สามารถสร้าง username ที่ไม่ซ้ำได้ (ข้ามไป)";
+                        $error_count++;
+                        continue 2; // Skip to next line in outer loop
+                    }
+                }
+
                 // Insert new user
                 $hashed_password = password_hash($password, PASSWORD_DEFAULT);
                 $sql_insert = "INSERT INTO users (first_name, last_name, eng_first_name, eng_last_name, employee_id, phone_number, username, password, user_type, role_id) 
                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'officer', ?)";
                 $stmt_insert = $conn->prepare($sql_insert);
-                $stmt_insert->bind_param("ssssssssi", $first_name, $last_name, $eng_first_name, $eng_last_name, $employee_id, $phone_number, $username, $hashed_password, $role_id);
+                $stmt_insert->bind_param("ssssssssi", $first_name, $last_name, $eng_first_name, $eng_last_name, $employee_id, $phone_number, $final_username, $hashed_password, $role_id);
 
                 if ($stmt_insert->execute()) {
                     $imported_count++;
-                    $import_results[] = "✓ แถวที่ " . ($line_num + 1) . " ($employee_id - $first_name $last_name): นำเข้าสำเร็จ";
+                    $username_note = ($final_username !== $username) ? " (username: $final_username แทน $username เนื่องจากซ้ำ)" : " (username: $final_username)";
+                    $import_results[] = "✓ แถวที่ " . ($line_num + 1) . " ($employee_id - $first_name $last_name)$username_note: นำเข้าสำเร็จ";
                 } else {
                     $error_count++;
                     $import_results[] = "✗ แถวที่ " . ($line_num + 1) . " ($employee_id): เกิดข้อผิดพลาด - " . $stmt_insert->error;

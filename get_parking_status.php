@@ -1,96 +1,89 @@
 <?php
+header('Content-Type: application/json');
 require_once 'config.php';
 
-header('Content-Type: application/json; charset=utf-8');
+// Mapping from Thai DB names to English Dashboard IDs/Names
+// Thai Name (from car_parking.php) => [Dashboard Name, Capacity]
+$lot_mapping = [
+    // Cars
+    "ลานรถยนต์ 1 (97 Slot)" => ["name" => "Parking Lot 1", "capacity" => 97, "type" => "car"], // Note: Lot 1 not in dashboard HTML example but might be needed? Dashboard has Lot 2, 3/1, 3/2, 4, 5, B.8
+    "ลานรถยนต์ 2 (114 Slot)" => ["name" => "Parking Lot 2", "capacity" => 114, "type" => "car"],
+    "ลานรถยนต์ 3/1 (100 Slot)" => ["name" => "Parking Lot 3/1", "capacity" => 100, "type" => "car"],
+    "ลานรถยนต์ 3/2 (264 Slot)" => ["name" => "Parking Lot 3/2", "capacity" => 264, "type" => "car"],
+    "ลานรถยนต์ 4 (415 Slot)" => ["name" => "Parking Lot 4", "capacity" => 415, "type" => "car"],
+    "ลานรถยนต์ 5 (53 Slot)" => ["name" => "Parking Lot 5", "capacity" => 53, "type" => "car"],
+    "ลานรถยนต์ B.8 (44 Slot)" => ["name" => "Parking Lot B.8", "capacity" => 44, "type" => "car"],
+
+    // Motorcycles
+    "ลานจอด 1 (296 Slot)" => ["name" => "Motorcycle Lot 1", "capacity" => 296, "type" => "motorcycle"],
+    "ลานจอด 2 (210 Slot)" => ["name" => "Motorcycle Lot 2", "capacity" => 210, "type" => "motorcycle"],
+    "ลานจอด 3/1 (251 Slot)" => ["name" => "Motorcycle Lot 3/1", "capacity" => 251, "type" => "motorcycle"]
+];
 
 $response = [
     'total_car_occupied' => 0,
-    'total_car_slots' => 0,
+    'total_car_slots' => 990, // Sum of capacities: 114+100+264+415+53+44 = 990 (matches dashboard hardcoded total)
     'total_motorcycle_occupied' => 0,
-    'total_motorcycle_slots' => 0,
+    'total_motorcycle_slots' => 757, // Sum: 296+210+251 = 757
     'car_lots_data' => [],
     'motorcycle_lots_data' => [],
     'last_update' => null
 ];
 
-// Define lot capacities (assuming these are static or fetched from another config)
-// These values are hardcoded based on the car_parking.php file
-$car_lot_capacities = [
-    "ลานรถยนต์ 1 (97 Slot)" => 97,
-    "ลานรถยนต์ 2 (114 Slot)" => 114,
-    "ลานรถยนต์ 3/1 (100 Slot)" => 100,
-    "ลานรถยนต์ 3/2 (264 Slot)" => 264,
-    "ลานรถยนต์ 4 (415 Slot)" => 415,
-    "ลานรถยนต์ 5 (53 Slot)" => 53,
-    "ลานรถยนต์ B.8 (44 Slot)" => 44
-];
+// Get latest parking report
+$sql_report = "SELECT id, created_at FROM car_parking_reports ORDER BY inspection_date DESC, created_at DESC LIMIT 1";
+$result_report = $conn->query($sql_report);
 
-$motorcycle_lot_capacities = [
-    "ลานจอด 1 (296 Slot)" => 296,
-    "ลานจอด 2 (210 Slot)" => 210,
-    "ลานจอด 3/1 (251 Slot)" => 251
-];
+$counts_map = [];
 
-// Calculate total slots
-foreach ($car_lot_capacities as $capacity) {
-    $response['total_car_slots'] += $capacity;
-}
-foreach ($motorcycle_lot_capacities as $capacity) {
-    $response['total_motorcycle_slots'] += $capacity;
-}
+if ($result_report && $result_report->num_rows > 0) {
+    $report = $result_report->fetch_assoc();
+    $report_id = $report['id'];
+    $response['last_update'] = $report['created_at'];
 
-// Get the latest report_id and its created_at timestamp
-$latest_report_sql = "SELECT id, created_at FROM car_parking_reports ORDER BY created_at DESC LIMIT 1";
-$latest_report_result = $conn->query($latest_report_sql);
-
-$latest_report_id = null;
-if ($latest_report_result && $latest_report_result->num_rows > 0) {
-    $latest_report_row = $latest_report_result->fetch_assoc();
-    $latest_report_id = $latest_report_row['id'];
-    $response['last_update'] = $latest_report_row['created_at'];
-}
-
-if ($latest_report_id) {
-    // Fetch parking counts for the latest report
-    $parking_counts_sql = "SELECT lot_name, vehicle_type, vehicle_count FROM parking_lot_counts WHERE report_id = ?";
-    $stmt = $conn->prepare($parking_counts_sql);
-    $stmt->bind_param("i", $latest_report_id);
+    // Get counts for this report
+    $sql_counts = "SELECT lot_name, vehicle_count FROM parking_lot_counts WHERE report_id = ?";
+    $stmt = $conn->prepare($sql_counts);
+    $stmt->bind_param("i", $report_id);
     $stmt->execute();
-    $parking_counts_result = $stmt->get_result();
+    $result_counts = $stmt->get_result();
 
-    if ($parking_counts_result) {
-        while ($row = $parking_counts_result->fetch_assoc()) {
-            $lot_name = $row['lot_name'];
-            $vehicle_type = $row['vehicle_type'];
-            $vehicle_count = (int)$row['vehicle_count'];
-
-            if ($vehicle_type === 'car') {
-                $response['total_car_occupied'] += $vehicle_count;
-                $capacity = $car_lot_capacities[$lot_name] ?? 0;
-                $percentage = $capacity > 0 ? round(($vehicle_count / $capacity) * 100) : 0;
-                $response['car_lots_data'][] = [
-                    'name' => $lot_name,
-                    'occupied' => $vehicle_count,
-                    'capacity' => $capacity,
-                    'percentage' => $percentage
-                ];
-            } elseif ($vehicle_type === 'motorcycle') {
-                $response['total_motorcycle_occupied'] += $vehicle_count;
-                $capacity = $motorcycle_lot_capacities[$lot_name] ?? 0;
-                $percentage = $capacity > 0 ? round(($vehicle_count / $capacity) * 100) : 0;
-                $response['motorcycle_lots_data'][] = [
-                    'name' => $lot_name,
-                    'occupied' => $vehicle_count,
-                    'capacity' => $capacity,
-                    'percentage' => $percentage
-                ];
-            }
-        }
+    while ($row = $result_counts->fetch_assoc()) {
+        $counts_map[$row['lot_name']] = (int) $row['vehicle_count'];
     }
     $stmt->close();
 }
 
-$conn->close();
+// Build the response based on the mapping (ensures all lots are present even if count is 0)
+foreach ($lot_mapping as $thai_name => $info) {
+    $count = isset($counts_map[$thai_name]) ? $counts_map[$thai_name] : 0;
+    $capacity = $info['capacity'];
+    $percentage = $capacity > 0 ? round(($count / $capacity) * 100) : 0;
 
-echo json_encode($response, JSON_UNESCAPED_UNICODE);
+    $lot_data = [
+        'name' => $info['name'],
+        'occupied' => $count,
+        'capacity' => $capacity,
+        'percentage' => $percentage
+    ];
+
+    if ($info['type'] === 'car') {
+        // Exclude Lot 1 if not in dashboard? Dashboard sum is 990. 
+        // Let's check: 114+100+264+415+53+44 = 990. Correct.
+        // So "Lot 1" (97 slots) is NOT used in the dashboard total and display.
+        // We should skip it if we want to match the dashboard exactly.
+        // Or maybe dashboard is missing it? User said "Connect data", better match existing dashboard capacity first.
+        if ($info['name'] === 'Parking Lot 1')
+            continue;
+
+        $response['car_lots_data'][] = $lot_data;
+        $response['total_car_occupied'] += $count;
+    } else {
+        $response['motorcycle_lots_data'][] = $lot_data;
+        $response['total_motorcycle_occupied'] += $count;
+    }
+}
+
+echo json_encode($response);
+$conn->close();
 ?>

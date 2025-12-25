@@ -1,64 +1,71 @@
 <?php
 require_once "check_permissions.php";
 
-$report_id = $_GET['id'] ?? null;
+$report_id = $_GET['id'] ?? $_GET['submission_id'] ?? null;
+$type = $_GET['type'] ?? 'reports';
 
 if (!$report_id) {
-    header("Location: dashboard.php?error=missing_id");
+    header("Location: report_page.php?error=missing_id");
     exit;
 }
 
-// --- Authorization Check ---
-// Fetch the report's author ID
-$stmt = $conn->prepare("SELECT employee_id FROM reports WHERE id = ?");
-if (!$stmt) {
-    header("Location: dashboard.php?error=prepare_failed");
+// Check permissions (Admin only)
+$is_admin = (isset($_SESSION['permissions']) && in_array('all', $_SESSION['permissions'])) || (isset($_SESSION['username']) && strcasecmp($_SESSION['username'], 'admin') === 0);
+$user_username = $_SESSION['username'] ?? 'Unknown';
+
+if (!$is_admin) {
+    header("Location: report_page.php?error=access_denied&msg=Only Admin can delete reports");
     exit;
 }
 
-$stmt->bind_param("i", $report_id);
-$stmt->execute();
-$result = $stmt->get_result();
+$table_map = [
+    'reports' => ['table' => 'reports', 'pk' => 'id', 'soft' => true],
+    'car_parking' => ['table' => 'car_parking_reports', 'pk' => 'id', 'soft' => true],
+    'cctv_inspection' => ['table' => 'cctv_inspections', 'pk' => 'id', 'soft' => true],
+    'hand_held' => ['table' => 'hand_held_checks', 'pk' => 'id', 'soft' => true],
+    'patrol' => ['table' => 'patrol_reports', 'pk' => 'id', 'soft' => true],
+    'guard_count' => ['table' => 'security_guard_counts', 'pk' => 'id', 'soft' => true],
+    'cctv_report' => ['table' => 'cctv_reports', 'pk' => 'id', 'soft' => true],
+    'cctv_angle' => ['table' => 'cctv_angle_reports', 'pk' => 'id', 'soft' => true],
+    'metal_detector' => ['table' => 'metal_detector_checks', 'pk' => 'id', 'soft' => true]
+];
 
-if ($result->num_rows !== 1) {
-    header("Location: dashboard.php?error=report_not_found");
+if (!isset($table_map[$type])) {
+    header("Location: report_page.php?error=invalid_type");
     exit;
 }
 
-$report = $result->fetch_assoc();
-$author_id = $report['employee_id'];
-$stmt->close();
+$config = $table_map[$type];
+$table = $config['table'];
+$pk = $config['pk'];
+$is_soft = $config['soft'];
+$pk_type = $config['type'] ?? 'i';
 
-// Check if the current user is an admin or the author of the report
-$is_admin = isset($_SESSION['permissions']) && in_array('all', $_SESSION['permissions']);
-$is_author = isset($_SESSION['employee_id']) && $_SESSION['employee_id'] == $author_id;
-
-if (!$is_admin && !$is_author) {
-    // If not authorized, redirect with an error
-    header("Location: dashboard.php?error=access_denied");
-    exit;
+if ($is_soft) {
+    $stmt = $conn->prepare("UPDATE `$table` SET is_deleted = 1, deleted_by = ?, deleted_at = NOW() WHERE `$pk` = ?");
+    $stmt->bind_param("s" . $pk_type, $user_username, $report_id);
+} else {
+    // For cctv_reports, we might need to delete from details table too if there's no cascade
+    if ($type === 'cctv_report') {
+        // Find the report id first if needed or rely on cascade
+        // Assuming cascade is set up in setup.php (it is: ON DELETE CASCADE for cctv_report_details)
+    }
+    $stmt = $conn->prepare("DELETE FROM `$table` WHERE `$pk` = ?");
+    $stmt->bind_param($pk_type, $report_id);
 }
 
-// --- Deletion Logic ---
-// If authorization passes, proceed with deletion
-$stmt = $conn->prepare("DELETE FROM reports WHERE id = ?");
 if ($stmt) {
-    $stmt->bind_param("i", $report_id);
     if ($stmt->execute()) {
-        // Deletion successful
-        header("Location: dashboard.php?message=report_deleted");
+        $stmt->close();
+        header("Location: report_page.php?message=report_deleted");
         exit;
     } else {
-        // Deletion failed
-        header("Location: dashboard.php?error=delete_failed");
+        $stmt_error = $stmt->error;
+        $stmt->close();
+        header("Location: report_page.php?error=delete_failed&db_error=" . urlencode($stmt_error));
         exit;
     }
-    $stmt->close();
 } else {
-    // Statement preparation failed
-    header("Location: dashboard.php?error=prepare_failed");
+    header("Location: report_page.php?error=prepare_failed");
     exit;
 }
-
-$conn->close();
-?>

@@ -1,0 +1,134 @@
+ลำดับ,รหัสพนักงาน,ชื่อภาษาไทย,นามสกุลภาษาไทย,ชื่อภาษาอังกฤษ,นามสกุลภาษาอังกฤษ,username,password
+1,10354996,"เกษร          ",บุตยา,KESORN,BOOTYA,kesornbo,10354996
+2,10365851,ศิริวรรณ,นรอ่อน,SIRIWAN,NORAON,siriwanno,10365851
+3,10368820,สังวาลย์,ตู้สุวรรณ,SUNGWAN,TOOSUWAN,sungwanto,10368820
+4,10393934,"เพียงใจ     ",กีเนีย,PEANGJAI,KEENIER,peangjaike,10393934
+5,10402425,ธัญพร,"เณรแตง ",THANYAPORN,NENTAENG,thanyapornne,10402425
+6,10404544,"นิกร         ","อิ่มคุ้ม ","NIKORN ",AIMKHUM,nikornai,10404544
+7,10408727,"กนกวรรณ   ",การบุตร,KANOKWAN,KANBUT,kanokwanka,10408727
+8,10412976,"เหมือนใจ   ",สมดี,MUANJAI,SOMDEE,muanjaiso,10412976
+9,10416656,ประภาพร,แสนใจวุฒิ,PRAPHAPHON,SAENCHAIWUT,praphaphonsa,10416656
+10,10418511,ธวัช,ทรัพย์ภาลี,THAWAT,THLAPPHALL,thawatth,10418511
+11,10418577,ณัฐพงศ์,"ลิขิตวัฒนานนท์ ",NATTHAPHONG,LIKHITWATNANON,natthaphongli,10418577
+12,10422998,"สมบัติ "," จันทิมา",SOMBUT,JANTHIMA,sombutja,10422998
+13,10429997,จีรวรรณ,สายชล,"GIRAWAN  ",SAICHON,girawansa,10429997
+14,10434425,"สมพร       ",พบสระใหญ่,SOMPORN,PHOPSAYAI,sompornph,10434425
+15,10435393,สุชาดา,ด้วงประดิษฐ,SUCHADA,DUANGPRADIT,suchadadu,10435393
+16,10442567,"ชูศักดิ์      ",สุขวัฒนี,CHAUSAK,SUKKAWATTANEE,chausaksu,10442567
+17,10444072,"อุษา   ",สอนเจริญ,AUSA,SONCHAROEN,ausaso,10444072
+18,10445432,"แดงน้อย  ",อาจศัตรู,DAENGNOY,ARDSATRU,daengnoyar,10445432
+19,10453790,สุธินันท์,จงไกรจักร,SUTHINAN,CHONGKAICHAK,suthinanch,10453790
+20,10455109,"กานดา    ",บุตรจันทร์,KANDA,BUTJAN,kandabu,10455109
+21,10456627,"วันเพ็ญ     ",อ่ำสำอางค์,WANPEN,AMSAMARNG,wanpenam,10456627
+22,10460687,อำนวย,เนียมสูงเนิน,AMNUAI,NIAMSUNGNOEN,amnuaini,10460687
+23,10466945,ทองหยิบ,เกิดโภคี,THONGYIB,GERDPHOKEE,thongyibge,10466945
+24,10467279,"วิไลลักษณ์ ",เรืองโรจน์แข,WILAILUK,REANGROTKHAE,wilailukre,10467279
+25,10472821,"ปริชาติ     ",นาคชื่นชม,PARICHAT,NAKCHUENCHOM,parichatna,10472821
+26,10480317,หนึ่งฤทัย,สมพีระกุล,NUNGRUTHAI,SOMPHEERAKUL,nungruthaiso,10480317
+27,10498163,มานพ,พรหมชนะ,MANOP,PROMCHANA,manoppr,10498163
+28,10498188,สมจิตร,ยุดสุงเนิน,"SOMJIT ","YUTSUNGNOEN ",somjityu,10498188
+29,10501754,ธนวรรณ,แย้มกระโทก,THANAWAN,YAMKRATHOK,thanawanya,10501754
+30,10501757,พิศเพลิน,เกิดคำ,PHITPHLOEN,KOEDKHAM,phitphloenko,10501757
+31,10502068,ศิริพร,เดี่ยวอภิสิทธิ์,SIRIPORN,DEAWPISIT,siripornde,10502068
+32,10502071,วไรพร,ชุมศรี,WARAIPHORN,CHUMSI,waraiphornch,10502071
+33,10502072,สายชน,จินดา,CHAYCHON,JAINDA,chaychonja,10502072
+34,10502092,พัชณีย์,นาน้ำเขียว,PATCHANEE,NANAMCHANW,patchaneena,10502092
+35,10502898,"ทัศนา ",พันธุ์เมฆ,TASSANA,PHANMEK,tassanaph,10502898
+36,10503091,เอนก,ขวัญเนตร์,ANEK,KWANNET,anekkw,10503091
+37,10503093,"วิชิต ",ปรางโท้,WICHID,PRANGTHO,wichidpr,10503093
+38,10504874,ประภาภรณ์,มธุรส,PRAPHAPORN,MATHUROT,praphapornma,10504874
+39,10505667,สวรส,พลประถม,SAWAROS,PONPRATHOM,sawarospo,10505667
+40,10521631,"วันเพ็ญ     ",หะนุมาน,WANPEN,HANUMAN,wanpenha,10521631
+41,10537956,ดวงเดียว,ศรีฉ่ำพันธุ์,DUANGDIEW,SRICHAMPAN,duangdiewsr,10537956
+42,10537957,เพียร,สมนึก,PEAN,SOMNUEK,peanso,10537957
+43,10539684,เรวัตร,จันทร์เปรม,REWAT,JANPREM,rewatja,10539684
+44,10540492,"พัชรินทร์  ",อินทร์ฉ่ำ," PHATCHARIN ",INCHAM,phatcharinin,10540492
+45,10541535,สุทธิวิทย์,รัฐธรรมกุลธร,SUTTHIWIT,RATTHAMKULLATORN,sutthiwitra,10541535
+46,10541644,กมลชนก,สุขสว่าง,KAMONCHNOK,SUKSAWANG,kamonchnoksu,10541644
+47,10542061,"มณีกานต์  ",คัมภีระ,"MANEEKAN ",KHAMPEERA,maneekankh,10542061
+48,10542303,บุญรอด,พวงทอง,"BOONROT  ",PUANGTHONG,boonrotpu,10542303
+49,10542817,"พันทอง ",โถบำรุง,PUNTHONG,THOBUMRUNG,punthongth,10542817
+50,10542981,จิรวัฒน์,นาคอ่อน,JIRAWAT,NAK-ON,jirawatna,10542981
+51,10543755,กาญน์ริสา,เอกตระกูล,GARNRISA,EKTRAGOOL,garnrisaek,10543755
+52,10543936,ทินกรณ์,สิมาจารย์,THINNAKON,SIMACHAN,thinnakonsi,10543936
+53,10544186,ทัศนีย์,ทองงาม,TASSANEE,TONGHGAM,tassaneeto,10544186
+54,10544946,คำกอง,ดาวสุวรรณ,KAMKONG,DAOSUWAN,kamkongda,10544946
+55,10544948,อรัญญา,ขำวิไล,ARANYA,KHAMWILAI,aranyakh,10544948
+56,10545207,ศรีจันทร์,นิกรสุข,SRICHAN,NIKORNSUK,srichanni,10545207
+57,10545416,"สุนิสา ",จิตรีโภชน์,SUNISA,CHITRIPHOT,sunisach,10545416
+58,10545510,"สุกัญญา ",เคนเพชรแสง,SUKANYA,KENPHETSAENG,sukanyake,10545510
+59,10545611,สอาด,เกิดจิตร,SA-ARD,KARDCHIT,sa-ardka,10545611
+60,10545879,เกษร,ถิรประเดิมพร,KESORN,THIRAPRADOEMPHON,kesornth,10545879
+61,10545934,"วรยุทธ ",รัตนไพบูลย์,WORAYUT,RATTANAPAIBOON,worayutra,10545934
+62,10546294,กชพร,เพ็ชร์จินดา,KOTCHAPORN,PEDJINDA,kotchapornpe,10546294
+63,10547132,ชูศรี,อินทสินทร์,CHOOSEE,AINTHASIN,chooseeai,10547132
+64,10547135,อัญชลี,"บุญประกอบ ",OANCHALL,BUNPRAKOP,oanchallbu,10547135
+65,10550452,"วรัญรดา ","ศศิพชรกูล ","WARANRADA ","SASIPHASHARAKUN ",waranradasa,10550452
+66,10550454,"วรรณรัตน์ ","ด่านไธสง ","VANNARAT ","DANTHAISONG ",vannaratda,10550454
+67,10550974,เสวก,สว่างสุข,SAVEK,SAVANGSUK,saveksa,10550974
+68,10551903,ปิยวัฒน์,หอมมาลา,PIYAWAT,HOMMALA,piyawatho,10551903
+69,10552685,ดาว,นาสิงห์ขัน,DAW,NASINGKHAN,dawna,10552685
+70,10557128,วิเชด,เอี่ยมสกุล,VICHED,EAMSAKUL,vichedea,10557128
+71,10558952,จารุพร,การะเกษ,JARUPORN,KARAKES,jarupornka,10558952
+72,10559291,ภาสินี,พิมเภา,PASINEE,PHIMPHAO,pasineeph,10559291
+73,10559298,สุนีนาถ,ศรีสวัสดิ์,SUNEENAT,SRISAWAS,suneenatsr,10559298
+74,10560756,เกศมณี,สุวอ,GADMANEE,SUVOR,gadmaneesu,10560756
+75,10590536,ณิชาภา,ชมชื่น,NICHAPA,CHOMCHUEN,nichapach,10590536
+76,10591359,จิราภร,เพชรมุณี,"JIRAPORN ",PETMUNEE,jirapornpe,10591359
+77,10592117,ยุวดี,อาษากิจ,"YUWADEE  ",ARSAKIJ,yuwadeear,10592117
+78,10592283,อรทัย,รินทระ,ORATHAI,RINTARA,orathairi,10592283
+79,10592833,อนุตตรีย์,สงึมรัมย์,ONUTTRI,SNGUEMRAMY,onuttrisn,10592833
+80,10594446,จันทรัสม์,แย้มประดิษฐ์,"JANTARAD  ",YEAMPRADIS,jantaradye,10594446
+81,10595014,ภัณฑิลา,ทูลเกิด,PHANTILA,THUNKOED,phantilath,10595014
+82,10595015,"บัวรินทร์  ",สาลีวงค์,"BUARIN  ",SALEEWONG,buarinsa,10595015
+83,10595093,สุนทรี,วาที,SUNTHAREE,WATEE,sunthareewa,10595093
+84,10595247,สุวรรณ,เนียมแก้ว,SUWAN,NIAMKEAW,suwanni,10595247
+85,10595323,สุนิสัย,พาลี,SUNISAI,PALEE,sunisaipa,10595323
+86,10595368,สกุณา,วงศ์สอาด,SUKUNA,WONGSAARD,sukunawo,10595368
+87,10596396,บุปผา,เยื้อนยิ้ม,BUBPHA,YUANYIM,bubphayu,10596396
+88,10596640,เวชยันต์,เรือนไทย,WETCHAYAN,RUEANTHAI,wetchayanru,10596640
+89,10597224,ธิปัตย์,อุดมสุข,THIPAT,UDOMSUK,thipatud,10597224
+90,10597383,สุรินทร์,มีจีรักษ์,SURIN,MEECHIRAK,surinme,10597383
+91,20002649,ฉวี,ศิริจันทร์,CHAWEE,SIRICHAN,chaweesi,20002649
+92,20003662,นพรัตน์,เที่ยงนนทรีย์,NOPPHARAT,TENGNONSEE,noppharatte,20003662
+93,20004142,นันทภัค,เกียรติจนา,NANTAPAK,KEATJANA,nantapakke,20004142
+94,20006335,ฐิติวัฒน์,ขีดขิน,THITIWAT,KHEEDKHIN,thitiwatkh,20006335
+95,20019758,วีรียา,ประจำถิ่น,WEEREEYA,PACHAMTHIN,weereeyapa,20019758
+96,20022137,ขวัญชนก,พรธนสวัสดิ์,KWANCHANOK,PORNTANASAWAD,kwanchanokpo,20022137
+97,20024563,อุทิต,พิมพะวงษ์,UTID,PIMPAWONG,utidpi,20024563
+98,20024961,"เมธี ",ฤดีวิโรจน์,MATHEE,RUEDEEVIROJ,matheeru,20024961
+99,20029964,ผกาวรรณ,เหมือนทอง,PHAKAWAN,MUANTHONG,phakawanmu,20029964
+100,20031582,ดารุณี,ศรีลาชัย,DARUNEE,SRILACHAI,daruneesr,20031582
+101,20031597,อภินันท์,รอดจรูญ,APINAN,RODJAROON,apinanro,20031597
+102,20035857,มลฤดี,ผลชู,MONREUDEE,PHONCHOO,monreudeeph,20035857
+103,20035859,ธนันท์ชนก,โพพยัคฆ์,TANANCHANOK,PHOPAYAK,tananchanokph,20035859
+104,20036572,ธัญญาภรณ์,พิมพ์ดี,THANYAPHON,PHIMDI,thanyaphonph,20036572
+105,20036588,นิตยา,เจริญดี,NITTAYA,CHAROENDEE,nittayach,20036588
+106,20037832,บัญชา,ปิ่นทอง,BANCHA,PINTHONG,banchapi,20037832
+107,20040569,ทิพย์รัตน์,นพแก้ว,THIPPARAT,NOPPAKAEW,thipparatno,20040569
+108,20043907,"น้ำทิพย์ ",กลิ่นจันทร์,NAMTHIP,KLINJAN,namthipkl,20043907
+109,20043908,ณชนก,แผ้วโคกสูง,NACHANOK,PHAEWKHOKSUNG,nachanokph,20043908
+110,50002643,พรอุษา,แป้นประดิษฐ์,PORNUSA,PANPRADIT,pornusapa,50002643
+111,50002662,"สุกัญญา ",ศรีกลัด,SUKANYA,SRIKLAD,sukanyasr,50002662
+112,50003178,"อนุชา ",ศรีราพงษ์,ANUCHA,SIRAPHONG,anuchasi,50003178
+113,50003956,ศิริชัย,ปิ่นทอง,SIRICHAI,PINTHONG,sirichaipi,50003956
+114,50005443,คมสัน,เสือหยด,KOMSAN,SUAHYODE,komsansu,50005443
+115,50005498,สุภาวดี,ไชยอินทร์,SUPAVADEE,CHAIIN,supavadeech,50005498
+116,50005510,นัฐพงศ์,ชูรอด,NATTAPONG,CHOOROD,nattapongch,50005510
+117,50005511,บังเอิญ,สัมมาเพชร,BANEARN,SAMMAPET,banearnsa,50005511
+118,50007769,เฉลิมพล,หลักดา,CHALOEMPHON,LAKTA,chaloemphonla,50007769
+119,50007936,สุราวรณ,ราชยา,SURAWAN,RATCHAYA,surawanra,50007936
+120,50010027,ปภาดา,ใหญ่โต,PHAPADA,YAITO,phapadaya,50010027
+121,50012136,ประสิทธิ์,จันทภาส,PRASIT,JUNTAPRS,prasitju,50012136
+122,50012157,รัชชานนท์,วงษ์สุวรรณ,RATCHANON,WONGSUWAN,ratchanonwo,50012157
+123,50014406,อมรรัตน์,บุพศิริ,AMONRAT,BUPASIRI,amonratbu,50014406
+124,50014427,กรรณิกา,ผ่านแก้ว,KANNIKA,PANKAEW,kannikapa,50014427
+125,50014428,อรสา,กิจวิชา,OORASA,KITWICHA,oorasaki,50014428
+126,50014446,วีณา,ตันสันเทียะ,VENA,TONSANTER,venato,50014446
+127,50016303,บุญทัน,คงสิบ,BUNTHAN,KHONGSIP,bunthankh,50016303
+128,50016371,มนตรี,ศรีสมเกียรติ,MONTREE,SRISOMKIAT,montreesr,50016371
+129,50018108,ศศิภา,อินทโลหิต,SASIPHA,AINTHALOHIT,sasiphaai,50018108
+130,50019699,สุพัตรา," โตทัย ",SUPATTA,THOTHAI,supattath,50019699
+131,50019713,"ดวงรัตน์ ","บุญแล ",DUANGRAT,"BUNLAE ",duangratbu,50019713
+132,50020463,สุภัทรชัย,แท่นประเสริฐกุล,SUPUTTARACHAI,THANPRASEARKUN,suputtarachaith,50020463
+133,20004653,"สุกัญญา ","สิงห์สังข์ ",SUKANYA,SINGSANG,sukanyasi,20004653

@@ -51,31 +51,33 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['days'])) {
     $conn->begin_transaction();
     try {
         foreach ($days_data as $building => $nvrs) {
+            // Insert main report ONCE per building
+            $sql_report = "INSERT INTO nvr_recording_reports (building, submitted_by_id, submission_id) VALUES (?, ?, ?)";
+            $stmt_report = $conn->prepare($sql_report);
+            $stmt_report->bind_param("sis", $building, $current_user_id, $submission_id);
+            $stmt_report->execute();
+            $report_id = $stmt_report->insert_id;
+
+            // Insert details for each NVR in this building
             foreach ($nvrs as $nvrName => $days) {
                 $days = trim($days);
                 if ($days === '' || (int) $days < 0)
                     continue;
                 $days = (int) $days;
 
-                $sql_device = "SELECT channels, target_days FROM cctv_devices WHERE building = ? AND nvr_name = ?";
+                // Get target_days from cctv_devices
+                $sql_device = "SELECT target_days FROM cctv_devices WHERE building = ? AND nvr_name = ?";
                 $stmt_device = $conn->prepare($sql_device);
                 $stmt_device->bind_param("ss", $building, $nvrName);
                 $stmt_device->execute();
                 $result_device = $stmt_device->get_result();
                 $device = $result_device->fetch_assoc();
-                $total_channels = $device ? (int) $device['channels'] : 0;
-                $offline_channels = $total_channels > 0 ? $total_channels - $days : 0;
-                $online_percentage = $total_channels > 0 ? ($days / $total_channels) * 100 : 0;
+                $target_days = $device ? (int) $device['target_days'] : 62;
 
-                $sql_report = "INSERT INTO cctv_reports (building, total_channels, online_channels, offline_channels, online_percentage, submitted_by_id, submission_id) VALUES (?, ?, ?, ?, ?, ?, ?)";
-                $stmt_report = $conn->prepare($sql_report);
-                $stmt_report->bind_param("siiidis", $building, $total_channels, $days, $offline_channels, $online_percentage, $current_user_id, $submission_id);
-                $stmt_report->execute();
-                $report_id = $stmt_report->insert_id;
-
-                $sql_details = "INSERT INTO cctv_report_details (report_id, nvr_name, online_channels) VALUES (?, ?, ?)";
+                // Insert detail record
+                $sql_details = "INSERT INTO nvr_recording_details (report_id, nvr_name, recording_days, target_days) VALUES (?, ?, ?, ?)";
                 $stmt_details = $conn->prepare($sql_details);
-                $stmt_details->bind_param("isi", $report_id, $nvrName, $days);
+                $stmt_details->bind_param("isii", $report_id, $nvrName, $days, $target_days);
                 $stmt_details->execute();
             }
         }
@@ -100,6 +102,35 @@ if ($result_nvr->num_rows > 0) {
     }
 }
 
+// --- Fetch Latest Recording Days for Pre-fill ---
+$latest_recording_days = [];
+$sql_latest = "
+    SELECT 
+        cr.building, 
+        crd.nvr_name, 
+        crd.recording_days
+    FROM nvr_recording_reports cr
+    JOIN nvr_recording_details crd ON cr.id = crd.report_id
+    WHERE (cr.building, crd.nvr_name, cr.report_time) IN (
+        SELECT 
+            cr_inner.building,
+            crd_inner.nvr_name,
+            MAX(cr_inner.report_time)
+        FROM nvr_recording_reports cr_inner
+        JOIN nvr_recording_details crd_inner ON cr_inner.id = crd_inner.report_id
+        GROUP BY cr_inner.building, crd_inner.nvr_name
+    )
+";
+
+$result_latest = $conn->query($sql_latest);
+if ($result_latest && $result_latest->num_rows > 0) {
+    while ($row = $result_latest->fetch_assoc()) {
+        $key = $row['building'] . '_' . $row['nvr_name'];
+        $latest_recording_days[$key] = $row['recording_days'];
+    }
+}
+
+
 // --- Data Fetching for History ---
 $history_data = [];
 $filter_date = $_GET['filter_date'] ?? null;
@@ -110,7 +141,7 @@ $sql_history = "SELECT
                     u.username as submitted_by,
                     r.submitted_by_id,
                     COUNT(r.id) as nvr_count
-                FROM cctv_reports r
+                FROM nvr_recording_reports r
                 JOIN users u ON r.submitted_by_id = u.id
                 WHERE r.submission_id IS NOT NULL";
 
@@ -137,22 +168,35 @@ if ($result_history && $result_history->num_rows > 0) {
 }
 
 // --- NVR Status Counts for 62-day criteria ---
-$nvr_status_counts = [
-    'B2' => ['total' => 10, 'passed' => 0],
-    'B3' => ['total' => 2, 'passed' => 0],
-    'B4' => ['total' => 6, 'passed' => 0],
-    'B9' => ['total' => 1, 'passed' => 0],
-];
+// Initialize with counts from cctv_devices
+$nvr_status_counts = [];
+$buildings_to_count = ['B2', 'B3', 'B4', 'B9'];
 
+foreach ($buildings_to_count as $bldg) {
+    $count_query = "SELECT COUNT(*) as total FROM cctv_devices WHERE building = ?";
+    $stmt_count = $conn->prepare($count_query);
+    $stmt_count->bind_param("s", $bldg);
+    $stmt_count->execute();
+    $count_result = $stmt_count->get_result();
+    $count_row = $count_result->fetch_assoc();
+
+    $nvr_status_counts[$bldg] = [
+        'total' => $count_row['total'],
+        'passed' => 0  // Will be calculated below
+    ];
+    $stmt_count->close();
+}
+
+// Calculate passed counts from latest recording days
 $sql_latest_nvr_data = "
     SELECT
         cr.building,
         crd.nvr_name,
-        crd.online_channels
+        crd.recording_days
     FROM
-        cctv_reports cr
+        nvr_recording_reports cr
     JOIN
-        cctv_report_details crd ON cr.id = crd.report_id
+        nvr_recording_details crd ON cr.id = crd.report_id
     WHERE
         (cr.building, crd.nvr_name, cr.report_time) IN (
             SELECT
@@ -160,9 +204,9 @@ $sql_latest_nvr_data = "
                 crd_inner.nvr_name,
                 MAX(cr_inner.report_time)
             FROM
-                cctv_reports cr_inner
+                nvr_recording_reports cr_inner
             JOIN
-                cctv_report_details crd_inner ON cr_inner.id = crd_inner.report_id
+                nvr_recording_details crd_inner ON cr_inner.id = crd_inner.report_id
             GROUP BY
                 cr_inner.building,
                 crd_inner.nvr_name
@@ -174,10 +218,10 @@ $result_latest_nvr_data = $conn->query($sql_latest_nvr_data);
 if ($result_latest_nvr_data && $result_latest_nvr_data->num_rows > 0) {
     while ($row = $result_latest_nvr_data->fetch_assoc()) {
         $building = $row['building'];
-        $online_channels = (int) $row['online_channels'];
+        $recording_days = (int) $row['recording_days'];
 
         // Check if the building is one of the specified ones and if it passes the 62-day criteria
-        if (isset($nvr_status_counts[$building]) && $online_channels >= 62) {
+        if (isset($nvr_status_counts[$building]) && $recording_days >= 62) {
             $nvr_status_counts[$building]['passed']++;
         }
     }
@@ -224,7 +268,8 @@ $conn->close();
                     <?php foreach ($nvr_status_counts as $building_key => $counts): ?>
                         <div class="bg-white/50 border border-slate-200/50 rounded-lg p-4 text-center">
                             <p class="text-lg font-semibold text-slate-700">อาคาร
-                                <?php echo htmlspecialchars($building_key); ?></p>
+                                <?php echo htmlspecialchars($building_key); ?>
+                            </p>
                             <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2 mb-1">
                                 <?php
                                 $percentage = ($counts['total'] > 0) ? round(($counts['passed'] / $counts['total']) * 100) : 0;
@@ -275,6 +320,7 @@ $conn->close();
 
     <script>
         const nvrData = <?php echo json_encode($nvr_data_from_db); ?>;
+        const latestRecordingDays = <?php echo json_encode($latest_recording_days); ?>;
         let historyData = <?php echo json_encode($history_data); ?>;
         const isAdmin = <?php echo json_encode($is_admin); ?>;
         const currentUserId = <?php echo json_encode($current_user_id); ?>;
@@ -374,6 +420,9 @@ $conn->close();
                 nvrs.forEach(nvr => {
                     const inputName = `days[${building}][${nvr.nvr_name}]`;
                     const cardId = `nvr-card-${building}-${nvr.nvr_name.replace(/\s+/g, '-')}`;
+                    const key = `${building}_${nvr.nvr_name}`;
+                    const prefillValue = latestRecordingDays[key] || '';
+
                     formHtml += `<div id="${cardId}" class="nvr-card bg-slate-100/50 border border-slate-200/50 rounded-lg p-4 flex flex-col space-y-4 transition-colors duration-300">
                         <div>
                             <h3 class="font-bold text-lg text-slate-800">${nvr.nvr_name}</h3>
@@ -386,7 +435,7 @@ $conn->close();
                         </div>
                         <div class="flex flex-col">
                             <label for="${inputName}" class="text-sm font-medium text-slate-700 mb-2">จำนวนวันที่บันทึกได้</label>
-                            <input type="number" id="${inputName}" name="${inputName}" data-target="${nvr.target_days}" data-card-id="${cardId}" class="nvr-days-input input-modern w-full px-4 py-3 rounded-2xl font-medium text-gray-700" placeholder="กรอกจำนวนวัน" min="0">
+                            <input type="number" id="${inputName}" name="${inputName}" value="${prefillValue}" data-target="${nvr.target_days}" data-card-id="${cardId}" class="nvr-days-input input-modern w-full px-4 py-3 rounded-2xl font-medium text-gray-700" placeholder="กรอกจำนวนวัน" min="0">
                         </div>
                     </div>`;
                 });

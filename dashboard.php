@@ -21,23 +21,35 @@ function get_security_personnel_status($conn)
 // Fetch security status
 $security_status = get_security_personnel_status($conn);
 
-// Calculate NVR status counts (same logic as nvr_recording_days.php)
-$nvr_status_counts = [
-    'B2' => ['total' => 10, 'passed' => 0],
-    'B3' => ['total' => 2, 'passed' => 0],
-    'B4' => ['total' => 6, 'passed' => 0],
-    'B9' => ['total' => 1, 'passed' => 0],
-];
+// Calculate NVR Recording Status counts (from nvr_recording_days.php)
+$nvr_status_counts = [];
+$buildings_to_count = ['B2', 'B3', 'B4', 'B9'];
 
+foreach ($buildings_to_count as $bldg) {
+    $count_query = "SELECT COUNT(*) as total FROM cctv_devices WHERE building = ?";
+    $stmt_count = $conn->prepare($count_query);
+    $stmt_count->bind_param("s", $bldg);
+    $stmt_count->execute();
+    $count_result = $stmt_count->get_result();
+    $count_row = $count_result->fetch_assoc();
+
+    $nvr_status_counts[$bldg] = [
+        'total' => $count_row['total'],
+        'passed' => 0  // Will be calculated below
+    ];
+    $stmt_count->close();
+}
+
+// Calculate passed counts from latest NVR recording days
 $sql_latest_nvr_data = "
     SELECT
         cr.building,
         crd.nvr_name,
-        crd.online_channels
+        crd.recording_days
     FROM
-        cctv_reports cr
+        nvr_recording_reports cr
     JOIN
-        cctv_report_details crd ON cr.id = crd.report_id
+        nvr_recording_details crd ON cr.id = crd.report_id
     WHERE
         (cr.building, crd.nvr_name, cr.report_time) IN (
             SELECT
@@ -45,9 +57,9 @@ $sql_latest_nvr_data = "
                 crd_inner.nvr_name,
                 MAX(cr_inner.report_time)
             FROM
-                cctv_reports cr_inner
+                nvr_recording_reports cr_inner
             JOIN
-                cctv_report_details crd_inner ON cr_inner.id = crd_inner.report_id
+                nvr_recording_details crd_inner ON cr_inner.id = crd_inner.report_id
             GROUP BY
                 cr_inner.building,
                 crd_inner.nvr_name
@@ -59,10 +71,10 @@ $result_latest_nvr_data = $conn->query($sql_latest_nvr_data);
 if ($result_latest_nvr_data && $result_latest_nvr_data->num_rows > 0) {
     while ($row = $result_latest_nvr_data->fetch_assoc()) {
         $building = $row['building'];
-        $online_channels = (int) $row['online_channels'];
+        $recording_days = (int) $row['recording_days'];
 
-        // Check if the building is one of the specified ones and if it passes the 62-day criteria
-        if (isset($nvr_status_counts[$building]) && $online_channels >= 62) {
+        // Check if building passes 62-day criteria
+        if (isset($nvr_status_counts[$building]) && $recording_days >= 62) {
             $nvr_status_counts[$building]['passed']++;
         }
     }
@@ -77,6 +89,99 @@ foreach ($nvr_status_counts as $counts) {
 }
 $total_failed = $total_nvrs - $total_passed;
 $overall_percentage = $total_nvrs > 0 ? round(($total_passed / $total_nvrs) * 100) : 0;
+
+// Fetch latest CCTV reports with NVR details for Camera Online Status
+$cctv_summary_by_building = [];
+$buildings_list = ['B2', 'B3', 'B4', 'B9'];
+$global_online_cameras = 0;
+$global_total_cameras = 0;
+
+foreach ($buildings_list as $building) {
+    $latest_report_query = "
+        SELECT cr.*, u.username 
+        FROM cctv_reports cr
+        LEFT JOIN users u ON cr.submitted_by_id = u.id
+        WHERE cr.building = ?
+        ORDER BY cr.report_time DESC
+        LIMIT 1
+    ";
+
+    $stmt = $conn->prepare($latest_report_query);
+    $stmt->bind_param('s', $building);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($row = $result->fetch_assoc()) {
+        $report_id = $row['id'];
+
+        // Fetch NVR details for this report
+        $nvr_details_query = "
+            SELECT nvr_name, online_channels, total_channels
+            FROM cctv_report_details
+            WHERE report_id = ?
+            ORDER BY nvr_name
+        ";
+
+        $stmt2 = $conn->prepare($nvr_details_query);
+        $stmt2->bind_param('i', $report_id);
+        $stmt2->execute();
+        $nvr_result = $stmt2->get_result();
+
+        $nvrs = [];
+        while ($nvr_row = $nvr_result->fetch_assoc()) {
+            $percentage = $nvr_row['total_channels'] > 0
+                ? round(($nvr_row['online_channels'] / $nvr_row['total_channels']) * 100)
+                : 0;
+
+            $nvrs[] = [
+                'name' => $nvr_row['nvr_name'],
+                'online' => $nvr_row['online_channels'],
+                'total' => $nvr_row['total_channels'],
+                'percentage' => $percentage
+            ];
+        }
+
+        $cctv_summary_by_building[$building] = [
+            'total_cameras' => $row['total_channels'],
+            'online_cameras' => $row['online_channels'],
+            'percentage' => $row['online_percentage'],
+            'report_time' => $row['report_time'],
+            'nvrs' => $nvrs
+        ];
+
+        // Accumulate global totals
+        $global_total_cameras += (int) $row['total_channels'];
+        $global_online_cameras += (int) $row['online_channels'];
+
+        $stmt2->close();
+    }
+
+    $stmt->close();
+}
+
+$building_colors = [
+    'B2' => ['gradient' => 'from-sky-500 to-blue-600', 'border' => 'border-sky-200', 'icon' => '🏭', 'bg' => 'bg-sky-50'],
+    'B3' => ['gradient' => 'from-blue-500 to-indigo-600', 'border' => 'border-blue-200', 'icon' => '🏢', 'bg' => 'bg-blue-50'],
+    'B4' => ['gradient' => 'from-indigo-500 to-blue-600', 'border' => 'border-indigo-200', 'icon' => '🏗️', 'bg' => 'bg-indigo-50'],
+    'B9' => ['gradient' => 'from-cyan-500 to-sky-600', 'border' => 'border-cyan-200', 'icon' => '🧬', 'bg' => 'bg-cyan-50']
+];
+
+// Get current user's role name for display
+$current_user_role_name = 'เจ้าหน้าที่';
+if (isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'admin') {
+    $current_user_role_name = 'ผู้ดูแลระบบ';
+} elseif (isset($_SESSION['role_id'])) {
+    $stmt = $conn->prepare('SELECT role_name FROM roles WHERE id = ?');
+    $stmt->bind_param('i', $_SESSION['role_id']);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($row = $result->fetch_assoc()) {
+        $current_user_role_name = $row['role_name'];
+    }
+    $stmt->close();
+}
+
+$conn->close();
 ?>
 <!doctype html>
 <html lang="en">
@@ -92,7 +197,7 @@ $overall_percentage = $total_nvrs > 0 ? round(($total_passed / $total_nvrs) * 10
         }
 
         .gradient-bg {
-            background: linear-gradient(135deg, #e0f2fe 0%, #b3e5fc 100%);
+            background: linear-gradient(135deg, #f0f9ff 0%, #dbeafe 100%);
         }
 
         .card-shadow {
@@ -160,67 +265,100 @@ $overall_percentage = $total_nvrs > 0 ? round(($total_passed / $total_nvrs) * 10
 <body class="gradient-bg min-h-full">
     <div class="container mx-auto px-4 py-6"><!-- Header -->
         <header class="mb-8">
-            <div class="flex flex-col md:flex-row justify-between md:items-center">
+            <div
+                class="bg-white rounded-2xl shadow-xl p-6 md:p-8 flex flex-col md:flex-row justify-between items-center gap-6 border-l-8 border-sky-500 relative overflow-hidden">
+                <!-- Background Decoration -->
+                <div class="absolute -right-10 -top-10 w-40 h-40 bg-sky-100 rounded-full opacity-50 blur-3xl"></div>
+                <div class="absolute -left-10 -bottom-10 w-40 h-40 bg-blue-100 rounded-full opacity-50 blur-3xl"></div>
+
                 <!-- Main Header Content -->
-                <div class="text-center md:text-left">
-                    <h1 id="dashboard-title" class="text-4xl font-bold text-blue-900 mb-2">Security System Dashboard
-                    </h1>
-                    <h2 id="company-name" class="text-2xl text-blue-700">BPI Western Digital Storage Technologies
-                        (Thailand) Ltd.</h2>
-                    <div class="mt-4 text-blue-600">
-                        <span id="current-time" class="text-lg font-medium"></span>
+                <div
+                    class="flex flex-col md:flex-row items-center md:items-start gap-6 z-10 w-full md:w-auto text-center md:text-left">
+                    <!-- WD Logo - Larger and Prominent -->
+                    <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-100 flex-shrink-0">
+                        <img src="report_assets/Images/WD_logo.png" alt="Western Digital Logo"
+                            class="h-16 w-auto object-contain">
+                    </div>
+
+                    <div class="flex flex-col justify-center">
+                        <h1 id="dashboard-title"
+                            class="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-sky-600 mb-1">
+                            Security System Dashboard
+                        </h1>
+                        <h2 id="company-name" class="text-lg md:text-xl font-medium text-slate-500 tracking-wide">
+                            BPI Western Digital Storage Technologies (Thailand) Ltd.
+                        </h2>
+                        <div class="mt-2 text-slate-400 flex items-center justify-center md:justify-start gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span id="current-time" class="text-sm font-medium tracking-wide font-mono"></span>
+                        </div>
                     </div>
                 </div>
+
                 <!-- Login Status and Settings -->
-                <div class="flex flex-wrap items-center justify-center gap-2 mt-4 md:mt-0">
+                <div class="flex flex-wrap items-center justify-center gap-3 md:gap-4 z-10 w-full md:w-auto">
                     <!-- User Status -->
-                    <div class="flex items-center bg-white rounded-lg px-4 py-2 card-shadow">
-                        <div class="w-3 h-3 bg-green-500 rounded-full mr-2 pulse-animation"></div>
-                        <div class="text-sm">
-                            <div class="font-semibold text-blue-900" id="user-name">
-                                Admin User
+                    <div class="flex items-center bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 shadow-sm">
+                        <div class="relative">
+                            <div class="w-3 h-3 bg-emerald-500 rounded-full pulse-animation"></div>
+                            <div
+                                class="w-3 h-3 bg-emerald-500 rounded-full absolute top-0 left-0 animate-ping opacity-75">
                             </div>
-                            <div class="text-blue-600 text-xs" id="user-role">
-                                System Administrator
+                        </div>
+                        <div class="ml-3 text-left">
+                            <div class="font-bold text-slate-700 text-sm leading-tight" id="user-name">
+                                <?php echo isset($_SESSION['first_name']) && isset($_SESSION['last_name']) ? htmlspecialchars($_SESSION['first_name'] . ' ' . $_SESSION['last_name']) : htmlspecialchars($_SESSION['username']); ?>
+                            </div>
+                            <div class="text-slate-400 text-xs font-medium" id="user-role">
+                                <?php echo htmlspecialchars($current_user_role_name); ?>
                             </div>
                         </div>
                     </div>
-                    <!-- Report Button -->
-                    <a href="report_page.php"
-                        class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg card-shadow transition-colors flex items-center">
-                        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd"
-                                d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z"
-                                clip-rule="evenodd"></path>
-                        </svg>
-                        <span>Report</span>
-                    </a>
-                    <!-- Settings Button -->
-                    <button id="settings-btn"
-                        class="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-lg card-shadow transition-colors">
-                        <svg class="w-5 h-5" fill="currentColor" viewbox="0 0 20 20">
-                            <path fill-rule="evenodd"
-                                d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
-                                clip-rule="evenodd"></path>
-                        </svg>
-                    </button>
-                    <!-- Logout Button -->
-                    <a href="logout.php"
-                        class="bg-red-600 hover:bg-red-700 text-white p-3 rounded-lg card-shadow transition-colors">
-                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" stroke="currentColor"
-                            stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                        </svg>
-                    </a>
+
+                    <!-- Action Buttons Group -->
+                    <div class="flex items-center gap-2 bg-slate-50 p-1 rounded-xl border border-slate-200">
+                        <!-- Report Button -->
+                        <a href="report_page.php"
+                            class="group relative bg-white hover:bg-emerald-50 text-slate-600 hover:text-emerald-600 border border-slate-200 hover:border-emerald-200 py-2 px-4 rounded-lg transition-all duration-200 flex items-center gap-2 shadow-sm font-medium text-sm">
+                            <svg class="w-4 h-4 transition-transform group-hover:scale-110" fill="currentColor"
+                                viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                            <span>Report</span>
+                        </a>
+
+                        <!-- Settings Button -->
+                        <button id="settings-btn"
+                            class="p-2 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 transition-colors">
+                            <svg class="w-5 h-5" fill="currentColor" viewbox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                        </button>
+
+                        <!-- Logout Button -->
+                        <a href="logout.php"
+                            class="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                        </a>
+                    </div>
                 </div>
             </div>
         </header>
 
         <!-- Security Personnel Section -->
         <section class="mb-8">
-            <h3 id="security-section-title" class="text-2xl font-bold text-blue-900 mb-4">Security Personnel Status
-                <span class="text-sm text-gray-500 ml-2">(Last Update: <span id="security-last-update"></span>)</span>
+            <h3 id="security-section-title" class="text-2xl font-bold text-slate-700 mb-4">Security Personnel Status
+                <span class="text-sm text-slate-400 ml-2">(Last Update: <span id="security-last-update"></span>)</span>
             </h3>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <!-- Day Shift Card -->
@@ -327,24 +465,17 @@ $overall_percentage = $total_nvrs > 0 ? round(($total_passed / $total_nvrs) * 10
 
         <!-- NVR Status Section -->
         <section class="mb-8">
-            <h3 id="nvr-section-title" class="text-2xl font-bold text-blue-900 mb-4">NVR Recording Status</h3>
-            <div class="mb-4 p-4 bg-blue-50 rounded-lg">
-                <div class="flex items-center text-sm text-blue-800">
-                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewbox="0 0 20 20">
-                        <path fill-rule="evenodd"
-                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                            clip-rule="evenodd"></path>
-                    </svg><span><strong>Last Update:</strong> <span id="nvr-last-update">-</span></span>
-                </div>
-            </div>
+            <h3 id="nvr-section-title" class="text-2xl font-bold text-slate-700 mb-4">NVR Recording Status
+                <span class="text-sm text-slate-400 ml-2">(Last Update: <span id="nvr-last-update">-</span>)</span>
+            </h3>
             <!-- Summary Card with Gradient -->
-            <div class="mb-6 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 text-white card-shadow">
+            <div class="mb-6 bg-gradient-to-r from-sky-400 to-blue-500 rounded-lg p-6 text-white card-shadow">
                 <div class="flex items-center justify-between flex-wrap">
                     <div>
                         <h4 class="text-xl font-semibold mb-2">NVR Recording Status Summary</h4>
                         <div class="text-3xl font-bold">
-                            <?php echo $total_passed; ?>/<?php echo $total_nvrs; ?>
-                            (<span><?php echo $overall_percentage; ?></span>%)
+                            <span id="nvr-summary-count"><?php echo $total_passed; ?>/<?php echo $total_nvrs; ?></span>
+                            (<span id="nvr-summary-percentage"><?php echo $overall_percentage; ?></span>%)
                         </div>
                         <div class="text-blue-100 text-sm">
                             NVRs Passed / Total (Percentage)
@@ -354,7 +485,7 @@ $overall_percentage = $total_nvrs > 0 ? round(($total_passed / $total_nvrs) * 10
                         <div class="grid grid-cols-2 gap-4 text-sm">
                             <div class="text-center">
                                 <div class="text-2xl font-bold text-green-300">
-                                    <?php echo $total_passed; ?>
+                                    <span id="nvr-passed-count"><?php echo $total_passed; ?></span>
                                 </div>
                                 <div class="text-blue-100">
                                     Passed
@@ -362,7 +493,7 @@ $overall_percentage = $total_nvrs > 0 ? round(($total_passed / $total_nvrs) * 10
                             </div>
                             <div class="text-center">
                                 <div class="text-2xl font-bold text-red-300">
-                                    <?php echo $total_failed; ?>
+                                    <span id="nvr-failed-count"><?php echo $total_failed; ?></span>
                                 </div>
                                 <div class="text-blue-100">
                                     Failed
@@ -379,12 +510,17 @@ $overall_percentage = $total_nvrs > 0 ? round(($total_passed / $total_nvrs) * 10
                     $bar_color = ($percentage == 100) ? 'bg-green-600' : 'bg-red-600';
                     ?>
                     <div class="bg-white rounded-lg p-4 md:p-6 card-shadow" data-building="<?php echo $building; ?>">
-                        <h4 class="text-base md:text-lg font-semibold text-blue-800 mb-3 md:mb-4">Building <?php echo $building; ?></h4>
+                        <h4 class="text-base md:text-lg font-semibold text-blue-800 mb-3 md:mb-4">Building
+                            <?php echo $building; ?>
+                        </h4>
                         <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2 mb-1">
-                            <div class="<?php echo $bar_color; ?> h-2.5 rounded-full" style="width: <?php echo $percentage; ?>%"></div>
+                            <div class="<?php echo $bar_color; ?> h-2.5 rounded-full"
+                                style="width: <?php echo $percentage; ?>%"></div>
                         </div>
                         <p class="text-sm text-slate-500 mt-2">
-                            <span class="font-bold <?php echo ($counts['passed'] == $counts['total']) ? 'text-green-600' : 'text-red-600'; ?>"><?php echo $counts['passed']; ?></span> / <?php echo $counts['total']; ?> Passed
+                            <span
+                                class="font-bold <?php echo ($counts['passed'] == $counts['total']) ? 'text-green-600' : 'text-red-600'; ?>"><?php echo $counts['passed']; ?></span>
+                            / <?php echo $counts['total']; ?> Passed
                         </p>
                         <div class="mt-2 md:mt-3 text-xs text-gray-500">
                             <div>Total NVRs: <?php echo $counts['total']; ?></div>
@@ -394,16 +530,20 @@ $overall_percentage = $total_nvrs > 0 ? round(($total_passed / $total_nvrs) * 10
             </div>
         </section><!-- Camera Status Section -->
         <section class="mb-8">
-            <h3 id="camera-section-title" class="text-2xl font-bold text-blue-900 mb-4">Camera Online Status <span
-                    class="text-sm text-gray-500 ml-2">(Last Update: <span id="camera-last-update"></span>)</span></h3>
+            <h3 id="camera-section-title" class="text-2xl font-bold text-slate-700 mb-4">Camera Online Status <span
+                    class="text-sm text-slate-400 ml-2">(Last Update: <span id="camera-last-update"></span>)</span></h3>
             <!-- Summary Card with Gradient -->
-            <div class="mb-6 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 text-white card-shadow">
+            <div class="mb-6 bg-gradient-to-r from-sky-400 to-blue-500 rounded-lg p-6 text-white card-shadow">
                 <div class="flex items-center justify-between flex-wrap">
                     <div>
                         <h4 class="text-xl font-semibold mb-2">Camera Online Status Summary</h4>
                         <div class="text-3xl font-bold">
-                            <span id="camera-summary-online-total">0/0</span> (<span
-                                id="camera-summary-percentage">0</span>%)
+                            <?php
+                            $global_percentage = $global_total_cameras > 0 ? round(($global_online_cameras / $global_total_cameras) * 100) : 0;
+                            ?>
+                            <span
+                                id="camera-summary-online-total"><?php echo $global_online_cameras; ?>/<?php echo $global_total_cameras; ?></span>
+                            (<span id="camera-summary-percentage"><?php echo $global_percentage; ?></span>%)
                         </div>
                         <div class="text-blue-100 text-sm">
                             Online Cameras / Total Cameras (Percentage)
@@ -413,7 +553,7 @@ $overall_percentage = $total_nvrs > 0 ? round(($total_passed / $total_nvrs) * 10
                         <div class="grid grid-cols-2 gap-4 text-sm">
                             <div class="text-center">
                                 <div class="text-2xl font-bold text-green-300" id="camera-summary-online">
-                                    0
+                                    <?php echo $global_online_cameras; ?>
                                 </div>
                                 <div class="text-blue-100">
                                     Online
@@ -421,7 +561,7 @@ $overall_percentage = $total_nvrs > 0 ? round(($total_passed / $total_nvrs) * 10
                             </div>
                             <div class="text-center">
                                 <div class="text-2xl font-bold text-red-300" id="camera-summary-offline">
-                                    0
+                                    <?php echo $global_total_cameras - $global_online_cameras; ?>
                                 </div>
                                 <div class="text-blue-100">
                                     Offline
@@ -432,16 +572,101 @@ $overall_percentage = $total_nvrs > 0 ? round(($total_passed / $total_nvrs) * 10
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6" id="camera-status-container">
-                <!-- Camera data will be dynamically loaded here from get_camera_status.php -->
+            <!-- NVR Details by Building with Progress Bars -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <?php foreach ($buildings_list as $building): ?>
+                    <?php if (isset($cctv_summary_by_building[$building])): ?>
+                        <?php
+                        $data = $cctv_summary_by_building[$building];
+                        $colors = $building_colors[$building];
+                        ?>
+                        <div
+                            class="bg-white border <?php echo $colors['border']; ?> rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow duration-200">
+                            <!-- Building Header -->
+                            <div
+                                class="bg-gradient-to-r <?php echo $colors['gradient']; ?> text-white rounded-lg px-4 py-2.5 mb-3 shadow-sm">
+                                <p class="text-lg font-bold flex items-center justify-between">
+                                    <span class="flex items-center gap-2">
+                                        <span><?php echo $colors['icon']; ?></span>
+                                        <span>อาคาร <?php echo $building; ?></span>
+                                    </span>
+                                    <span class="text-sm font-normal opacity-90">
+                                        <?php echo $data['online_cameras']; ?>/<?php echo $data['total_cameras']; ?>
+                                        (<?php echo $data['percentage']; ?>%)
+                                    </span>
+                                </p>
+                            </div>
+
+                            <!-- NVR List with Compact Progress Bars -->
+                            <div class="space-y-2 max-h-96 overflow-y-auto">
+                                <?php foreach ($data['nvrs'] as $nvr): ?>
+                                    <?php
+                                    $nvr_percentage = $nvr['percentage'];
+
+                                    if ($nvr_percentage >= 95) {
+                                        $progress_color = 'bg-emerald-500';
+                                        $bg_color = 'bg-white';
+                                        $border_color = 'border-slate-200';
+                                        $text_color = 'text-emerald-600';
+                                        $badge_color = 'bg-emerald-100 text-emerald-700';
+                                    } elseif ($nvr_percentage >= 80) {
+                                        $progress_color = 'bg-blue-500';
+                                        $bg_color = 'bg-white';
+                                        $border_color = 'border-slate-200';
+                                        $text_color = 'text-blue-600';
+                                        $badge_color = 'bg-blue-100 text-blue-700';
+                                    } elseif ($nvr_percentage >= 50) {
+                                        $progress_color = 'bg-amber-500';
+                                        $bg_color = 'bg-white';
+                                        $border_color = 'border-amber-200';
+                                        $text_color = 'text-amber-600';
+                                        $badge_color = 'bg-amber-100 text-amber-700';
+                                    } else {
+                                        $progress_color = 'bg-rose-500';
+                                        $bg_color = 'bg-white';
+                                        $border_color = 'border-rose-200';
+                                        $text_color = 'text-rose-600';
+                                        $badge_color = 'bg-rose-100 text-rose-700';
+                                    }
+                                    ?>
+                                    <div
+                                        class="<?php echo $bg_color; ?> border <?php echo $border_color; ?> rounded-lg px-3 py-2 hover:shadow-sm transition-shadow duration-150">
+                                        <div class="flex justify-between items-center mb-1.5">
+                                            <span class="font-medium text-slate-700 text-sm"><?php echo $nvr['name']; ?></span>
+                                            <div class="flex items-center gap-2">
+                                                <span
+                                                    class="<?php echo $badge_color; ?> px-2 py-0.5 rounded text-xs font-semibold"><?php echo $nvr_percentage; ?>%</span>
+                                                <span
+                                                    class="font-semibold <?php echo $text_color; ?> text-sm"><?php echo $nvr['online']; ?>/<?php echo $nvr['total']; ?></span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Compact Progress Bar -->
+                                        <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                            <div class="<?php echo $progress_color; ?> h-1.5 rounded-full transition-all duration-500"
+                                                style="width: <?php echo $nvr_percentage; ?>%"></div>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+
+                                <?php if (empty($data['nvrs'])): ?>
+                                    <div class="text-center py-8 text-gray-500">
+                                        <p>ไม่มีข้อมูล NVR</p>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                <?php endforeach; ?>
             </div>
         </section><!-- Parking Report Section -->
         <section class="mb-8">
-            <h3 id="parking-section-title" class="text-2xl font-bold text-blue-900 mb-4">Parking Lot Report <span
-                    class="text-sm text-gray-500 ml-2">(Last Update: <span id="parking-last-update"></span>)</span></h3>
+            <h3 id="parking-section-title" class="text-2xl font-bold text-slate-700 mb-4">Parking Lot Report <span
+                    class="text-sm text-slate-400 ml-2">(Last Update: <span id="parking-last-update"></span>)</span>
+            </h3>
             <!-- Total Summary Cards -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 text-white card-shadow">
+                <div class="bg-gradient-to-r from-sky-400 to-blue-500 rounded-lg p-6 text-white card-shadow">
                     <div class="flex items-center justify-between">
                         <div>
                             <h4 class="text-xl font-semibold mb-2 flex items-center">
@@ -463,7 +688,7 @@ $overall_percentage = $total_nvrs > 0 ? round(($total_passed / $total_nvrs) * 10
                         </div>
                     </div>
                 </div>
-                <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-6 text-white card-shadow">
+                <div class="bg-gradient-to-r from-emerald-400 to-teal-500 rounded-lg p-6 text-white card-shadow">
                     <div class="flex items-center justify-between">
                         <div>
                             <h4 class="text-xl font-semibold mb-2 flex items-center">
@@ -788,10 +1013,12 @@ $overall_percentage = $total_nvrs > 0 ? round(($total_passed / $total_nvrs) * 10
         </footer>
     </div><!-- Settings Modal -->
     <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
-        <div class="flex items-center justify-center min-h-full p-4">
-            <div class="bg-white rounded-lg max-w-4xl w-full max-h-full overflow-y-auto"><!-- Modal Header -->
-                <div class="flex items-center justify-between p-6 border-b border-gray-200">
-                    <h3 class="text-2xl font-bold text-blue-900">System Settings</h3><button id="close-modal"
+        <div class="flex items-center justify-center min-h-full p-2 sm:p-4">
+            <div
+                class="bg-white rounded-lg w-full max-w-full sm:max-w-xl md:max-w-2xl lg:max-w-2xl max-h-[85vh] flex flex-col">
+                <!-- Modal Header -->
+                <div class="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
+                    <h3 class="text-xl font-bold text-blue-900">System Settings</h3><button id="close-modal"
                         class="text-gray-400 hover:text-gray-600 transition-colors">
                         <svg class="w-6 h-6" fill="currentColor" viewbox="0 0 20 20">
                             <path fill-rule="evenodd"
@@ -799,7 +1026,7 @@ $overall_percentage = $total_nvrs > 0 ? round(($total_passed / $total_nvrs) * 10
                                 clip-rule="evenodd"></path>
                         </svg></button>
                 </div><!-- Modal Content -->
-                <div class="p-6"><!-- Tab Navigation -->
+                <div class="p-4 overflow-y-auto flex-1"><!-- Tab Navigation -->
                     <div
                         class="flex flex-col space-y-1 md:flex-row md:space-x-1 md:space-y-0 mb-6 bg-gray-100 p-1 rounded-lg">
                         <button class="tab-btn active flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors"
@@ -863,6 +1090,36 @@ $overall_percentage = $total_nvrs > 0 ? round(($total_passed / $total_nvrs) * 10
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Password Change Section -->
+                        <div class="mt-6 pt-6 border-t border-gray-200">
+                            <h5 class="text-md font-semibold text-gray-800 mb-4">Change Password</h5>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
+                                    <input type="password" id="current-password"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">New Password</label>
+                                    <input type="password" id="new-password"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Confirm New
+                                        Password</label>
+                                    <input type="password" id="confirm-password"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                            </div>
+                            <div class="mt-4">
+                                <button id="change-password-btn"
+                                    class="bg-orange-600 hover:bg-orange-700 text-white px-6 py-2 rounded-md transition-colors">
+                                    Change Password
+                                </button>
+                            </div>
+                        </div>
+
                         <div class="mt-6 flex justify-end"><button id="save-profile"
                                 class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md transition-colors">
                                 Save Changes </button>
@@ -895,46 +1152,13 @@ $overall_percentage = $total_nvrs > 0 ? round(($total_passed / $total_nvrs) * 10
                                     </tr>
                                 </thead>
                                 <tbody id="staff-list" class="divide-y divide-gray-200">
-                                    <tr class="bg-white">
-                                        <td class="px-4 py-3 text-sm text-gray-900">John Smith</td>
-                                        <td class="px-4 py-3 text-sm text-gray-600">SEC001</td>
-                                        <td class="px-4 py-3 text-sm text-gray-600">Security Guard</td>
-                                        <td class="px-4 py-3 text-sm text-gray-600">Day Shift</td>
-                                        <td class="px-4 py-3"><span
-                                                class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Active</span>
-                                        </td>
-                                        <td class="px-4 py-3 text-sm"><a href="edit_officer.php?officer_id=1"
-                                                class="text-blue-600 hover:text-blue-800 mr-3 edit-staff-btn">Edit</a>
-                                            <button
-                                                class="text-red-600 hover:text-red-800 delete-staff-btn">Delete</button>
-                                        </td>
-                                    </tr>
-                                    <tr class="bg-white">
-                                        <td class="px-4 py-3 text-sm text-gray-900">Sarah Johnson</td>
-                                        <td class="px-4 py-3 text-sm text-gray-600">SEC002</td>
-                                        <td class="px-4 py-3 text-sm text-gray-600">Security Supervisor</td>
-                                        <td class="px-4 py-3 text-sm text-gray-600">Night Shift</td>
-                                        <td class="px-4 py-3"><span
-                                                class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Active</span>
-                                        </td>
-                                        <td class="px-4 py-3 text-sm"><a href="edit_officer.php?officer_id=2"
-                                                class="text-blue-600 hover:text-blue-800 mr-3 edit-staff-btn">Edit</a>
-                                            <button
-                                                class="text-red-600 hover:text-red-800 delete-staff-btn">Delete</button>
-                                        </td>
-                                    </tr>
-                                    <tr class="bg-white">
-                                        <td class="px-4 py-3 text-sm text-gray-900">Mike Chen</td>
-                                        <td class="px-4 py-3 text-sm text-gray-600">SEC003</td>
-                                        <td class="px-4 py-3 text-sm text-gray-600">Security Guard</td>
-                                        <td class="px-4 py-3 text-sm text-gray-600">Day Shift</td>
-                                        <td class="px-4 py-3"><span
-                                                class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">On
-                                                Leave</span></td>
-                                        <td class="px-4 py-3 text-sm"><a href="edit_officer.php?officer_id=3"
-                                                class="text-blue-600 hover:text-blue-800 mr-3 edit-staff-btn">Edit</a>
-                                            <button
-                                                class="text-red-600 hover:text-red-800 delete-staff-btn">Delete</button>
+                                    <!-- Staff data will be loaded dynamically -->
+                                    <tr>
+                                        <td colspan="6" class="px-4 py-8 text-center text-gray-500">
+                                            <div
+                                                class="animate-spin inline-block w-6 h-6 border-4 border-current border-t-transparent text-blue-600 rounded-full mb-2">
+                                            </div>
+                                            <p>Loading staff data...</p>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -1139,8 +1363,8 @@ $overall_percentage = $total_nvrs > 0 ? round(($total_passed / $total_nvrs) * 10
             parking_section_title: "Parking Lot Report",
             detector_section_title: "Hand Held Metal Detector Status",
             walkthrough_section_title: "Walkthrough Metal Detector Status",
-            user_name: "Admin User",
-            user_role: "System Administrator"
+            user_name: "<?php echo isset($_SESSION['first_name']) && isset($_SESSION['last_name']) ? htmlspecialchars($_SESSION['first_name'] . ' ' . $_SESSION['last_name']) : htmlspecialchars($_SESSION['username']); ?>",
+            user_role: "<?php echo htmlspecialchars($current_user_role_name); ?>"
         };
 
         function updateShiftStatus(now) {
@@ -1200,383 +1424,7 @@ $overall_percentage = $total_nvrs > 0 ? round(($total_passed / $total_nvrs) * 10
 
 
 
-        function formatRelativeTime(dateString) {
-            if (!dateString) return 'N/A';
 
-            // Normalize common MySQL datetime format "YYYY-MM-DD HH:MM:SS" to ISO "YYYY-MM-DDTHH:MM:SS"
-            let ds = dateString;
-            if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(ds)) {
-                ds = ds.replace(' ', 'T');
-            }
-
-            let date = new Date(ds);
-            // Fallback: try replacing space with 'T' if initial parse failed
-            if (isNaN(date.getTime()) && dateString.indexOf(' ') !== -1) {
-                date = new Date(dateString.replace(' ', 'T'));
-            }
-
-            console.log('formatRelativeTime - raw dateString:', dateString);
-            console.log('formatRelativeTime - normalized:', ds);
-            console.log('formatRelativeTime - parsed Date object:', date);
-
-            const now = new Date();
-            const seconds = Math.floor((now - date) / 1000);
-            console.log('formatRelativeTime - calculated seconds:', seconds);
-
-            let interval = seconds / 31536000; // years
-            if (interval > 1) {
-                return Math.floor(interval) + " years ago";
-            }
-            interval = seconds / 2592000; // months
-            if (interval > 1) {
-                return Math.floor(interval) + " months ago";
-            }
-            interval = seconds / 86400; // days
-            if (interval > 1) {
-                return Math.floor(interval) + " days ago";
-            }
-            interval = seconds / 3600; // hours
-            if (interval > 1) {
-                return Math.floor(interval) + " hours ago";
-            }
-            interval = seconds / 60; // minutes
-            if (interval > 1) {
-                return Math.floor(interval) + " minutes ago";
-            }
-            return Math.floor(seconds) + " seconds ago";
-        }
-
-        async function fetchSecurityStatus() {
-            console.log('fetchSecurityStatus called');
-            try {
-                const response = await fetch('get_security_status.php');
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const data = await response.json();
-                console.log('Data received from get_security_status.php:', data);
-                console.log('Raw data.last_update:', data.last_update);
-                // Ensure numeric values and provide fallbacks
-                const morning = Number(data.morning_shift) || 0;
-                const evening = Number(data.evening_shift) || 0;
-                const total = Number(data.total) || (morning + evening);
-
-                const dayShiftCountElement = document.getElementById('day-shift-count');
-                if (dayShiftCountElement) dayShiftCountElement.textContent = morning;
-
-                const nightShiftCountElement = document.getElementById('night-shift-count');
-                if (nightShiftCountElement) nightShiftCountElement.textContent = evening;
-
-                const currentShiftCountElement = document.getElementById('current-shift-count');
-                if (currentShiftCountElement) currentShiftCountElement.textContent = total;
-
-                const securityLastUpdateElement = document.getElementById('security-last-update');
-                if (data.last_update && securityLastUpdateElement) {
-                    // Normalize MySQL datetime to ISO so Date parsing is reliable in browsers
-                    let ds = data.last_update;
-                    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(ds)) ds = ds.replace(' ', 'T');
-                    const formattedTime = formatRelativeTime(ds);
-                    securityLastUpdateElement.textContent = formattedTime;
-                    console.log('security-last-update set to:', formattedTime, ' (normalized:', ds, ')');
-                } else if (securityLastUpdateElement) {
-                    console.log('data.last_update is null or undefined.');
-                }
-
-            } catch (error) {
-                console.error('Error fetching security status:', error);
-                // Optionally, display an error message on the dashboard
-            }
-        }
-
-        // Initialize time and update every second
-        updateTime();
-        setInterval(updateTime, 1000);
-
-        // Fetch security status on load and every 30 seconds
-        fetchSecurityStatus();
-        setInterval(fetchSecurityStatus, 30000); // Update every 30 seconds
-
-        // Fetch NVR status on load and every 30 seconds
-        async function fetchNvrStatus() {
-            console.log('fetchNvrStatus called');
-            try {
-                // Add timestamp to bypass browser cache
-                const timestamp = new Date().getTime();
-                const response = await fetch(`get_nvr_status.php?t=${timestamp}`);
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                const data = await response.json();
-                console.log('NVR Status data received:', data);
-
-                const buildings = data.buildings || {};
-                let totalOnline = 0;
-                let totalChannels = 0;
-                let totalPassCount = 0;
-                let totalFailCount = 0;
-
-                // Process each building
-                Object.entries(buildings).forEach(([buildingKey, buildingData]) => {
-                    // Building names are now B2, B3, B4, B9 (no dots, no sanitization needed)
-                    const online = buildingData.online || 0;
-                    const total = buildingData.total || 0;
-                    const offline = buildingData.offline || 0;
-                    const percent = buildingData.percent || 0;
-                    const nvrPassCount = buildingData.nvr_pass_count || 0;
-                    const nvrFailCount = buildingData.nvr_fail_count || 0;
-                    const nvrCount = buildingData.nvr_count || 0; // Use nvr_count from PHP response
-
-                    totalOnline += online;
-                    totalChannels += total;
-                    totalPassCount += nvrPassCount;
-                    totalFailCount += nvrFailCount;
-
-                    // Update elements for the NVR status summary (if they exist)
-                    const passEl = document.getElementById(`nvr-pass-${buildingKey}`);
-                    const totalEl = document.getElementById(`nvr-total-${buildingKey}`);
-                    const percentEl = document.getElementById(`nvr-percent-${buildingKey}`);
-                    if (passEl) passEl.textContent = online;
-                    if (totalEl) totalEl.textContent = total;
-                    if (percentEl) percentEl.textContent = Math.round(percent);
-
-                    // Update elements for the 62-day criteria
-                    const nvrPassCountEl = document.getElementById(`nvr-passcount-62-${buildingKey}`);
-                    const nvrTotalCountEl = document.getElementById(`nvr-totalcount-62-${buildingKey}`);
-                    const nvrProgressBarEl = document.getElementById(`nvr-progressbar-62-${buildingKey}`);
-                    const nvrProgressBarFillEl = document.getElementById(`nvr-progressbar-fill-62-${buildingKey}`);
-                    const nvrCountTextEl = document.getElementById(`nvr-count-62-${buildingKey}`);
-
-                    if (nvrPassCountEl) nvrPassCountEl.textContent = nvrPassCount;
-                    if (nvrTotalCountEl) nvrTotalCountEl.textContent = nvrCount; // Use nvrCount from PHP
-                    if (nvrCountTextEl) nvrCountTextEl.textContent = `Total NVRs: ${nvrCount}`;
-
-                    if (nvrProgressBarFillEl) {
-                        if (nvrCount > 0) {
-                            const progressPercentage = Math.round((nvrPassCount / nvrCount) * 100);
-                            nvrProgressBarFillEl.style.width = `${progressPercentage}%`;
-                            nvrProgressBarFillEl.className = `h-2.5 rounded-full ${progressPercentage === 100 ? 'bg-green-600' : 'bg-red-600'}`;
-                        } else {
-                            nvrProgressBarFillEl.style.width = '0%';
-                            nvrProgressBarFillEl.className = 'h-2.5 rounded-full bg-red-600';
-                        }
-                    }
-                });
-
-                // Calculate overall summary - percentage of NVRs passing the standard
-                const totalExpectedNVRs = data.total_expected_nvrs || 0;
-                const calculatedFailCount = totalExpectedNVRs - totalPassCount;
-                const overallPercent = totalExpectedNVRs > 0 ? Math.round((totalPassCount / totalExpectedNVRs) * 100) : 0;
-
-                const nvrSummaryTotalElement = document.getElementById('nvr-summary-total');
-                if (nvrSummaryTotalElement) nvrSummaryTotalElement.textContent = `${totalPassCount}/${totalExpectedNVRs} (${overallPercent}%)`;
-
-                const nvrSummaryPassElement = document.getElementById('nvr-summary-pass');
-                if (nvrSummaryPassElement) nvrSummaryPassElement.textContent = totalPassCount;
-
-                const nvrSummaryFailElement = document.getElementById('nvr-summary-fail');
-                if (nvrSummaryFailElement) nvrSummaryFailElement.textContent = calculatedFailCount;
-
-                const nvrSummaryPercentageElement = document.getElementById('nvr-summary-percentage');
-                if (nvrSummaryPercentageElement) nvrSummaryPercentageElement.textContent = overallPercent;
-
-                // Update last update label
-                const nvrLastUpdateElement = document.getElementById('nvr-last-update');
-                if (nvrLastUpdateElement) {
-                    const lastUpdate = data.last_update ? new Date(data.last_update).toLocaleTimeString('en-US') : '-';
-                    nvrLastUpdateElement.textContent = lastUpdate;
-                }
-
-            } catch (err) {
-                console.error('Error fetching NVR status:', err);
-            }
-        }
-
-        fetchNvrStatus();
-        setInterval(fetchNvrStatus, 30000);
-
-        async function fetchParkingStatus() {
-            console.log('fetchParkingStatus called');
-            try {
-                const response = await fetch('get_parking_status.php');
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                const data = await response.json();
-                console.log('Parking data received:', data);
-
-                // Update summary cards
-                const carParkingTotalElement = document.getElementById('car-parking-total');
-                if (carParkingTotalElement) {
-                    carParkingTotalElement.textContent = `${data.total_car_occupied}/${data.total_car_slots}`;
-                }
-                const carOccupancy = Math.min(100, data.total_car_slots > 0 ? Math.round((data.total_car_occupied / data.total_car_slots) * 100) : 0);
-                const carParkingPercentageElement = document.getElementById('car-parking-percentage');
-                if (carParkingPercentageElement) {
-                    carParkingPercentageElement.textContent = `${carOccupancy}% Occupied`;
-                }
-
-                const motorcycleParkingTotalElement = document.getElementById('motorcycle-parking-total');
-                if (motorcycleParkingTotalElement) {
-                    motorcycleParkingTotalElement.textContent = `${data.total_motorcycle_occupied}/${data.total_motorcycle_slots}`;
-                }
-                const motorcycleOccupancy = Math.min(100, data.total_motorcycle_slots > 0 ? Math.round((data.total_motorcycle_occupied / data.total_motorcycle_slots) * 100) : 0);
-                const motorcycleParkingPercentageElement = document.getElementById('motorcycle-parking-percentage');
-                if (motorcycleParkingPercentageElement) {
-                    motorcycleParkingPercentageElement.textContent = `${motorcycleOccupancy}% Occupied`;
-                }
-
-                // Update individual car lots
-                data.car_lots_data.forEach(lot => {
-                    const lotNameId = lot.name.replace(/[^a-zA-Z0-9]/g, '-'); // Sanitize lot name for ID
-                    const statusElement = document.getElementById(`car-lot-${lotNameId}-status`);
-                    const barElement = document.getElementById(`car-lot-${lotNameId}-bar`);
-                    const cappedLotPercentage = Math.min(100, lot.percentage);
-                    if (statusElement) {
-                        statusElement.textContent = `${lot.occupied}/${lot.capacity} (${cappedLotPercentage.toFixed(0)}%)`;
-                    }
-                    if (barElement) {
-                        barElement.style.width = `${cappedLotPercentage}%`;
-                        if (cappedLotPercentage >= 75) {
-                            barElement.className = 'bg-red-500 h-2 rounded-full';
-                        } else if (cappedLotPercentage >= 50) {
-                            barElement.className = 'bg-orange-500 h-2 rounded-full';
-                        } else {
-                            barElement.className = 'bg-green-500 h-2 rounded-full';
-                        }
-                    }
-                });
-
-                // Update individual motorcycle lots
-                data.motorcycle_lots_data.forEach(lot => {
-                    const lotNameId = lot.name.replace(/[^a-zA-Z0-9]/g, '-'); // Sanitize lot name for ID
-                    const statusElement = document.getElementById(`motorcycle-lot-${lotNameId}-status`);
-                    const barElement = document.getElementById(`motorcycle-lot-${lotNameId}-bar`);
-                    const cappedLotPercentage = Math.min(100, lot.percentage);
-                    if (statusElement) {
-                        statusElement.textContent = `${lot.occupied}/${lot.capacity} (${cappedLotPercentage.toFixed(0)}%)`;
-                    }
-                    if (barElement) {
-                        barElement.style.width = `${cappedLotPercentage}%`;
-                        if (cappedLotPercentage >= 75) {
-                            barElement.className = 'bg-red-500 h-2 rounded-full';
-                        } else if (cappedLotPercentage >= 50) {
-                            barElement.className = 'bg-orange-500 h-2 rounded-full';
-                        } else {
-                            barElement.className = 'bg-green-500 h-2 rounded-full';
-                        }
-                    }
-                });
-
-                // Update last update label
-                const parkingLastUpdateElement = document.getElementById('parking-last-update');
-                if (parkingLastUpdateElement && data.last_update) {
-                    let ds = data.last_update;
-                    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(ds)) ds = ds.replace(' ', 'T');
-                    parkingLastUpdateElement.textContent = formatRelativeTime(ds);
-                }
-
-            } catch (err) {
-                console.error('Error fetching parking status:', err);
-            }
-        }
-
-        fetchParkingStatus();
-        setInterval(fetchParkingStatus, 30000);
-
-        async function fetchHandHeldDetectorStatus() {
-            console.log('fetchHandHeldDetectorStatus called');
-            try {
-                const response = await fetch('get_hand_held_detector_status.php');
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                const data = await response.json();
-                console.log('Hand Held Detector data received:', data);
-
-                // Update individual status cards
-                // Battery Check
-                document.getElementById('battery-check-text').textContent = data.battery_status_text;
-                document.getElementById('battery-check-status').textContent = data.battery_status_indicator;
-                document.getElementById('battery-check-indicator').className = `inline-block w-3 h-3 ${data.battery_status_indicator === 'Active' ? 'bg-green-500' : 'bg-red-500'} rounded-full pulse-animation`;
-
-                // LED Power
-                document.getElementById('led-power-text').textContent = data.led_status_text;
-                document.getElementById('led-power-status').textContent = data.led_status_indicator;
-                document.getElementById('led-power-indicator').className = `inline-block w-3 h-3 ${data.led_status_indicator === 'Online' ? 'bg-green-500' : 'bg-red-500'} rounded-full pulse-animation`;
-
-                // Detection Range
-                document.getElementById('detection-range-text').textContent = data.detection_status_text;
-                document.getElementById('detection-range-status').textContent = data.detection_status_indicator;
-                document.getElementById('detection-range-indicator').className = `inline-block w-3 h-3 ${data.detection_status_indicator === 'Calibrated' ? 'bg-green-500' : 'bg-red-500'} rounded-full pulse-animation`;
-
-                // Audio Alert
-                document.getElementById('audio-alert-text').textContent = data.alarm_status_text;
-                document.getElementById('audio-alert-status').textContent = data.alarm_status_indicator;
-                document.getElementById('audio-alert-indicator').className = `inline-block w-3 h-3 ${data.alarm_status_indicator === 'Functional' ? 'bg-green-500' : 'bg-red-500'} rounded-full pulse-animation`;
-
-                // Update Latest Test Results
-                document.getElementById('metal-detection-result').textContent = data.metal_detection_result;
-                document.getElementById('last-calibration').textContent = data.last_calibration;
-                document.getElementById('next-check').textContent = data.next_check;
-
-                // Update last update label
-                if (data.last_update) {
-                    let ds = data.last_update;
-                    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(ds)) ds = ds.replace(' ', 'T');
-                    document.getElementById('detector-last-update').textContent = formatRelativeTime(ds);
-                }
-
-            } catch (err) {
-                console.error('Error fetching hand held detector status:', err);
-            }
-        }
-
-        // Disabled: These functions block camera status execution
-        // fetchHandHeldDetectorStatus();
-        // setInterval(fetchHandHeldDetectorStatus, 30000);
-
-        async function fetchWalkthroughDetectorStatus() {
-            console.log('fetchWalkthroughDetectorStatus called');
-            try {
-                const response = await fetch('get_walkthrough_detector_status.php');
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                const data = await response.json();
-                console.log('Walkthrough Detector data received:', data);
-
-                const zonesContainer = document.getElementById('walkthrough-zones-container');
-                if (zonesContainer) {
-                    zonesContainer.innerHTML = ''; // Clear existing zones
-                    data.zones.forEach(zone => {
-                        const zoneDiv = document.createElement('div');
-                        zoneDiv.className = `text-center p-4 ${zone.status_class === 'status-online' ? 'bg-green-50 border-green-200' : zone.status_class === 'status-warning' ? 'bg-yellow-50 border-yellow-200' : 'bg-red-50 border-red-200'} rounded-lg border-2`;
-                        zoneDiv.innerHTML = `
-                            <h4 class="text-lg font-semibold text-blue-800 mb-2">Zone ${zone.zone_number}</h4>
-                            <div class="flex items-center justify-center">
-                                <span class="status-indicator ${zone.status_class}"></span>
-                                <span class="${zone.status_class === 'status-online' ? 'text-green-600' : zone.status_class === 'status-warning' ? 'text-yellow-600' : 'text-red-600'} font-semibold text-sm">${zone.display_status}</span>
-                            </div>
-                        `;
-                        zonesContainer.appendChild(zoneDiv);
-                    });
-                }
-
-                // Update summary counts
-                document.getElementById('walkthrough-online-count').textContent = data.online_count;
-                document.getElementById('walkthrough-maintenance-count').textContent = data.maintenance_count;
-                document.getElementById('walkthrough-offline-count').textContent = data.offline_count;
-                document.getElementById('walkthrough-operational-percentage').textContent = `${Math.min(100, data.operational_percentage).toFixed(0)}%`;
-
-                // Update last update label
-                if (data.last_update) {
-                    let ds = data.last_update;
-                    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(ds)) ds = ds.replace(' ', 'T');
-                    document.getElementById('walkthrough-last-update').textContent = formatRelativeTime(ds);
-                }
-
-            } catch (err) {
-                console.error('Error fetching walkthrough detector status:', err);
-            }
-        }
-
-        // Disabled: These functions block camera status execution
-        // fetchWalkthroughDetectorStatus();
-        // setInterval(fetchWalkthroughDetectorStatus, 30000);
-
-        console.log('DEBUG: About to define fetchCameraStatus function');
         async function fetchCameraStatus() {
             console.log('fetchCameraStatus called');
             try {
@@ -1739,6 +1587,7 @@ $overall_percentage = $total_nvrs > 0 ? round(($total_passed / $total_nvrs) * 10
         // Settings modal
         settingsBtn.addEventListener('click', () => {
             settingsModal.classList.remove('hidden');
+            loadUserProfile(); // Load profile data when modal opens
         });
 
         closeModalBtn.addEventListener('click', () => {
@@ -1834,17 +1683,192 @@ $overall_percentage = $total_nvrs > 0 ? round(($total_passed / $total_nvrs) * 10
             });
         });
 
+        // Load user profile data
+        async function loadUserProfile() {
+            try {
+                const response = await fetch('update_profile.php');
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    const data = result.data;
+                    const fullName = `${data.first_name} ${data.last_name}`;
+                    document.getElementById('profile-name').value = fullName;
+                    document.getElementById('profile-email').value = data.email || '';
+                    document.getElementById('profile-phone').value = data.phone || '';
+                    document.getElementById('profile-department').value = data.department || 'security';
+                    document.getElementById('profile-employee-id').value = data.employee_id || '';
+
+                    // Update last login if available
+                    if (data.last_login) {
+                        const lastLoginDate = new Date(data.last_login);
+                        const formattedLogin = lastLoginDate.toLocaleString('th-TH');
+                        const lastLoginInputs = document.querySelectorAll('input[readonly]');
+                        lastLoginInputs.forEach(input => {
+                            if (input.value.includes('Today') || input.value.includes('08:30')) {
+                                input.value = formattedLogin;
+                            }
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading profile:', error);
+            }
+        }
+
         // Profile save functionality
-        document.getElementById('save-profile').addEventListener('click', () => {
-            const name = document.getElementById('profile-name').value;
+        document.getElementById('save-profile').addEventListener('click', async () => {
+            const fullName = document.getElementById('profile-name').value;
+            const [firstName, ...lastNameParts] = fullName.split(' ');
+            const lastName = lastNameParts.join(' ');
             const email = document.getElementById('profile-email').value;
             const department = document.getElementById('profile-department').value;
             const phone = document.getElementById('profile-phone').value;
 
-            // Update header display
-            document.getElementById('user-name').textContent = name;
+            const formData = new FormData();
+            formData.append('action', 'update_profile');
+            formData.append('first_name', firstName);
+            formData.append('last_name', lastName);
+            formData.append('email', email);
+            formData.append('department', department);
+            formData.append('phone', phone);
 
-            showNotification('Profile updated successfully!', 'success');
+            try {
+                const response = await fetch('update_profile.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    // Update header display
+                    document.getElementById('user-name').textContent = fullName;
+                    showNotification('Profile updated successfully!', 'success');
+                } else {
+                    showNotification(result.message || 'Failed to update profile', 'error');
+                }
+            } catch (error) {
+                showNotification('Error updating profile', 'error');
+            }
+        });
+
+        // Change password functionality
+        document.getElementById('change-password-btn').addEventListener('click', async () => {
+            const currentPassword = document.getElementById('current-password').value;
+            const newPassword = document.getElementById('new-password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+
+            if (!currentPassword || !newPassword || !confirmPassword) {
+                showNotification('Please fill in all password fields', 'warning');
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+                showNotification('New passwords do not match', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('action', 'change_password');
+            formData.append('current_password', currentPassword);
+            formData.append('new_password', newPassword);
+            formData.append('confirm_password', confirmPassword);
+
+            try {
+                const response = await fetch('update_profile.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    showNotification('Password changed successfully!', 'success');
+                    // Clear password fields
+                    document.getElementById('current-password').value = '';
+                    document.getElementById('new-password').value = '';
+                    document.getElementById('confirm-password').value = '';
+                } else {
+                    showNotification(result.message || 'Failed to change password', 'error');
+                }
+            } catch (error) {
+                showNotification('Error changing password', 'error');
+            }
+        });
+
+        // Load staff list
+        async function loadStaffList() {
+            try {
+                const response = await fetch('get_staff_list.php');
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    const staffList = document.getElementById('staff-list');
+                    staffList.innerHTML = '';
+
+                    if (result.data.length === 0) {
+                        staffList.innerHTML = `
+                            <tr>
+                                <td colspan="6" class="px-4 py-8 text-center text-gray-500">
+                                    No staff members found
+                                </td>
+                            </tr>
+                        `;
+                        return;
+                    }
+
+                    result.data.forEach(staff => {
+                        const statusClass = staff.status === 'active' ?
+                            'bg-green-100 text-green-800' :
+                            'bg-yellow-100 text-yellow-800';
+                        const statusText = staff.status === 'active' ? 'Active' : 'On Leave';
+
+                        const row = document.createElement('tr');
+                        row.className = 'bg-white';
+                        row.innerHTML = `
+                            <td class="px-4 py-3 text-sm text-gray-900">${staff.name}</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">${staff.employee_id}</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">${staff.role}</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">${staff.shift}</td>
+                            <td class="px-4 py-3">
+                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statusClass}">
+                                    ${statusText}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 text-sm">
+                                <a href="edit_officer.php?officer_id=${staff.id}" 
+                                    class="text-blue-600 hover:text-blue-800 mr-3">Edit</a>
+                                <button class="text-red-600 hover:text-red-800 delete-staff-btn" 
+                                    data-id="${staff.id}">Delete</button>
+                            </td>
+                        `;
+                        staffList.appendChild(row);
+                    });
+
+                    // Add delete event listeners
+                    document.querySelectorAll('.delete-staff-btn').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            const staffId = btn.getAttribute('data-id');
+                            if (confirm('Are you sure you want to delete this staff member?')) {
+                                showNotification('Delete functionality to be implemented', 'info');
+                            }
+                        });
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading staff list:', error);
+                const staffList = document.getElementById('staff-list');
+                staffList.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="px-4 py-8 text-center text-red-500">
+                            Error loading staff data
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        // Load staff list when switching to staff tab
+        document.querySelector('[data-tab="staff"]').addEventListener('click', () => {
+            loadStaffList();
         });
 
         // Notification system
@@ -1925,8 +1949,473 @@ $overall_percentage = $total_nvrs > 0 ? round(($total_passed / $total_nvrs) * 10
                 mapToEditPanelValues
             });
         }
+        function formatRelativeTime(dateString) {
+            console.log('formatRelativeTime input:', dateString);
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            console.log('Parsed date:', date);
+            const now = new Date();
+            const diffInSeconds = Math.floor((now - date) / 1000);
+            console.log('Diff in seconds:', diffInSeconds);
+
+            if (isNaN(diffInSeconds)) return 'Invalid Date';
+
+            if (diffInSeconds < 60) return 'Just now';
+            if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+            if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+            return date.toLocaleString('th-TH');
+        }
+
+        // Consolidated fetchSecurityStatus function
+        // Consolidated fetchSecurityStatus function
+        async function fetchSecurityStatus() {
+            try {
+                const response = await fetch('get_security_status.php');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+
+                // Helper to format the display HTML
+                const formatDisplay = (actual, contract) => {
+                    const actualNum = Number(actual) || 0;
+                    const contractNum = contract !== null ? Number(contract) : null;
+
+                    if (contractNum === null) {
+                        return `<span class="text-green-500">${actualNum}</span>`;
+                    }
+
+                    const colorClass = actualNum < contractNum ? 'text-orange-500' : 'text-green-500';
+                    return `<span class="${colorClass}">${actualNum}</span><span class="text-blue-400 text-2xl"> / ${contractNum}</span>`;
+                };
+
+                const dayShiftCountElement = document.getElementById('day-shift-count');
+                if (dayShiftCountElement) {
+                    dayShiftCountElement.innerHTML = formatDisplay(data.morning_shift, data.morning_shift_contract);
+                }
+
+                const nightShiftCountElement = document.getElementById('night-shift-count');
+                if (nightShiftCountElement) {
+                    nightShiftCountElement.innerHTML = formatDisplay(data.evening_shift, data.evening_shift_contract);
+                }
+
+                const currentShiftCountElement = document.getElementById('current-shift-count');
+                if (currentShiftCountElement) {
+                    // Total Logic
+                    const totalActual = (Number(data.morning_shift) || 0) + (Number(data.evening_shift) || 0);
+                    let totalContract = null;
+                    if (data.morning_shift_contract !== null || data.evening_shift_contract !== null) {
+                        totalContract = (Number(data.morning_shift_contract) || 0) + (Number(data.evening_shift_contract) || 0);
+                    }
+                    currentShiftCountElement.innerHTML = formatDisplay(totalActual, totalContract);
+                }
+
+                const securityLastUpdateElement = document.getElementById('security-last-update');
+                if (data.last_update && securityLastUpdateElement) {
+                    // Normalize MySQL datetime to ISO
+                    let ds = data.last_update;
+                    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(ds)) ds = ds.replace(' ', 'T');
+                    const formattedTime = formatRelativeTime(ds);
+                    securityLastUpdateElement.textContent = formattedTime;
+                }
+
+            } catch (error) {
+                console.error('Error fetching security status:', error);
+            }
+        }
+
+        // Consolidated fetchParkingStatus function
+        async function fetchParkingStatus() {
+            try {
+                const response = await fetch('get_parking_status.php');
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const data = await response.json();
+
+                // Update summary cards
+                const carParkingTotalElement = document.getElementById('car-parking-total');
+                if (carParkingTotalElement) {
+                    carParkingTotalElement.textContent = `${data.total_car_occupied}/${data.total_car_slots}`;
+                }
+                const carOccupancy = Math.min(100, data.total_car_slots > 0 ? Math.round((data.total_car_occupied / data.total_car_slots) * 100) : 0);
+                const carParkingPercentageElement = document.getElementById('car-parking-percentage');
+                if (carParkingPercentageElement) {
+                    carParkingPercentageElement.textContent = `${carOccupancy}% Occupied`;
+                }
+
+                const motorcycleParkingTotalElement = document.getElementById('motorcycle-parking-total');
+                if (motorcycleParkingTotalElement) {
+                    motorcycleParkingTotalElement.textContent = `${data.total_motorcycle_occupied}/${data.total_motorcycle_slots}`;
+                }
+                const motorcycleOccupancy = Math.min(100, data.total_motorcycle_slots > 0 ? Math.round((data.total_motorcycle_occupied / data.total_motorcycle_slots) * 100) : 0);
+                const motorcycleParkingPercentageElement = document.getElementById('motorcycle-parking-percentage');
+                if (motorcycleParkingPercentageElement) {
+                    motorcycleParkingPercentageElement.textContent = `${motorcycleOccupancy}% Occupied`;
+                }
+
+                // Update individual car lots (if data exists)
+                if (data.car_lots_data) {
+                    data.car_lots_data.forEach(lot => {
+                        const lotNameId = lot.name.replace(/[^a-zA-Z0-9]/g, '-');
+                        const statusElement = document.getElementById(`car-lot-${lotNameId}-status`);
+                        const barElement = document.getElementById(`car-lot-${lotNameId}-bar`);
+                        const cappedLotPercentage = Math.min(100, lot.percentage);
+                        if (statusElement) {
+                            statusElement.textContent = `${lot.occupied}/${lot.capacity} (${cappedLotPercentage.toFixed(0)}%)`;
+                        }
+                        if (barElement) {
+                            barElement.style.width = `${cappedLotPercentage}%`;
+                            if (cappedLotPercentage >= 75) barElement.className = 'bg-red-500 h-2 rounded-full';
+                            else if (cappedLotPercentage >= 50) barElement.className = 'bg-orange-500 h-2 rounded-full';
+                            else barElement.className = 'bg-green-500 h-2 rounded-full';
+                        }
+                    });
+                }
+
+                // Update individual motorcycle lots (if data exists)
+                if (data.motorcycle_lots_data) {
+                    data.motorcycle_lots_data.forEach(lot => {
+                        const lotNameId = lot.name.replace(/[^a-zA-Z0-9]/g, '-');
+                        const statusElement = document.getElementById(`motorcycle-lot-${lotNameId}-status`);
+                        const barElement = document.getElementById(`motorcycle-lot-${lotNameId}-bar`);
+                        const cappedLotPercentage = Math.min(100, lot.percentage);
+                        if (statusElement) {
+                            statusElement.textContent = `${lot.occupied}/${lot.capacity} (${cappedLotPercentage.toFixed(0)}%)`;
+                        }
+                        if (barElement) {
+                            barElement.style.width = `${cappedLotPercentage}%`;
+                            if (cappedLotPercentage >= 75) barElement.className = 'bg-red-500 h-2 rounded-full';
+                            else if (cappedLotPercentage >= 50) barElement.className = 'bg-orange-500 h-2 rounded-full';
+                            else barElement.className = 'bg-green-500 h-2 rounded-full';
+                        }
+                    });
+                }
+
+                // Update last update label
+                const parkingLastUpdateElement = document.getElementById('parking-last-update');
+                if (parkingLastUpdateElement && data.last_update) {
+                    let ds = data.last_update;
+                    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(ds)) ds = ds.replace(' ', 'T');
+                    parkingLastUpdateElement.textContent = formatRelativeTime(ds);
+                }
+
+            } catch (err) {
+                console.error('Error fetching parking status:', err);
+            }
+        }
+
+        async function fetchNVRRecordingStatus() {
+            try {
+                const response = await fetch('get_nvr_recording_status.php');
+                if (!response.ok) throw new Error('Network response was not ok');
+                const data = await response.json();
+
+                // Update Summary Stats
+                const totalPassed = data.total_passed;
+                const totalNVRs = data.total_nvrs;
+                const percentage = totalNVRs > 0 ? Math.round((totalPassed / totalNVRs) * 100) : 0;
+                const totalFailed = totalNVRs - totalPassed;
+
+                const summaryCountEl = document.getElementById('nvr-summary-count');
+                const summaryPercentageEl = document.getElementById('nvr-summary-percentage');
+                const passedCountEl = document.getElementById('nvr-passed-count');
+                const failedCountEl = document.getElementById('nvr-failed-count');
+
+                if (summaryCountEl) summaryCountEl.textContent = `${totalPassed}/${totalNVRs}`;
+                if (summaryPercentageEl) summaryPercentageEl.textContent = percentage;
+                if (passedCountEl) passedCountEl.textContent = totalPassed;
+                if (failedCountEl) failedCountEl.textContent = totalFailed;
+
+                // Update Last Update Time
+                if (data.last_update) {
+                    const lastUpdateEl = document.getElementById('nvr-last-update');
+                    if (lastUpdateEl) {
+                        let ds = data.last_update;
+                        // Fix for Safari/Firefox date parsing if needed, but local typically fine
+                        if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(ds)) ds = ds.replace(' ', 'T');
+                        lastUpdateEl.textContent = formatRelativeTime(ds);
+                    }
+                }
+
+                // Update Building Status Bars if possible
+                // (Requires adding IDs to building cards, skipping for now as per user focus on Summary)
+
+            } catch (error) {
+                console.error('Error fetching NVR recording status:', error);
+            }
+        }
+
+        // Initial call
+        fetchNVRRecordingStatus();
+        setInterval(fetchNVRRecordingStatus, 60000); // Update every minute
+
+        // Handheld Detector Status Fetcher
+        async function fetchHandheldStatus() {
+            try {
+                const response = await fetch('get_handheld_status.php');
+                if (!response.ok) throw new Error('Network response was not ok');
+                const data = await response.json();
+
+                // Helper to update status cards
+                const updateCard = (prefix, status) => {
+                    const statusEl = document.getElementById(prefix + '-status');
+                    const textEl = document.getElementById(prefix + '-text');
+                    const indicatorEl = document.getElementById(prefix + '-indicator');
+
+                    if (statusEl) statusEl.textContent = status || 'Unknown';
+
+                    // Simple logic for colors based on "Normal", "Pass", "Active", "Online" vs others
+                    const isGood = ['Normal', 'Pass', 'Active', 'Online', 'Good', 'Functional'].some(key => (status || '').includes(key));
+
+                    if (indicatorEl) {
+                        indicatorEl.className = `inline-block w-3 h-3 rounded-full pulse-animation ${isGood ? 'bg-green-500' : 'bg-red-500'}`;
+                    }
+                    if (statusEl) {
+                        statusEl.className = `text-xs ml-1 ${isGood ? 'text-green-600' : 'text-red-600'}`;
+                    }
+                };
+
+                updateCard('battery-check', data.battery_status);
+                updateCard('led-power', data.led_status);
+                updateCard('detection-range', data.detection_status);
+                updateCard('audio-alert', data.alarm_status);
+
+                // Update Last Update
+                if (data.last_update) {
+                    const lastUpdateEl = document.getElementById('detector-last-update');
+                    if (lastUpdateEl) {
+                        let ds = data.last_update;
+                        if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(ds)) ds = ds.replace(' ', 'T');
+                        lastUpdateEl.textContent = formatRelativeTime(ds);
+                    }
+                }
+
+            } catch (error) {
+                console.error('Error fetching handheld status:', error);
+            }
+        }
+
+        // Walkthrough Detector Status Fetcher
+        async function fetchWalkthroughStatus() {
+            try {
+                const response = await fetch('get_walkthrough_status.php');
+                if (!response.ok) throw new Error('Network response was not ok');
+                const data = await response.json();
+
+                // Update Zones
+                const container = document.getElementById('walkthrough-zones-container');
+                if (container && data.zones) {
+                    container.innerHTML = '';
+                    for (const [zoneId, zoneData] of Object.entries(data.zones)) {
+                        let colorClass = 'bg-red-50 border-red-200';
+                        let textColor = 'text-red-800';
+                        let statusColor = 'status-offline';
+                        let statusText = 'text-red-600';
+                        let label = 'Offline';
+
+                        if (zoneData.type === 'online') {
+                            colorClass = 'bg-green-50 border-green-200';
+                            textColor = 'text-blue-800';
+                            statusColor = 'status-online';
+                            statusText = 'text-green-600';
+                            label = 'Online';
+                        } else if (zoneData.type === 'maintenance') {
+                            colorClass = 'bg-yellow-50 border-yellow-200';
+                            textColor = 'text-blue-800';
+                            statusColor = 'status-warning';
+                            statusText = 'text-yellow-600';
+                            label = 'Maintenance';
+                        }
+
+                        const html = `
+                            <div class="text-center p-4 rounded-lg border-2 ${colorClass}">
+                                <h4 class="text-lg font-semibold ${textColor} mb-2">Zone ${zoneId}</h4>
+                                <div class="flex items-center justify-center">
+                                    <span class="status-indicator ${statusColor}"></span>
+                                    <span class="${statusText} font-semibold text-sm">${label}</span>
+                                </div>
+                            </div>
+                        `;
+                        container.insertAdjacentHTML('beforeend', html);
+                    }
+                }
+
+                // Update Summary Stats
+                const onlineCountEl = document.getElementById('walkthrough-online-count');
+                const offlineCountEl = document.getElementById('walkthrough-offline-count');
+                const maintenanceCountEl = document.getElementById('walkthrough-maintenance-count');
+                const percentageEl = document.getElementById('walkthrough-operational-percentage');
+
+                if (onlineCountEl) onlineCountEl.textContent = data.online_count;
+                if (offlineCountEl) offlineCountEl.textContent = data.offline_count;
+                if (maintenanceCountEl) maintenanceCountEl.textContent = data.maintenance_count;
+
+                const total = data.online_count + data.offline_count + data.maintenance_count;
+                const pct = total > 0 ? Math.round((data.online_count / total) * 100) : 0;
+                if (percentageEl) percentageEl.textContent = `${pct}%`;
+
+                // Update Last Update
+                if (data.last_update) {
+                    const lastUpdateEl = document.getElementById('walkthrough-last-update');
+                    if (lastUpdateEl) {
+                        let ds = data.last_update;
+                        if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(ds)) ds = ds.replace(' ', 'T');
+                        lastUpdateEl.textContent = formatRelativeTime(ds);
+                    }
+                }
+
+            } catch (error) {
+                console.error('Error fetching walkthrough status:', error);
+            }
+        }
+
+        // Camera Status Fetcher (Dynamic HTML Generation)
+        async function fetchCameraStatus() {
+            try {
+                const response = await fetch('get_camera_status.php');
+                if (!response.ok) throw new Error('Network response was not ok');
+                const data = await response.json();
+
+                let globalTotal = 0;
+                let globalOnline = 0;
+                let htmlContent = '';
+
+                // Define building visual styles
+                const buildingStyles = {
+                    'B2': { gradient: 'from-emerald-300 to-teal-400', border: 'border-emerald-200', icon: '🏭' },
+                    'B3': { gradient: 'from-violet-300 to-purple-400', border: 'border-violet-200', icon: '🏢' },
+                    'B4': { gradient: 'from-cyan-300 to-sky-400', border: 'border-sky-200', icon: '🏗️' },
+                    'B9': { gradient: 'from-amber-300 to-orange-400', border: 'border-amber-200', icon: '🧬' }
+                };
+
+                if (data.buildings) {
+                    for (const [building, nvrs] of Object.entries(data.buildings)) {
+                        const style = buildingStyles[building] || { gradient: 'from-gray-300 to-gray-400', border: 'border-gray-200', icon: '🏢' };
+                        let buildingTotal = 0;
+                        let buildingOnline = 0;
+                        let nvrHtml = '';
+
+                        // Process NVRs for this building
+                        nvrs.forEach(nvr => {
+                            const total = Number(nvr.total_channels) || 0;
+                            const online = Number(nvr.online_channels) || 0;
+                            const percentage = Number(nvr.percentage);
+
+                            globalTotal += total;
+                            globalOnline += online;
+                            buildingTotal += total;
+                            buildingOnline += online;
+
+                            // Determine colors based on percentage
+                            let progressColor, bgGradient, borderColor, textColor;
+                            if (percentage >= 100) {
+                                progressColor = 'bg-green-500'; bgGradient = 'from-green-50 to-green-100'; borderColor = 'border-green-300'; textColor = 'text-green-700';
+                            } else if (percentage >= 50) {
+                                progressColor = 'bg-yellow-500'; bgGradient = 'from-yellow-50 to-yellow-100'; borderColor = 'border-yellow-300'; textColor = 'text-yellow-700';
+                            } else {
+                                progressColor = 'bg-red-500'; bgGradient = 'from-red-50 to-red-100'; borderColor = 'border-red-300'; textColor = 'text-red-700';
+                            }
+
+                            const sanitizedName = nvr.nvr_name.replace(/[^a-zA-Z0-9]/g, '-');
+
+                            nvrHtml += `
+                                <div id="nvr-${sanitizedName}-container" class="bg-gradient-to-r ${bgGradient} ${borderColor} border-2 rounded-lg px-4 py-3 shadow-sm hover:shadow-md transition-all duration-200">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="font-semibold text-slate-800 text-sm">${nvr.nvr_name}</span>
+                                        <span id="nvr-${sanitizedName}-text" class="font-bold ${textColor} text-base">${online}/${total}</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                                        <div id="nvr-${sanitizedName}-bar" class="${progressColor} h-2.5 rounded-full transition-all duration-500" style="width: ${percentage}%"></div>
+                                    </div>
+                                    <div class="text-xs text-gray-600 mt-1 text-right"><span id="nvr-${sanitizedName}-percent">${percentage}</span>% Online</div>
+                                </div>
+                            `;
+                        });
+
+                        const buildingPercentage = buildingTotal > 0 ? Math.round((buildingOnline / buildingTotal) * 100) : 0;
+
+                        // Build Card HTML
+                        htmlContent += `
+                            <div class="bg-white/80 backdrop-blur-sm border-2 ${style.border} rounded-2xl p-5 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                                <div class="bg-gradient-to-r ${style.gradient} text-white rounded-xl px-4 py-3 mb-4 shadow-md">
+                                    <p class="text-xl font-bold flex items-center justify-center gap-2">
+                                        <span>${style.icon}</span>
+                                        <span>อาคาร ${building}</span>
+                                    </p>
+                                    <p class="text-sm text-center mt-1 opacity-90">
+                                        Overall: ${buildingOnline}/${buildingTotal} cameras (${buildingPercentage}%)
+                                    </p>
+                                </div>
+                                <div class="space-y-3 max-h-96 overflow-y-auto">
+                                    ${nvrHtml || '<div class="text-center py-8 text-gray-500"><p>ไม่มีข้อมูล NVR</p></div>'}
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+
+                // Inject HTML into container
+                const container = document.getElementById('camera-status-container');
+                if (container) {
+                    container.innerHTML = htmlContent;
+                }
+
+                // Update Summary Stats (Global)
+                const summaryTotalEl = document.getElementById('camera-summary-online-total');
+                const summaryPercentageEl = document.getElementById('camera-summary-percentage');
+                const summaryOnlineEl = document.getElementById('camera-summary-online');
+                const summaryOfflineEl = document.getElementById('camera-summary-offline');
+
+                const percentage = globalTotal > 0 ? Math.round((globalOnline / globalTotal) * 100) : 0;
+                const offline = globalTotal - globalOnline;
+
+                if (summaryTotalEl) summaryTotalEl.textContent = `${globalOnline}/${globalTotal}`;
+                if (summaryPercentageEl) summaryPercentageEl.textContent = percentage;
+                if (summaryOnlineEl) summaryOnlineEl.textContent = globalOnline;
+                if (summaryOfflineEl) summaryOfflineEl.textContent = offline;
+
+                // Update Last Update
+                if (data.last_update) {
+                    const lastUpdateEl = document.getElementById('camera-last-update');
+                    if (lastUpdateEl) {
+                        let ds = data.last_update;
+                        if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(ds)) ds = ds.replace(' ', 'T');
+                        lastUpdateEl.textContent = formatRelativeTime(ds);
+                    }
+                }
+
+            } catch (error) {
+                console.error('Error fetching camera status:', error);
+            }
+        }
+
+        // Initial calls
+        fetchSecurityStatus();
+        fetchCameraStatus();
+        fetchParkingStatus();
+        fetchHandheldStatus();
+        fetchWalkthroughStatus();
+
+        // Scheduling
+        setInterval(fetchSecurityStatus, 60000);
+        setInterval(fetchCameraStatus, 60000);
+        setInterval(fetchParkingStatus, 60000);
+        setInterval(fetchHandheldStatus, 60000); // 1 min
+        setInterval(fetchWalkthroughStatus, 60000); // 1 min
     </script>
     <!-- Removed injected Cloudflare challenge iframe/script to avoid 404 errors on local environment -->
+    <!-- Footer -->
+    <footer class="mt-12 mb-6 text-center">
+        <div class="flex flex-col items-center justify-center gap-2">
+            <div class="flex items-center gap-2">
+                <img src="report_assets/Images/PCS_logo.png" alt="PCS Engineering Solution"
+                    class="h-10 w-auto opacity-90 hover:opacity-100 transition-opacity">
+                <span class="font-semibold text-slate-600 text-lg tracking-tight">PCS Engineering Solution</span>
+            </div>
+            <p class="text-sm text-slate-400">
+                &copy; 2025 PCS Engineering Solution. All rights reserved.
+            </p>
+        </div>
+    </footer>
 </body>
 
 </html>
