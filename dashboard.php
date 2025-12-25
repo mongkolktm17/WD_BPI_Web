@@ -1,42 +1,120 @@
 <?php
-// Initialize the session
-session_start();
+require_once 'config.php';
 
 // Check if the user is logged in, if not then redirect him to login page
 if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
     header("location: login.php");
     exit;
 }
+
+// Function to get security personnel status with contract data
+function get_security_personnel_status($conn)
+{
+    $sql = "SELECT morning_shift, morning_shift_contract, evening_shift, evening_shift_contract FROM security_guard_counts ORDER BY record_date DESC, created_at DESC LIMIT 1";
+    $result = $conn->query($sql);
+    if ($result && $result->num_rows > 0) {
+        return $result->fetch_assoc();
+    }
+    return ['morning_shift' => 0, 'morning_shift_contract' => null, 'evening_shift' => 0, 'evening_shift_contract' => null];
+}
+
+// Fetch security status
+$security_status = get_security_personnel_status($conn);
+
+// Calculate NVR status counts (same logic as nvr_recording_days.php)
+$nvr_status_counts = [
+    'B2' => ['total' => 10, 'passed' => 0],
+    'B3' => ['total' => 2, 'passed' => 0],
+    'B4' => ['total' => 6, 'passed' => 0],
+    'B9' => ['total' => 1, 'passed' => 0],
+];
+
+$sql_latest_nvr_data = "
+    SELECT
+        cr.building,
+        crd.nvr_name,
+        crd.online_channels
+    FROM
+        cctv_reports cr
+    JOIN
+        cctv_report_details crd ON cr.id = crd.report_id
+    WHERE
+        (cr.building, crd.nvr_name, cr.report_time) IN (
+            SELECT
+                cr_inner.building,
+                crd_inner.nvr_name,
+                MAX(cr_inner.report_time)
+            FROM
+                cctv_reports cr_inner
+            JOIN
+                cctv_report_details crd_inner ON cr_inner.id = crd_inner.report_id
+            GROUP BY
+                cr_inner.building,
+                crd_inner.nvr_name
+        )
+";
+
+$result_latest_nvr_data = $conn->query($sql_latest_nvr_data);
+
+if ($result_latest_nvr_data && $result_latest_nvr_data->num_rows > 0) {
+    while ($row = $result_latest_nvr_data->fetch_assoc()) {
+        $building = $row['building'];
+        $online_channels = (int) $row['online_channels'];
+
+        // Check if the building is one of the specified ones and if it passes the 62-day criteria
+        if (isset($nvr_status_counts[$building]) && $online_channels >= 62) {
+            $nvr_status_counts[$building]['passed']++;
+        }
+    }
+}
+
+// Calculate totals
+$total_nvrs = 0;
+$total_passed = 0;
+foreach ($nvr_status_counts as $counts) {
+    $total_nvrs += $counts['total'];
+    $total_passed += $counts['passed'];
+}
+$total_failed = $total_nvrs - $total_passed;
+$overall_percentage = $total_nvrs > 0 ? round(($total_passed / $total_nvrs) * 100) : 0;
 ?>
 <!doctype html>
 <html lang="en">
- <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WD Security Dashboard</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WD Security Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
         body {
             box-sizing: border-box;
         }
-        
+
         .gradient-bg {
             background: linear-gradient(135deg, #e0f2fe 0%, #b3e5fc 100%);
         }
-        
+
         .card-shadow {
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
-        
+
         .pulse-animation {
             animation: pulse 2s infinite;
         }
-        
+
         @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
         }
-        
+
         .status-indicator {
             width: 12px;
             height: 12px;
@@ -44,16 +122,28 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
             display: inline-block;
             margin-right: 8px;
         }
-        
-        .status-online { background-color: #10b981; }
-        .status-offline { background-color: #ef4444; }
-        .status-warning { background-color: #f59e0b; }
+
+        .status-online {
+            background-color: #10b981;
+        }
+
+        .status-offline {
+            background-color: #ef4444;
+        }
+
+        .status-warning {
+            background-color: #f59e0b;
+        }
     </style>
-  <style>@view-transition { navigation: auto; }</style>
+    <style>
+        @view-transition {
+            navigation: auto;
+        }
+    </style>
     <script>
         // Safe loader for optional SDKs: append script tags and log failures instead of throwing 404 errors.
-        (function(){
-            const sdkUrls = ['/_sdk/element_sdk.js','/_sdk/data_sdk.js'];
+        (function () {
+            const sdkUrls = ['/_sdk/element_sdk.js', '/_sdk/data_sdk.js'];
             sdkUrls.forEach(url => {
                 const s = document.createElement('script');
                 s.src = url;
@@ -65,765 +155,980 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
         })();
     </script>
     <link rel="icon" href="report_assets/Images/PCS_logo.png" type="image/png">
- </head>
- <body class="gradient-bg min-h-full">
-  <div class="container mx-auto px-4 py-6"><!-- Header -->
-   <header class="mb-8">
-    <div class="flex flex-col md:flex-row justify-between md:items-center">
-        <!-- Main Header Content -->
-        <div class="text-center md:text-left">
-            <h1 id="dashboard-title" class="text-4xl font-bold text-blue-900 mb-2">Security System Dashboard</h1>
-            <h2 id="company-name" class="text-2xl text-blue-700">BPI Western Digital Storage Technologies (Thailand) Ltd.</h2>
-            <div class="mt-4 text-blue-600">
-                <span id="current-time" class="text-lg font-medium"></span>
-            </div>
-        </div>
-        <!-- Login Status and Settings -->
-        <div class="flex flex-wrap items-center justify-center gap-2 mt-4 md:mt-0">
-            <!-- User Status -->
-            <div class="flex items-center bg-white rounded-lg px-4 py-2 card-shadow">
-                <div class="w-3 h-3 bg-green-500 rounded-full mr-2 pulse-animation"></div>
-                <div class="text-sm">
-                    <div class="font-semibold text-blue-900" id="user-name">
-                        Admin User
+</head>
+
+<body class="gradient-bg min-h-full">
+    <div class="container mx-auto px-4 py-6"><!-- Header -->
+        <header class="mb-8">
+            <div class="flex flex-col md:flex-row justify-between md:items-center">
+                <!-- Main Header Content -->
+                <div class="text-center md:text-left">
+                    <h1 id="dashboard-title" class="text-4xl font-bold text-blue-900 mb-2">Security System Dashboard
+                    </h1>
+                    <h2 id="company-name" class="text-2xl text-blue-700">BPI Western Digital Storage Technologies
+                        (Thailand) Ltd.</h2>
+                    <div class="mt-4 text-blue-600">
+                        <span id="current-time" class="text-lg font-medium"></span>
                     </div>
-                    <div class="text-blue-600 text-xs" id="user-role">
-                        System Administrator
+                </div>
+                <!-- Login Status and Settings -->
+                <div class="flex flex-wrap items-center justify-center gap-2 mt-4 md:mt-0">
+                    <!-- User Status -->
+                    <div class="flex items-center bg-white rounded-lg px-4 py-2 card-shadow">
+                        <div class="w-3 h-3 bg-green-500 rounded-full mr-2 pulse-animation"></div>
+                        <div class="text-sm">
+                            <div class="font-semibold text-blue-900" id="user-name">
+                                Admin User
+                            </div>
+                            <div class="text-blue-600 text-xs" id="user-role">
+                                System Administrator
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Report Button -->
+                    <a href="report_page.php"
+                        class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg card-shadow transition-colors flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                                d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z"
+                                clip-rule="evenodd"></path>
+                        </svg>
+                        <span>Report</span>
+                    </a>
+                    <!-- Settings Button -->
+                    <button id="settings-btn"
+                        class="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-lg card-shadow transition-colors">
+                        <svg class="w-5 h-5" fill="currentColor" viewbox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                                d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
+                                clip-rule="evenodd"></path>
+                        </svg>
+                    </button>
+                    <!-- Logout Button -->
+                    <a href="logout.php"
+                        class="bg-red-600 hover:bg-red-700 text-white p-3 rounded-lg card-shadow transition-colors">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" stroke="currentColor"
+                            stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <!-- Security Personnel Section -->
+        <section class="mb-8">
+            <h3 id="security-section-title" class="text-2xl font-bold text-blue-900 mb-4">Security Personnel Status
+                <span class="text-sm text-gray-500 ml-2">(Last Update: <span id="security-last-update"></span>)</span>
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Day Shift Card -->
+                <div class="bg-white rounded-lg p-6 card-shadow">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h4 class="text-lg font-semibold text-blue-800 flex items-center">
+                                <svg class="w-5 h-5 mr-2 text-yellow-500" fill="currentColor" viewbox="0 0 20 20">
+                                    <path fill-rule="evenodd"
+                                        d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"
+                                        clip-rule="evenodd"></path>
+                                </svg> Day Shift
+                            </h4>
+                            <p class="text-3xl font-bold" id="day-shift-count">
+                                <?php
+                                $morning_actual = $security_status['morning_shift'];
+                                $morning_contract = $security_status['morning_shift_contract'];
+                                $morning_color = (!is_null($morning_contract) && $morning_actual < $morning_contract) ? 'text-orange-500' : 'text-green-500';
+                                ?>
+                                <span
+                                    class="<?php echo $morning_color; ?>"><?php echo htmlspecialchars($morning_actual); ?></span><?php if (!is_null($morning_contract)): ?><span
+                                        class="text-blue-400 text-2xl"> /
+                                        <?php echo htmlspecialchars($morning_contract); ?></span><?php endif; ?>
+                            </p>
+                            <?php if (!is_null($morning_contract)): ?>
+                                <p class="text-xs text-gray-500"><span class="<?php echo $morning_color; ?>">●</span> Actual
+                                    / <span class="text-blue-400">●</span> Contract</p>
+                            <?php endif; ?>
+                            <p class="text-sm text-gray-600">07:00 - 19:00</p>
+                        </div>
+                        <div>
+                            <img src="report_assets/Images/security-officer.png" alt="Day Shift"
+                                class="w-12 h-12 object-contain" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Night Shift Card -->
+                <div class="bg-white rounded-lg p-6 card-shadow">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h4 class="text-lg font-semibold text-blue-800 flex items-center">
+                                <svg class="w-5 h-5 mr-2 text-indigo-600" fill="currentColor" viewbox="0 0 20 20">
+                                    <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
+                                </svg> Night Shift
+                            </h4>
+                            <p class="text-3xl font-bold" id="night-shift-count">
+                                <?php
+                                $evening_actual = $security_status['evening_shift'];
+                                $evening_contract = $security_status['evening_shift_contract'];
+                                $evening_color = (!is_null($evening_contract) && $evening_actual < $evening_contract) ? 'text-orange-500' : 'text-green-500';
+                                ?>
+                                <span
+                                    class="<?php echo $evening_color; ?>"><?php echo htmlspecialchars($evening_actual); ?></span><?php if (!is_null($evening_contract)): ?><span
+                                        class="text-blue-400 text-2xl"> /
+                                        <?php echo htmlspecialchars($evening_contract); ?></span><?php endif; ?>
+                            </p>
+                            <?php if (!is_null($evening_contract)): ?>
+                                <p class="text-xs text-gray-500"><span class="<?php echo $evening_color; ?>">●</span> Actual
+                                    / <span class="text-blue-400">●</span> Contract</p>
+                            <?php endif; ?>
+                            <p class="text-sm text-gray-600">19:00 - 07:00</p>
+                        </div>
+                        <div>
+                            <img src="report_assets/Images/security-officer.png" alt="Night Shift"
+                                class="w-12 h-12 object-contain" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Total Active Card -->
+                <div class="bg-white rounded-lg p-6 card-shadow border-2 border-blue-300">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h4 class="text-lg font-semibold text-blue-800">Total Active</h4>
+                            <p class="text-3xl font-bold" id="total-shift-count">
+                                <?php
+                                $total_actual = $morning_actual + $evening_actual;
+                                $total_contract = (is_null($morning_contract) ? 0 : $morning_contract) + (is_null($evening_contract) ? 0 : $evening_contract);
+                                $show_contract = !is_null($morning_contract) || !is_null($evening_contract);
+                                $total_color = ($show_contract && $total_actual < $total_contract) ? 'text-orange-500' : 'text-green-500';
+                                ?>
+                                <span
+                                    class="<?php echo $total_color; ?>"><?php echo htmlspecialchars($total_actual); ?></span><?php if ($show_contract): ?><span
+                                        class="text-blue-400 text-2xl"> /
+                                        <?php echo htmlspecialchars($total_contract); ?></span><?php endif; ?>
+                            </p>
+                            <?php if ($show_contract): ?>
+                                <p class="text-xs text-gray-500 mt-1"><span class="<?php echo $total_color; ?>">●</span>
+                                    Actual / <span class="text-blue-400">●</span> Contract</p>
+                            <?php endif; ?>
+                            <p class="text-sm font-medium">Total Daily Force</p>
+                            <p class="text-xs text-gray-500 mt-1">Day + Night Shifts</p>
+
+                        </div>
+                        <div>
+                            <img src="report_assets/Images/security-officer.png" alt="Total Active"
+                                class="w-12 h-12 object-contain" />
+                        </div>
                     </div>
                 </div>
             </div>
-            <!-- Report Button -->
-            <a href="report_page.php" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg card-shadow transition-colors flex items-center">
-                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"></path></svg>
-                <span>Report</span>
-            </a>
-            <!-- Settings Button -->
-            <button id="settings-btn" class="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-lg card-shadow transition-colors">
-                <svg class="w-5 h-5" fill="currentColor" viewbox="0 0 20 20"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"></path></svg>
-            </button>
-            <!-- Logout Button -->
-            <a href="logout.php" class="bg-red-600 hover:bg-red-700 text-white p-3 rounded-lg card-shadow transition-colors">
-                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-                </svg>
-            </a>
-        </div>
-    </div>
-</header><!-- Security Personnel Section -->
-   <section class="mb-8">
-    <h3 id="security-section-title" class="text-2xl font-bold text-blue-900 mb-4">Security Personnel Status <span class="text-sm text-gray-500 ml-2">(Last Update: <span id="security-last-update"></span>)</span></h3>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-     <div class="bg-white rounded-lg p-6 card-shadow">
-      <div class="flex items-center justify-between">
-       <div>
-        <h4 class="text-lg font-semibold text-blue-800 flex items-center">
-         <svg class="w-5 h-5 mr-2 text-yellow-500" fill="currentColor" viewbox="0 0 20 20"><path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"></path>
-         </svg> Day Shift</h4>
-        <p class="text-3xl font-bold text-blue-600" id="day-shift-count">0</p>
-        <p class="text-sm text-gray-600">06:00 - 18:00</p>
-        <p class="text-xs text-green-600 font-medium mt-1">✓ Full Coverage</p>
-       </div>
-       <div>
-        <img src="report_assets/Images/security-officer.png" alt="Day Shift" class="w-12 h-12 object-contain" />
-       </div>
-      </div>
-     </div>
-     <div class="bg-white rounded-lg p-6 card-shadow">
-      <div class="flex items-center justify-between">
-       <div>
-        <h4 class="text-lg font-semibold text-blue-800 flex items-center">
-         <svg class="w-5 h-5 mr-2 text-indigo-600" fill="currentColor" viewbox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
-         </svg> Night Shift</h4>
-        <p class="text-3xl font-bold text-blue-600" id="night-shift-count">0</p>
-        <p class="text-sm text-gray-600">18:00 - 06:00</p>
-        <p class="text-xs text-yellow-600 font-medium mt-1">⚠ Reduced Staff</p>
-       </div>
-       <div>
-        <img src="report_assets/Images/security-officer.png" alt="Night Shift" class="w-12 h-12 object-contain" />
-       </div>
-      </div>
-     </div>
-     <div class="bg-white rounded-lg p-6 card-shadow border-2 border-blue-300">
-      <div class="flex items-center justify-between">
-       <div>
-        <h4 class="text-lg font-semibold text-blue-800">Total Active</h4>
-        <p class="text-3xl font-bold text-blue-600" id="current-shift-count">15</p>
-        <p class="text-sm font-medium" id="current-shift-status">Day Shift Active</p>
-        <p class="text-xs text-gray-500 mt-1" id="shift-change-time">Next change: 18:00</p>
-       </div>
-       <div>
-        <img src="report_assets/Images/security-officer.png" alt="Total Active" class="w-12 h-12 object-contain" />
-       </div>
-      </div>
-     </div>
-    </div>
-   </section><!-- NVR Status Section -->
-   <section class="mb-8">
-    <h3 id="nvr-section-title" class="text-2xl font-bold text-blue-900 mb-4">NVR Recording Status</h3>
-    <div class="mb-4 p-4 bg-blue-50 rounded-lg">
-     <div class="flex items-center text-sm text-blue-800">
-      <svg class="w-5 h-5 mr-2" fill="currentColor" viewbox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
-      </svg><span><strong>Last Update:</strong> <span id="nvr-last-update">-</span></span>
-     </div>
-    </div>
-    <!-- Summary Card with Gradient -->
-    <div class="mb-6 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 text-white card-shadow">
-     <div class="flex items-center justify-between flex-wrap">
-      <div>
-       <h4 class="text-xl font-semibold mb-2">NVR Recording Status Summary</h4>
-       <div class="text-3xl font-bold" id="nvr-summary-total">
-        0/0 (<span id="nvr-summary-percentage">0</span>%)
-       </div>
-       <div class="text-blue-100 text-sm">
-        NVRs Passed / Total (Percentage)
-       </div>
-      </div>
-      <div class="text-right">
-       <div class="grid grid-cols-2 gap-4 text-sm">
-        <div class="text-center">
-         <div class="text-2xl font-bold text-green-300" id="nvr-summary-pass">
-          0
-         </div>
-         <div class="text-blue-100">
-          Passed
-         </div>
-        </div>
-        <div class="text-center">
-         <div class="text-2xl font-bold text-red-300" id="nvr-summary-fail">
-          0
-         </div>
-         <div class="text-blue-100">
-          Failed
-         </div>
-        </div>
-       </div>
-      </div>
-     </div>
-    </div>
-    <!-- Building Cards Grid -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        <div class="bg-white rounded-lg p-4 md:p-6 card-shadow" data-building="B.2">
-            <h4 class="text-base md:text-lg font-semibold text-blue-800 mb-3 md:mb-4">Building B.2</h4>
-            <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2 mb-1" id="nvr-progressbar-62-B_2">
-                <div class="h-2.5 rounded-full" id="nvr-progressbar-fill-62-B_2" style="width: 0%"></div>
-            </div>
-            <p class="text-sm text-slate-500 mt-2">
-                <span class="font-bold text-green-600" id="nvr-passcount-62-B_2">0</span> / <span id="nvr-totalcount-62-B_2">0</span> Passed
-            </p>
-            <div class="mt-2 md:mt-3 text-xs text-gray-500">
-                <div id="nvr-count-62-B_2">Total NVRs: 0</div>
-            </div>
-        </div>
-    <div class="bg-white rounded-lg p-4 md:p-6 card-shadow" data-building="B.3">
-        <h4 class="text-base md:text-lg font-semibold text-blue-800 mb-3 md:mb-4">Building B.3</h4>
-        <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2 mb-1" id="nvr-progressbar-62-B_3">
-            <div class="h-2.5 rounded-full" id="nvr-progressbar-fill-62-B_3" style="width: 0%"></div>
-        </div>
-        <p class="text-sm text-slate-500 mt-2">
-            <span class="font-bold text-green-600" id="nvr-passcount-62-B_3">0</span> / <span id="nvr-totalcount-62-B_3">0</span> Passed
-        </p>
-        <div class="mt-2 md:mt-3 text-xs text-gray-500">
-            <div id="nvr-count-62-B_3">Total NVRs: 0</div>
-        </div>
-    </div>
-    <div class="bg-white rounded-lg p-4 md:p-6 card-shadow" data-building="B.4">
-        <h4 class="text-base md:text-lg font-semibold text-blue-800 mb-3 md:mb-4">Building B.4</h4>
-        <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2 mb-1" id="nvr-progressbar-62-B_4">
-            <div class="h-2.5 rounded-full" id="nvr-progressbar-fill-62-B_4" style="width: 0%"></div>
-        </div>
-        <p class="text-sm text-slate-500 mt-2">
-            <span class="font-bold text-green-600" id="nvr-passcount-62-B_4">0</span> / <span id="nvr-totalcount-62-B_4">0</span> Passed
-        </p>
-        <div class="mt-2 md:mt-3 text-xs text-gray-500">
-            <div id="nvr-count-62-B_4">Total NVRs: 0</div>
-        </div>
-    </div>
-        <div class="bg-white rounded-lg p-4 md:p-6 card-shadow" data-building="B.8">
-            <h4 class="text-base md:text-lg font-semibold text-blue-800 mb-3 md:mb-4">Building B.8</h4>
-            <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2 mb-1" id="nvr-progressbar-62-B_8">
-                <div class="h-2.5 rounded-full" id="nvr-progressbar-fill-62-B_8" style="width: 0%"></div>
-            </div>
-            <p class="text-sm text-slate-500 mt-2">
-                <span class="font-bold text-green-600" id="nvr-passcount-62-B_8">0</span> / <span id="nvr-totalcount-62-B_8">0</span> Passed
-            </p>
-            <div class="mt-2 md:mt-3 text-xs text-gray-500">
-                <div id="nvr-count-62-B_8">Total NVRs: 0</div>
-            </div>
-        </div>    </div>
-   </section><!-- Camera Status Section -->
-   <section class="mb-8">
-    <h3 id="camera-section-title" class="text-2xl font-bold text-blue-900 mb-4">Camera Online Status <span class="text-sm text-gray-500 ml-2">(Last Update: <span id="camera-last-update"></span>)</span></h3>
-    <!-- Summary Card with Gradient -->
-    <div class="mb-6 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 text-white card-shadow">
-     <div class="flex items-center justify-between flex-wrap">
-      <div>
-       <h4 class="text-xl font-semibold mb-2">Camera Online Status Summary</h4>
-       <div class="text-3xl font-bold">
-        <span id="camera-summary-online-total">0/0</span> (<span id="camera-summary-percentage">0</span>%)
-       </div>
-       <div class="text-blue-100 text-sm">
-        Online Cameras / Total Cameras (Percentage)
-       </div>
-      </div>
-      <div class="text-right">
-       <div class="grid grid-cols-2 gap-4 text-sm">
-        <div class="text-center">
-         <div class="text-2xl font-bold text-green-300" id="camera-summary-online">
-          0
-         </div>
-         <div class="text-blue-100">
-          Online
-         </div>
-        </div>
-        <div class="text-center">
-         <div class="text-2xl font-bold text-red-300" id="camera-summary-offline">
-          0
-         </div>
-         <div class="text-blue-100">
-          Offline
-         </div>
-        </div>
-       </div>
-      </div>
-     </div>
-    </div>
+        </section>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6" id="camera-status-container">
-     <div class="bg-white rounded-lg p-6 card-shadow">
-      <h4 class="text-xl font-semibold text-blue-800 mb-4">Building B.3</h4>
-      <div class="space-y-4">
-       <div class="p-3 bg-blue-50 rounded">
-        <div class="flex justify-between items-center mb-2"><span class="font-medium">NVR-1</span> <span class="text-sm font-semibold">30/32 (94%)</span>
+        <!-- NVR Status Section -->
+        <section class="mb-8">
+            <h3 id="nvr-section-title" class="text-2xl font-bold text-blue-900 mb-4">NVR Recording Status</h3>
+            <div class="mb-4 p-4 bg-blue-50 rounded-lg">
+                <div class="flex items-center text-sm text-blue-800">
+                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewbox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                            clip-rule="evenodd"></path>
+                    </svg><span><strong>Last Update:</strong> <span id="nvr-last-update">-</span></span>
+                </div>
+            </div>
+            <!-- Summary Card with Gradient -->
+            <div class="mb-6 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 text-white card-shadow">
+                <div class="flex items-center justify-between flex-wrap">
+                    <div>
+                        <h4 class="text-xl font-semibold mb-2">NVR Recording Status Summary</h4>
+                        <div class="text-3xl font-bold">
+                            <?php echo $total_passed; ?>/<?php echo $total_nvrs; ?>
+                            (<span><?php echo $overall_percentage; ?></span>%)
+                        </div>
+                        <div class="text-blue-100 text-sm">
+                            NVRs Passed / Total (Percentage)
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-green-300">
+                                    <?php echo $total_passed; ?>
+                                </div>
+                                <div class="text-blue-100">
+                                    Passed
+                                </div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-red-300">
+                                    <?php echo $total_failed; ?>
+                                </div>
+                                <div class="text-blue-100">
+                                    Failed
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Building Cards Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                <?php foreach ($nvr_status_counts as $building => $counts):
+                    $percentage = ($counts['total'] > 0) ? round(($counts['passed'] / $counts['total']) * 100) : 0;
+                    $bar_color = ($percentage == 100) ? 'bg-green-600' : 'bg-red-600';
+                    ?>
+                    <div class="bg-white rounded-lg p-4 md:p-6 card-shadow" data-building="<?php echo $building; ?>">
+                        <h4 class="text-base md:text-lg font-semibold text-blue-800 mb-3 md:mb-4">Building <?php echo $building; ?></h4>
+                        <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2 mb-1">
+                            <div class="<?php echo $bar_color; ?> h-2.5 rounded-full" style="width: <?php echo $percentage; ?>%"></div>
+                        </div>
+                        <p class="text-sm text-slate-500 mt-2">
+                            <span class="font-bold <?php echo ($counts['passed'] == $counts['total']) ? 'text-green-600' : 'text-red-600'; ?>"><?php echo $counts['passed']; ?></span> / <?php echo $counts['total']; ?> Passed
+                        </p>
+                        <div class="mt-2 md:mt-3 text-xs text-gray-500">
+                            <div>Total NVRs: <?php echo $counts['total']; ?></div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </section><!-- Camera Status Section -->
+        <section class="mb-8">
+            <h3 id="camera-section-title" class="text-2xl font-bold text-blue-900 mb-4">Camera Online Status <span
+                    class="text-sm text-gray-500 ml-2">(Last Update: <span id="camera-last-update"></span>)</span></h3>
+            <!-- Summary Card with Gradient -->
+            <div class="mb-6 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 text-white card-shadow">
+                <div class="flex items-center justify-between flex-wrap">
+                    <div>
+                        <h4 class="text-xl font-semibold mb-2">Camera Online Status Summary</h4>
+                        <div class="text-3xl font-bold">
+                            <span id="camera-summary-online-total">0/0</span> (<span
+                                id="camera-summary-percentage">0</span>%)
+                        </div>
+                        <div class="text-blue-100 text-sm">
+                            Online Cameras / Total Cameras (Percentage)
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-green-300" id="camera-summary-online">
+                                    0
+                                </div>
+                                <div class="text-blue-100">
+                                    Online
+                                </div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-red-300" id="camera-summary-offline">
+                                    0
+                                </div>
+                                <div class="text-blue-100">
+                                    Offline
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6" id="camera-status-container">
+                <!-- Camera data will be dynamically loaded here from get_camera_status.php -->
+            </div>
+        </section><!-- Parking Report Section -->
+        <section class="mb-8">
+            <h3 id="parking-section-title" class="text-2xl font-bold text-blue-900 mb-4">Parking Lot Report <span
+                    class="text-sm text-gray-500 ml-2">(Last Update: <span id="parking-last-update"></span>)</span></h3>
+            <!-- Total Summary Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 text-white card-shadow">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h4 class="text-xl font-semibold mb-2 flex items-center">
+                                <img src="report_assets/Images/car2.png" alt="Car Icon" class="w-8 h-8 mr-3" /> Car
+                                Parking
+                                Total
+                            </h4>
+                            <div class="text-3xl font-bold" id="car-parking-total">
+                                749/990
+                            </div>
+                            <div class="text-blue-100 text-sm" id="car-parking-percentage">
+                                76% Occupied
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="w-20 h-20 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                                <img src="report_assets/Images/car2.png" alt="Car Icon" class="w-10 h-10" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-6 text-white card-shadow">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h4 class="text-xl font-semibold mb-2 flex items-center">
+                                <img src="report_assets/Images/motorcycle.png" alt="Motorcycle Icon"
+                                    class="w-8 h-8 mr-3" />
+                                Motorcycle Parking Total
+                            </h4>
+                            <div class="text-3xl font-bold" id="motorcycle-parking-total">
+                                590/757
+                            </div>
+                            <div class="text-green-100 text-sm" id="motorcycle-parking-percentage">
+                                78% Occupied
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="w-20 h-20 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                                <img src="report_assets/Images/motorcycle.png" alt="Motorcycle Icon"
+                                    class="w-10 h-10" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6"><!-- Car Parking -->
+                <div class="bg-white rounded-lg p-6 card-shadow">
+                    <h4 class="text-xl font-semibold text-blue-800 mb-4 flex items-center">
+                        <svg class="w-6 h-6 mr-2" fill="currentColor" viewbox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                                d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm2 6a2 2 0 114 0 2 2 0 01-4 0zm6 0a2 2 0 114 0 2 2 0 01-4 0z"
+                                clip-rule="evenodd"></path>
+                        </svg> Car Parking Areas
+                    </h4>
+                    <div class="space-y-4">
+                        <div class="p-3 bg-blue-50 rounded">
+                            <div class="flex flex-wrap justify-between items-center mb-2"><span
+                                    class="font-medium">Parking
+                                    Lot 2</span> <span class="text-sm font-semibold"
+                                    id="car-lot-Parking-Lot-2-status">89/114 (78%)</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div id="car-lot-Parking-Lot-2-bar" class="bg-green-500 h-2 rounded-full"
+                                    style="width: 78%"></div>
+                            </div>
+                        </div>
+                        <div class="p-3 bg-blue-50 rounded">
+                            <div class="flex flex-wrap justify-between items-center mb-2"><span
+                                    class="font-medium">Parking
+                                    Lot 3/1</span> <span class="text-sm font-semibold"
+                                    id="car-lot-Parking-Lot-3-1-status">76/100 (76%)</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div id="car-lot-Parking-Lot-3-1-bar" class="bg-green-500 h-2 rounded-full"
+                                    style="width: 76%"></div>
+                            </div>
+                        </div>
+                        <div class="p-3 bg-blue-50 rounded">
+                            <div class="flex flex-wrap justify-between items-center mb-2"><span
+                                    class="font-medium">Parking
+                                    Lot 3/2</span> <span class="text-sm font-semibold"
+                                    id="car-lot-Parking-Lot-3-2-status">198/264 (75%)</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div id="car-lot-Parking-Lot-3-2-bar" class="bg-green-500 h-2 rounded-full"
+                                    style="width: 75%"></div>
+                            </div>
+                        </div>
+                        <div class="p-3 bg-blue-50 rounded">
+                            <div class="flex flex-wrap justify-between items-center mb-2"><span
+                                    class="font-medium">Parking
+                                    Lot 4</span> <span class="text-sm font-semibold"
+                                    id="car-lot-Parking-Lot-4-status">312/415 (75%)</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div id="car-lot-Parking-Lot-4-bar" class="bg-green-500 h-2 rounded-full"
+                                    style="width: 75%"></div>
+                            </div>
+                        </div>
+                        <div class="p-3 bg-blue-50 rounded">
+                            <div class="flex flex-wrap justify-between items-center mb-2"><span
+                                    class="font-medium">Parking
+                                    Lot 5</span> <span class="text-sm font-semibold"
+                                    id="car-lot-Parking-Lot-5-status">41/53
+                                    (77%)</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div id="car-lot-Parking-Lot-5-bar" class="bg-green-500 h-2 rounded-full"
+                                    style="width: 77%"></div>
+                            </div>
+                        </div>
+                        <div class="p-3 bg-blue-50 rounded">
+                            <div class="flex flex-wrap justify-between items-center mb-2"><span
+                                    class="font-medium">Parking
+                                    Lot B.8</span> <span class="text-sm font-semibold"
+                                    id="car-lot-Parking-Lot-B-8-status">33/44 (75%)</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div id="car-lot-Parking-Lot-B-8-bar" class="bg-green-500 h-2 rounded-full"
+                                    style="width: 75%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div><!-- Motorcycle Parking -->
+                <div class="bg-white rounded-lg p-6 card-shadow">
+                    <h4 class="text-xl font-semibold text-blue-800 mb-4 flex items-center">
+                        <svg class="w-6 h-6 mr-2" fill="currentColor" viewbox="0 0 20 20">
+                            <path
+                                d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z">
+                            </path>
+                        </svg> Motorcycle Parking Areas
+                    </h4>
+                    <div class="space-y-4">
+                        <div class="p-3 bg-blue-50 rounded">
+                            <div class="flex flex-wrap justify-between items-center mb-2"><span
+                                    class="font-medium">Motorcycle Lot 1</span> <span class="text-sm font-semibold"
+                                    id="motorcycle-lot-Motorcycle-Lot-1-status">234/296 (79%)</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div id="motorcycle-lot-Motorcycle-Lot-1-bar" class="bg-green-500 h-2 rounded-full"
+                                    style="width: 79%"></div>
+                            </div>
+                        </div>
+                        <div class="p-3 bg-blue-50 rounded">
+                            <div class="flex flex-wrap justify-between items-center mb-2"><span
+                                    class="font-medium">Motorcycle Lot 2</span> <span class="text-sm font-semibold"
+                                    id="motorcycle-lot-Motorcycle-Lot-2-status">167/210 (80%)</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div id="motorcycle-lot-Motorcycle-Lot-2-bar" class="bg-orange-500 h-2 rounded-full"
+                                    style="width: 80%"></div>
+                            </div>
+                        </div>
+                        <div class="p-3 bg-blue-50 rounded">
+                            <div class="flex flex-wrap justify-between items-center mb-2"><span
+                                    class="font-medium">Motorcycle Lot 3/1</span> <span class="text-sm font-semibold"
+                                    id="motorcycle-lot-Motorcycle-Lot-3-1-status">189/251 (75%)</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div id="motorcycle-lot-Motorcycle-Lot-3-1-bar" class="bg-green-500 h-2 rounded-full"
+                                    style="width: 75%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section><!-- Metal Detector Status Section -->
+        <section class="mb-8">
+            <h3 id="detector-section-title" class="text-2xl font-bold text-blue-900 mb-4">Hand Held Metal Detector
+                Status
+                <span class="text-sm text-gray-500 ml-2">(Last Update: <span id="detector-last-update"></span>)</span>
+            </h3>
+            <div class="bg-white rounded-lg p-6 card-shadow">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="text-center p-4 bg-green-50 rounded-lg border-2 border-green-200">
+                        <div class="w-16 h-16 mx-auto mb-3 bg-green-500 rounded-full flex items-center justify-center">
+                            <svg class="w-8 h-8 text-white" fill="currentColor" viewbox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                        <h4 class="font-semibold text-green-800">Battery Check</h4>
+                        <p id="battery-check-text" class="text-sm text-green-600 mt-1">All devices checked</p>
+                        <div class="mt-2"><span id="battery-check-indicator"
+                                class="inline-block w-3 h-3 bg-green-500 rounded-full pulse-animation"></span> <span
+                                id="battery-check-status" class="text-xs text-green-600 ml-1">Active</span>
+                        </div>
+                    </div>
+                    <div class="text-center p-4 bg-green-50 rounded-lg border-2 border-green-200">
+                        <div class="w-16 h-16 mx-auto mb-3 bg-green-500 rounded-full flex items-center justify-center">
+                            <svg class="w-8 h-8 text-white" fill="currentColor" viewbox="0 0 20 20">
+                                <path
+                                    d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM6 10a1 1 0 01-1 1H4a1 1 0 110-2h1a1 1 0 011 1zM6.464 14.95A1 1 0 105.05 13.536l-.707.707a1 1 0 001.414 1.414l.707-.707zM11 16a1 1 0 10-2 0v1a1 1 0 102 0v-1zM14.95 13.536a1 1 0 00-1.414 1.414l.707.707a1 1 0 001.414-1.414l-.707-.707z">
+                                </path>
+                            </svg>
+                        </div>
+                        <h4 class="font-semibold text-green-800">LED Power</h4>
+                        <p id="led-power-text" class="text-sm text-green-600 mt-1">Green LED active</p>
+                        <div class="mt-2"><span id="led-power-indicator"
+                                class="inline-block w-3 h-3 bg-green-500 rounded-full pulse-animation"></span> <span
+                                id="led-power-status" class="text-xs text-green-600 ml-1">Online</span>
+                        </div>
+                    </div>
+                    <div class="text-center p-4 bg-green-50 rounded-lg border-2 border-green-200">
+                        <div class="w-16 h-16 mx-auto mb-3 bg-green-500 rounded-full flex items-center justify-center">
+                            <svg class="w-8 h-8 text-white" fill="currentColor" viewbox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.05 6.05 6.981 6.981 0 003 11a7 7 0 1011.95-4.95c-.592-.591-.98-.985-1.348-1.467-.363-.476-.724-1.063-1.207-2.03zM12.12 15.12A3 3 0 017 13s.879.5 2.5.5c0-1 .5-4 1.25-4.5.5 1 .786 1.293 1.371 1.879A2.99 2.99 0 0113 13a2.99 2.99 0 01-.879 2.121z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                        <h4 class="font-semibold text-green-800">Detection Range</h4>
+                        <p id="detection-range-text" class="text-sm text-green-600 mt-1">Range tested OK</p>
+                        <div class="mt-2"><span id="detection-range-indicator"
+                                class="inline-block w-3 h-3 bg-green-500 rounded-full pulse-animation"></span> <span
+                                id="detection-range-status" class="text-xs text-green-600 ml-1">Calibrated</span>
+                        </div>
+                    </div>
+                    <div class="text-center p-4 bg-green-50 rounded-lg border-2 border-green-200">
+                        <div class="w-16 h-16 mx-auto mb-3 bg-green-500 rounded-full flex items-center justify-center">
+                            <svg class="w-8 h-8 text-white" fill="currentColor" viewbox="0 0 20 20">
+                                <path
+                                    d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V7.82l8-1.6v5.894A4.37 4.37 0 0015 12c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V3z">
+                                </path>
+                            </svg>
+                        </div>
+                        <h4 class="font-semibold text-green-800">Audio Alert</h4>
+                        <p id="audio-alert-text" class="text-sm text-green-600 mt-1">Sound system OK</p>
+                        <div class="mt-2"><span id="audio-alert-indicator"
+                                class="inline-block w-3 h-3 bg-green-500 rounded-full pulse-animation"></span> <span
+                                id="audio-alert-status" class="text-xs text-green-600 ml-1">Functional</span>
+                        </div>
+                    </div>
+                </div><!-- Test Results -->
+                <div class="mt-6 p-4 bg-blue-50 rounded-lg">
+                    <h4 class="font-semibold text-blue-800 mb-3">Latest Test Results</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div class="flex justify-between"><span class="text-gray-600">Metal Detection:</span> <span
+                                id="metal-detection-result" class="text-green-600 font-semibold">✓ Red LED +
+                                Sound</span>
+                        </div>
+                        <div class="flex justify-between"><span class="text-gray-600">Last Calibration:</span> <span
+                                id="last-calibration" class="text-blue-600 font-semibold">Today 06:00</span>
+                        </div>
+                        <div class="flex justify-between"><span class="text-gray-600">Next Check:</span> <span
+                                id="next-check" class="text-blue-600 font-semibold">Tomorrow 06:00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section><!-- Walkthrough Metal Detector Section -->
+        <section class="mb-8">
+            <h3 id="walkthrough-section-title" class="text-2xl font-bold text-blue-900 mb-4">Walkthrough Metal Detector
+                Status <span class="text-sm text-gray-500 ml-2">(Last Update: <span
+                        id="walkthrough-last-update"></span>)</span></h3>
+            <div class="bg-white rounded-lg p-6 card-shadow">
+                <div id="walkthrough-zones-container" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                    <div class="text-center p-4 bg-green-50 rounded-lg border-2 border-green-200">
+                        <h4 class="text-lg font-semibold text-blue-800 mb-2">Zone 1</h4>
+                        <div class="flex items-center justify-center"><span
+                                class="status-indicator status-online"></span>
+                            <span class="text-green-600 font-semibold text-sm">Online</span>
+                        </div>
+                    </div>
+                    <div class="text-center p-4 bg-green-50 rounded-lg border-2 border-green-200">
+                        <h4 class="text-lg font-semibold text-blue-800 mb-2">Zone 2</h4>
+                        <div class="flex items-center justify-center"><span
+                                class="status-indicator status-online"></span>
+                            <span class="text-green-600 font-semibold text-sm">Online</span>
+                        </div>
+                    </div>
+                    <div class="text-center p-4 bg-yellow-50 rounded-lg border-2 border-yellow-200">
+                        <h4 class="text-lg font-semibold text-blue-800 mb-2">Zone 3</h4>
+                        <div class="flex items-center justify-center"><span
+                                class="status-indicator status-warning"></span>
+                            <span class="text-yellow-600 font-semibold text-sm">Maintenance</span>
+                        </div>
+                    </div>
+                    <div class="text-center p-4 bg-green-50 rounded-lg border-2 border-green-200">
+                        <h4 class="text-lg font-semibold text-blue-800 mb-2">Zone 4</h4>
+                        <div class="flex items-center justify-center"><span
+                                class="status-indicator status-online"></span>
+                            <span class="text-green-600 font-semibold text-sm">Online</span>
+                        </div>
+                    </div>
+                    <div class="text-center p-4 bg-red-50 rounded-lg border-2 border-red-200">
+                        <h4 class="text-lg font-semibold text-blue-800 mb-2">Zone 5</h4>
+                        <div class="flex items-center justify-center"><span
+                                class="status-indicator status-offline"></span>
+                            <span class="text-red-600 font-semibold text-sm">Offline</span>
+                        </div>
+                    </div>
+                    <div class="text-center p-4 bg-green-50 rounded-lg border-2 border-green-200">
+                        <h4 class="text-lg font-semibold text-blue-800 mb-2">Zone 6</h4>
+                        <div class="flex items-center justify-center"><span
+                                class="status-indicator status-online"></span>
+                            <span class="text-green-600 font-semibold text-sm">Online</span>
+                        </div>
+                    </div>
+                </div><!-- Summary -->
+                <div class="mt-6 pt-4 border-t border-gray-200">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                        <div class="p-3 bg-green-50 rounded-lg">
+                            <div id="walkthrough-online-count" class="text-xl font-bold text-green-600">
+                                4
+                            </div>
+                            <div class="text-sm text-green-700">
+                                Online
+                            </div>
+                        </div>
+                        <div class="p-3 bg-yellow-50 rounded-lg">
+                            <div id="walkthrough-maintenance-count" class="text-xl font-bold text-yellow-600">
+                                1
+                            </div>
+                            <div class="text-sm text-yellow-700">
+                                Maintenance
+                            </div>
+                        </div>
+                        <div class="p-3 bg-red-50 rounded-lg">
+                            <div id="walkthrough-offline-count" class="text-xl font-bold text-red-600">
+                                1
+                            </div>
+                            <div class="text-sm text-red-700">
+                                Offline
+                            </div>
+                        </div>
+                        <div class="p-3 bg-blue-50 rounded-lg">
+                            <div id="walkthrough-operational-percentage" class="text-xl font-bold text-blue-600">
+                                67%
+                            </div>
+                            <div class="text-sm text-blue-700">
+                                Operational
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section><!-- Footer -->
+        <footer class="text-center text-blue-600 text-sm">
+            <p>Last Updated: <span id="last-updated"></span> | System Status: <span
+                    class="text-green-600 font-semibold">All
+                    Systems Operational</span></p>
+        </footer>
+    </div><!-- Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-full p-4">
+            <div class="bg-white rounded-lg max-w-4xl w-full max-h-full overflow-y-auto"><!-- Modal Header -->
+                <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                    <h3 class="text-2xl font-bold text-blue-900">System Settings</h3><button id="close-modal"
+                        class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg class="w-6 h-6" fill="currentColor" viewbox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                clip-rule="evenodd"></path>
+                        </svg></button>
+                </div><!-- Modal Content -->
+                <div class="p-6"><!-- Tab Navigation -->
+                    <div
+                        class="flex flex-col space-y-1 md:flex-row md:space-x-1 md:space-y-0 mb-6 bg-gray-100 p-1 rounded-lg">
+                        <button class="tab-btn active flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors"
+                            data-tab="profile">
+                            <svg class="w-4 h-4 inline mr-2" fill="currentColor" viewbox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                                    clip-rule="evenodd"></path>
+                            </svg> User Profile </button> <button
+                            class="tab-btn flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors"
+                            data-tab="staff">
+                            <svg class="w-4 h-4 inline mr-2" fill="currentColor" viewbox="0 0 20 20">
+                                <path
+                                    d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z">
+                                </path>
+                            </svg> Staff Management </button> <button
+                            class="tab-btn flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors"
+                            data-tab="roles">
+                            <svg class="w-4 h-4 inline mr-2" fill="currentColor" viewbox="0 0 20 20">
+                                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg> Role Management </button>
+                    </div><!-- Tab Content --> <!-- User Profile Tab -->
+                    <div id="profile-tab" class="tab-content">
+                        <h4 class="text-lg font-semibold text-blue-800 mb-4">User Profile Settings</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="space-y-4">
+                                <div><label class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                                    <input type="text" id="profile-name"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        value="Admin User">
+                                </div>
+                                <div><label class="block text-sm font-medium text-gray-700 mb-2">Email</label> <input
+                                        type="email" id="profile-email"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        value="admin@westerndigital.com">
+                                </div>
+                                <div><label class="block text-sm font-medium text-gray-700 mb-2">Department</label>
+                                    <select id="profile-department"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        <option value="security">Security Department</option>
+                                        <option value="it">IT Department</option>
+                                        <option value="hr">HR Department</option>
+                                        <option value="operations">Operations</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="space-y-4">
+                                <div><label class="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                                    <input type="tel" id="profile-phone"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        value="+66 2 123 4567">
+                                </div>
+                                <div><label class="block text-sm font-medium text-gray-700 mb-2">Employee ID</label>
+                                    <input type="text" id="profile-employee-id"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
+                                        value="WD001" readonly>
+                                </div>
+                                <div><label class="block text-sm font-medium text-gray-700 mb-2">Last Login</label>
+                                    <input type="text"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
+                                        value="Today, 08:30 AM" readonly>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-6 flex justify-end"><button id="save-profile"
+                                class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md transition-colors">
+                                Save Changes </button>
+                        </div>
+                    </div><!-- Staff Management Tab -->
+                    <div id="staff-tab" class="tab-content hidden">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="text-lg font-semibold text-blue-800">Staff Management</h4><a
+                                href="edit_officer.php" id="add-staff-btn"
+                                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition-colors">
+                                <svg class="w-4 h-4 inline mr-2" fill="currentColor" viewbox="0 0 20 20">
+                                    <path fill-rule="evenodd"
+                                        d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                                        clip-rule="evenodd"></path>
+                                </svg> Add Staff </a> <a href="manage_officers.php"
+                                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors ml-2">Manage
+                                Officers</a>
+                        </div><!-- Staff List -->
+                        <div class="bg-gray-50 rounded-lg overflow-hidden">
+                            <table class="w-full">
+                                <thead class="bg-gray-100">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Name</th>
+                                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Employee ID
+                                        </th>
+                                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Role</th>
+                                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Shift</th>
+                                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Status</th>
+                                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="staff-list" class="divide-y divide-gray-200">
+                                    <tr class="bg-white">
+                                        <td class="px-4 py-3 text-sm text-gray-900">John Smith</td>
+                                        <td class="px-4 py-3 text-sm text-gray-600">SEC001</td>
+                                        <td class="px-4 py-3 text-sm text-gray-600">Security Guard</td>
+                                        <td class="px-4 py-3 text-sm text-gray-600">Day Shift</td>
+                                        <td class="px-4 py-3"><span
+                                                class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Active</span>
+                                        </td>
+                                        <td class="px-4 py-3 text-sm"><a href="edit_officer.php?officer_id=1"
+                                                class="text-blue-600 hover:text-blue-800 mr-3 edit-staff-btn">Edit</a>
+                                            <button
+                                                class="text-red-600 hover:text-red-800 delete-staff-btn">Delete</button>
+                                        </td>
+                                    </tr>
+                                    <tr class="bg-white">
+                                        <td class="px-4 py-3 text-sm text-gray-900">Sarah Johnson</td>
+                                        <td class="px-4 py-3 text-sm text-gray-600">SEC002</td>
+                                        <td class="px-4 py-3 text-sm text-gray-600">Security Supervisor</td>
+                                        <td class="px-4 py-3 text-sm text-gray-600">Night Shift</td>
+                                        <td class="px-4 py-3"><span
+                                                class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Active</span>
+                                        </td>
+                                        <td class="px-4 py-3 text-sm"><a href="edit_officer.php?officer_id=2"
+                                                class="text-blue-600 hover:text-blue-800 mr-3 edit-staff-btn">Edit</a>
+                                            <button
+                                                class="text-red-600 hover:text-red-800 delete-staff-btn">Delete</button>
+                                        </td>
+                                    </tr>
+                                    <tr class="bg-white">
+                                        <td class="px-4 py-3 text-sm text-gray-900">Mike Chen</td>
+                                        <td class="px-4 py-3 text-sm text-gray-600">SEC003</td>
+                                        <td class="px-4 py-3 text-sm text-gray-600">Security Guard</td>
+                                        <td class="px-4 py-3 text-sm text-gray-600">Day Shift</td>
+                                        <td class="px-4 py-3"><span
+                                                class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">On
+                                                Leave</span></td>
+                                        <td class="px-4 py-3 text-sm"><a href="edit_officer.php?officer_id=3"
+                                                class="text-blue-600 hover:text-blue-800 mr-3 edit-staff-btn">Edit</a>
+                                            <button
+                                                class="text-red-600 hover:text-red-800 delete-staff-btn">Delete</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div><!-- Role Management Tab -->
+                    <div id="roles-tab" class="tab-content hidden">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="text-lg font-semibold text-blue-800">Role Management</h4><a href="edit_role.php"
+                                id="add-role-btn"
+                                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition-colors">
+                                <svg class="w-4 h-4 inline mr-2" fill="currentColor" viewbox="0 0 20 20">
+                                    <path fill-rule="evenodd"
+                                        d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                                        clip-rule="evenodd"></path>
+                                </svg> Add Role </a> <a href="manage_roles.php"
+                                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors ml-2">Manage
+                                Roles</a>
+                        </div><!-- Roles Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div class="bg-white border border-gray-200 rounded-lg p-4">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h5 class="font-semibold text-gray-900">System Administrator</h5>
+                                    <div class="flex space-x-2"><a href="edit_role.php?role_id=1"
+                                            class="text-blue-600 hover:text-blue-800 edit-role-btn">
+                                            <svg class="w-4 h-4" fill="currentColor" viewbox="0 0 20 20">
+                                                <path
+                                                    d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z">
+                                                </path>
+                                            </svg></a> <button class="text-red-600 hover:text-red-800 delete-role-btn">
+                                            <svg class="w-4 h-4" fill="currentColor" viewbox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"
+                                                    clip-rule="evenodd"></path>
+                                                <path fill-rule="evenodd"
+                                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                                    clip-rule="evenodd"></path>
+                                            </svg></button>
+                                    </div>
+                                </div>
+                                <p class="text-sm text-gray-600 mb-3">Full system access and management</p>
+                                <div class="text-xs text-gray-500">
+                                    <div class="mb-1">
+                                        ✓ Dashboard Access
+                                    </div>
+                                    <div class="mb-1">
+                                        ✓ User Management
+                                    </div>
+                                    <div class="mb-1">
+                                        ✓ System Settings
+                                    </div>
+                                    <div class="mb-1">
+                                        ✓ Reports &amp; Analytics
+                                    </div>
+                                </div>
+                                <div class="mt-3 text-sm"><span class="text-gray-600">Users: </span> <span
+                                        class="font-semibold">2</span>
+                                </div>
+                            </div>
+                            <div class="bg-white border border-gray-200 rounded-lg p-4">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h5 class="font-semibold text-gray-900">Security Supervisor</h5>
+                                    <div class="flex space-x-2"><a href="edit_role.php?role_id=2"
+                                            class="text-blue-600 hover:text-blue-800 edit-role-btn">
+                                            <svg class="w-4 h-4" fill="currentColor" viewbox="0 0 20 20">
+                                                <path
+                                                    d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z">
+                                                </path>
+                                            </svg></a> <button class="text-red-600 hover:text-red-800 delete-role-btn">
+                                            <svg class="w-4 h-4" fill="currentColor" viewbox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"
+                                                    clip-rule="evenodd"></path>
+                                                <path fill-rule="evenodd"
+                                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                                    clip-rule="evenodd"></path>
+                                            </svg></button>
+                                    </div>
+                                </div>
+                                <p class="text-sm text-gray-600 mb-3">Supervise security operations</p>
+                                <div class="text-xs text-gray-500">
+                                    <div class="mb-1">
+                                        ✓ Dashboard Access
+                                    </div>
+                                    <div class="mb-1">
+                                        ✓ Staff Scheduling
+                                    </div>
+                                    <div class="mb-1">
+                                        ✓ Incident Reports
+                                    </div>
+                                    <div class="mb-1">
+                                        ✗ System Settings
+                                    </div>
+                                </div>
+                                <div class="mt-3 text-sm"><span class="text-gray-600">Users: </span> <span
+                                        class="font-semibold">5</span>
+                                </div>
+                            </div>
+                            <div class="bg-white border border-gray-200 rounded-lg p-4">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h5 class="font-semibold text-gray-900">Security Guard</h5>
+                                    <div class="flex space-x-2"><a href="edit_role.php?role_id=3"
+                                            class="text-blue-600 hover:text-blue-800 edit-role-btn">
+                                            <svg class="w-4 h-4" fill="currentColor" viewbox="0 0 20 20">
+                                                <path
+                                                    d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z">
+                                                </path>
+                                            </svg></a> <button class="text-red-600 hover:text-red-800 delete-role-btn">
+                                            <svg class="w-4 h-4" fill="currentColor" viewbox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"
+                                                    clip-rule="evenodd"></path>
+                                                <path fill-rule="evenodd"
+                                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                                    clip-rule="evenodd"></path>
+                                            </svg></button>
+                                    </div>
+                                </div>
+                                <p class="text-sm text-gray-600 mb-3">Basic security operations</p>
+                                <div class="text-xs text-gray-500">
+                                    <div class="mb-1">
+                                        ✓ Dashboard View
+                                    </div>
+                                    <div class="mb-1">
+                                        ✓ Check-in/Check-out
+                                    </div>
+                                    <div class="mb-1">
+                                        ✗ Staff Management
+                                    </div>
+                                    <div class="mb-1">
+                                        ✗ System Settings
+                                    </div>
+                                </div>
+                                <div class="mt-3 text-sm"><span class="text-gray-600">Users: </span> <span
+                                        class="font-semibold">18</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="w-full bg-gray-200 rounded-full h-2">
-         <div class="bg-green-500 h-2 rounded-full" style="width: 94%"></div>
+    </div><!-- Add Staff Modal -->
+    <div id="add-staff-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-full p-4">
+            <div class="bg-white rounded-lg max-w-md w-full">
+                <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                    <h3 class="text-lg font-bold text-blue-900">Add New Staff</h3><button
+                        class="close-add-staff text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="currentColor" viewbox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                clip-rule="evenodd"></path>
+                        </svg></button>
+                </div>
+                <div class="p-6">
+                    <form id="add-staff-form" class="space-y-4">
+                        <div><label class="block text-sm font-medium text-gray-700 mb-2">Full Name</label> <input
+                                type="text" id="new-staff-name"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                required>
+                        </div>
+                        <div><label class="block text-sm font-medium text-gray-700 mb-2">Employee ID</label> <input
+                                type="text" id="new-staff-id"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                required>
+                        </div>
+                        <div><label class="block text-sm font-medium text-gray-700 mb-2">Role</label> <select
+                                id="new-staff-role"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                required>
+                                <option value="">Select Role</option>
+                                <option value="Security Guard">Security Guard</option>
+                                <option value="Security Supervisor">Security Supervisor</option>
+                                <option value="System Administrator">System Administrator</option>
+                            </select>
+                        </div>
+                        <div><label class="block text-sm font-medium text-gray-700 mb-2">Shift</label> <select
+                                id="new-staff-shift"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                required>
+                                <option value="">Select Shift</option>
+                                <option value="Day Shift">Day Shift (06:00 - 18:00)</option>
+                                <option value="Night Shift">Night Shift (18:00 - 06:00)</option>
+                            </select>
+                        </div>
+                        <div class="flex justify-end space-x-3 pt-4"><button type="button"
+                                class="close-add-staff px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
+                            <button type="submit"
+                                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Add Staff</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
-       </div>
-       <div class="p-3 bg-blue-50 rounded">
-        <div class="flex justify-between items-center mb-2"><span class="font-medium">NVR-2</span> <span class="text-sm font-semibold">44/46 (96%)</span>
-        </div>
-        <div class="w-full bg-gray-200 rounded-full h-2">
-         <div class="bg-yellow-500 h-2 rounded-full" style="width: 96%"></div>
-        </div>
-       </div>
-      </div>
-     </div>
-     <div class="bg-white rounded-lg p-6 card-shadow">
-      <h4 class="text-xl font-semibold text-blue-800 mb-4">Building B.4</h4>
-      <div class="space-y-4">
-       <div class="p-3 bg-blue-50 rounded">
-        <div class="flex justify-between items-center mb-2"><span class="font-medium">NVR-1</span> <span class="text-sm font-semibold">64/64 (100%)</span>
-        </div>
-        <div class="w-full bg-gray-200 rounded-full h-2">
-         <div class="bg-green-500 h-2 rounded-full" style="width: 100%"></div>
-        </div>
-       </div>
-       <div class="p-3 bg-blue-50 rounded">
-        <div class="flex justify-between items-center mb-2"><span class="font-medium">NVR-2</span> <span class="text-sm font-semibold">32/32 (100%)</span>
-        </div>
-        <div class="w-full bg-gray-200 rounded-full h-2">
-         <div class="bg-green-500 h-2 rounded-full" style="width: 100%"></div>
-        </div>
-       </div>
-       <div class="p-3 bg-blue-50 rounded">
-        <div class="flex justify-between items-center mb-2"><span class="font-medium">NVR-3</span> <span class="text-sm font-semibold">60/62 (97%)</span>
-        </div>
-        <div class="w-full bg-gray-200 rounded-full h-2">
-         <div class="bg-yellow-500 h-2 rounded-full" style="width: 97%"></div>
-        </div>
-       </div>
-       <div class="p-3 bg-blue-50 rounded">
-        <div class="flex justify-between items-center mb-2"><span class="font-medium">NVR-4</span> <span class="text-sm font-semibold">32/32 (100%)</span>
-        </div>
-        <div class="w-full bg-gray-200 rounded-full h-2">
-         <div class="bg-green-500 h-2 rounded-full" style="width: 100%"></div>
-        </div>
-       </div>
-       <div class="p-3 bg-blue-50 rounded">
-        <div class="flex justify-between items-center mb-2"><span class="font-medium">NVR-5</span> <span class="text-sm font-semibold">62/62 (100%)</span>
-        </div>
-        <div class="w-full bg-gray-200 rounded-full h-2">
-         <div class="bg-green-500 h-2 rounded-full" style="width: 100%"></div>
-        </div>
-       </div>
-       <div class="p-3 bg-blue-50 rounded">
-        <div class="flex justify-between items-center mb-2"><span class="font-medium">NVR-6</span> <span class="text-sm font-semibold">27/29 (93%)</span>
-        </div>
-        <div class="w-full bg-gray-200 rounded-full h-2">
-         <div class="bg-red-500 h-2 rounded-full" style="width: 93%"></div>
-        </div>
-       </div>
-      </div>
-     </div>
     </div>
-   </section><!-- Parking Report Section -->
-   <section class="mb-8">
-    <h3 id="parking-section-title" class="text-2xl font-bold text-blue-900 mb-4">Parking Lot Report <span class="text-sm text-gray-500 ml-2">(Last Update: <span id="parking-last-update"></span>)</span></h3><!-- Total Summary Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-     <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 text-white card-shadow">
-      <div class="flex items-center justify-between">
-       <div>
-        <h4 class="text-xl font-semibold mb-2 flex items-center">
-         <img src="report_assets/Images/car2.png" alt="Car Icon" class="w-8 h-8 mr-3" /> Car Parking Total</h4>
-        <div class="text-3xl font-bold" id="car-parking-total">
-         749/990
-        </div>
-        <div class="text-blue-100 text-sm" id="car-parking-percentage">
-         76% Occupied
-        </div>
-       </div>
-       <div class="text-right">
-        <div class="w-20 h-20 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-         <img src="report_assets/Images/car2.png" alt="Car Icon" class="w-10 h-10" />
-        </div>
-       </div>
-      </div>
-     </div>
-     <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-6 text-white card-shadow">
-      <div class="flex items-center justify-between">
-       <div>
-        <h4 class="text-xl font-semibold mb-2 flex items-center">
-         <img src="report_assets/Images/motorcycle.png" alt="Motorcycle Icon" class="w-8 h-8 mr-3" /> Motorcycle Parking Total</h4>
-        <div class="text-3xl font-bold" id="motorcycle-parking-total">
-         590/757
-        </div>
-        <div class="text-green-100 text-sm" id="motorcycle-parking-percentage">
-         78% Occupied
-        </div>
-       </div>
-       <div class="text-right">
-        <div class="w-20 h-20 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-         <img src="report_assets/Images/motorcycle.png" alt="Motorcycle Icon" class="w-10 h-10" />
-        </div>
-       </div>
-      </div>
-     </div>
-    </div>
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6"><!-- Car Parking -->
-     <div class="bg-white rounded-lg p-6 card-shadow">
-      <h4 class="text-xl font-semibold text-blue-800 mb-4 flex items-center">
-       <svg class="w-6 h-6 mr-2" fill="currentColor" viewbox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm2 6a2 2 0 114 0 2 2 0 01-4 0zm6 0a2 2 0 114 0 2 2 0 01-4 0z" clip-rule="evenodd"></path>
-       </svg> Car Parking Areas</h4>
-      <div class="space-y-4">
-       <div class="p-3 bg-blue-50 rounded">
-        <div class="flex flex-wrap justify-between items-center mb-2"><span class="font-medium">Parking Lot 2</span> <span class="text-sm font-semibold" id="car-lot-Parking-Lot-2-status">89/114 (78%)</span>
-        </div>
-        <div class="w-full bg-gray-200 rounded-full h-2">
-         <div id="car-lot-Parking-Lot-2-bar" class="bg-green-500 h-2 rounded-full" style="width: 78%"></div>
-        </div>
-       </div>
-       <div class="p-3 bg-blue-50 rounded">
-        <div class="flex flex-wrap justify-between items-center mb-2"><span class="font-medium">Parking Lot 3/1</span> <span class="text-sm font-semibold" id="car-lot-Parking-Lot-3-1-status">76/100 (76%)</span>
-        </div>
-        <div class="w-full bg-gray-200 rounded-full h-2">
-         <div id="car-lot-Parking-Lot-3-1-bar" class="bg-green-500 h-2 rounded-full" style="width: 76%"></div>
-        </div>
-       </div>
-       <div class="p-3 bg-blue-50 rounded">
-        <div class="flex flex-wrap justify-between items-center mb-2"><span class="font-medium">Parking Lot 3/2</span> <span class="text-sm font-semibold" id="car-lot-Parking-Lot-3-2-status">198/264 (75%)</span>
-        </div>
-        <div class="w-full bg-gray-200 rounded-full h-2">
-         <div id="car-lot-Parking-Lot-3-2-bar" class="bg-green-500 h-2 rounded-full" style="width: 75%"></div>
-        </div>
-       </div>
-       <div class="p-3 bg-blue-50 rounded">
-        <div class="flex flex-wrap justify-between items-center mb-2"><span class="font-medium">Parking Lot 4</span> <span class="text-sm font-semibold" id="car-lot-Parking-Lot-4-status">312/415 (75%)</span>
-        </div>
-        <div class="w-full bg-gray-200 rounded-full h-2">
-         <div id="car-lot-Parking-Lot-4-bar" class="bg-green-500 h-2 rounded-full" style="width: 75%"></div>
-        </div>
-       </div>
-       <div class="p-3 bg-blue-50 rounded">
-        <div class="flex flex-wrap justify-between items-center mb-2"><span class="font-medium">Parking Lot 5</span> <span class="text-sm font-semibold" id="car-lot-Parking-Lot-5-status">41/53 (77%)</span>
-        </div>
-        <div class="w-full bg-gray-200 rounded-full h-2">
-         <div id="car-lot-Parking-Lot-5-bar" class="bg-green-500 h-2 rounded-full" style="width: 77%"></div>
-        </div>
-       </div>
-       <div class="p-3 bg-blue-50 rounded">
-        <div class="flex flex-wrap justify-between items-center mb-2"><span class="font-medium">Parking Lot B.8</span> <span class="text-sm font-semibold" id="car-lot-Parking-Lot-B-8-status">33/44 (75%)</span>
-        </div>
-        <div class="w-full bg-gray-200 rounded-full h-2">
-         <div id="car-lot-Parking-Lot-B-8-bar" class="bg-green-500 h-2 rounded-full" style="width: 75%"></div>
-        </div>
-       </div>
-      </div>
-     </div><!-- Motorcycle Parking -->
-     <div class="bg-white rounded-lg p-6 card-shadow">
-      <h4 class="text-xl font-semibold text-blue-800 mb-4 flex items-center">
-       <svg class="w-6 h-6 mr-2" fill="currentColor" viewbox="0 0 20 20"><path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"></path>
-       </svg> Motorcycle Parking Areas</h4>
-      <div class="space-y-4">
-       <div class="p-3 bg-blue-50 rounded">
-        <div class="flex flex-wrap justify-between items-center mb-2"><span class="font-medium">Motorcycle Lot 1</span> <span class="text-sm font-semibold" id="motorcycle-lot-Motorcycle-Lot-1-status">234/296 (79%)</span>
-        </div>
-        <div class="w-full bg-gray-200 rounded-full h-2">
-         <div id="motorcycle-lot-Motorcycle-Lot-1-bar" class="bg-green-500 h-2 rounded-full" style="width: 79%"></div>
-        </div>
-       </div>
-       <div class="p-3 bg-blue-50 rounded">
-        <div class="flex flex-wrap justify-between items-center mb-2"><span class="font-medium">Motorcycle Lot 2</span> <span class="text-sm font-semibold" id="motorcycle-lot-Motorcycle-Lot-2-status">167/210 (80%)</span>
-        </div>
-        <div class="w-full bg-gray-200 rounded-full h-2">
-         <div id="motorcycle-lot-Motorcycle-Lot-2-bar" class="bg-orange-500 h-2 rounded-full" style="width: 80%"></div>
-        </div>
-       </div>
-       <div class="p-3 bg-blue-50 rounded">
-        <div class="flex flex-wrap justify-between items-center mb-2"><span class="font-medium">Motorcycle Lot 3/1</span> <span class="text-sm font-semibold" id="motorcycle-lot-Motorcycle-Lot-3-1-status">189/251 (75%)</span>
-        </div>
-        <div class="w-full bg-gray-200 rounded-full h-2">
-         <div id="motorcycle-lot-Motorcycle-Lot-3-1-bar" class="bg-green-500 h-2 rounded-full" style="width: 75%"></div>
-        </div>
-       </div>
-      </div>
-     </div>
-    </div>
-   </section><!-- Metal Detector Status Section -->
-   <section class="mb-8">
-    <h3 id="detector-section-title" class="text-2xl font-bold text-blue-900 mb-4">Hand Held Metal Detector Status <span class="text-sm text-gray-500 ml-2">(Last Update: <span id="detector-last-update"></span>)</span></h3>
-    <div class="bg-white rounded-lg p-6 card-shadow">
-     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      <div class="text-center p-4 bg-green-50 rounded-lg border-2 border-green-200">
-       <div class="w-16 h-16 mx-auto mb-3 bg-green-500 rounded-full flex items-center justify-center">
-        <svg class="w-8 h-8 text-white" fill="currentColor" viewbox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
-        </svg>
-       </div>
-       <h4 class="font-semibold text-green-800">Battery Check</h4>
-       <p id="battery-check-text" class="text-sm text-green-600 mt-1">All devices checked</p>
-       <div class="mt-2"><span id="battery-check-indicator" class="inline-block w-3 h-3 bg-green-500 rounded-full pulse-animation"></span> <span id="battery-check-status" class="text-xs text-green-600 ml-1">Active</span>
-       </div>
-      </div>
-      <div class="text-center p-4 bg-green-50 rounded-lg border-2 border-green-200">
-       <div class="w-16 h-16 mx-auto mb-3 bg-green-500 rounded-full flex items-center justify-center">
-        <svg class="w-8 h-8 text-white" fill="currentColor" viewbox="0 0 20 20"><path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM6 10a1 1 0 01-1 1H4a1 1 0 110-2h1a1 1 0 011 1zM6.464 14.95A1 1 0 105.05 13.536l-.707.707a1 1 0 001.414 1.414l.707-.707zM11 16a1 1 0 10-2 0v1a1 1 0 102 0v-1zM14.95 13.536a1 1 0 00-1.414 1.414l.707.707a1 1 0 001.414-1.414l-.707-.707z"></path>
-        </svg>
-       </div>
-       <h4 class="font-semibold text-green-800">LED Power</h4>
-       <p id="led-power-text" class="text-sm text-green-600 mt-1">Green LED active</p>
-       <div class="mt-2"><span id="led-power-indicator" class="inline-block w-3 h-3 bg-green-500 rounded-full pulse-animation"></span> <span id="led-power-status" class="text-xs text-green-600 ml-1">Online</span>
-       </div>
-      </div>
-      <div class="text-center p-4 bg-green-50 rounded-lg border-2 border-green-200">
-       <div class="w-16 h-16 mx-auto mb-3 bg-green-500 rounded-full flex items-center justify-center">
-        <svg class="w-8 h-8 text-white" fill="currentColor" viewbox="0 0 20 20"><path fill-rule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.05 6.05 6.981 6.981 0 003 11a7 7 0 1011.95-4.95c-.592-.591-.98-.985-1.348-1.467-.363-.476-.724-1.063-1.207-2.03zM12.12 15.12A3 3 0 017 13s.879.5 2.5.5c0-1 .5-4 1.25-4.5.5 1 .786 1.293 1.371 1.879A2.99 2.99 0 0113 13a2.99 2.99 0 01-.879 2.121z" clip-rule="evenodd"></path>
-        </svg>
-       </div>
-       <h4 class="font-semibold text-green-800">Detection Range</h4>
-       <p id="detection-range-text" class="text-sm text-green-600 mt-1">Range tested OK</p>
-       <div class="mt-2"><span id="detection-range-indicator" class="inline-block w-3 h-3 bg-green-500 rounded-full pulse-animation"></span> <span id="detection-range-status" class="text-xs text-green-600 ml-1">Calibrated</span>
-       </div>
-      </div>
-      <div class="text-center p-4 bg-green-50 rounded-lg border-2 border-green-200">
-       <div class="w-16 h-16 mx-auto mb-3 bg-green-500 rounded-full flex items-center justify-center">
-        <svg class="w-8 h-8 text-white" fill="currentColor" viewbox="0 0 20 20"><path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V7.82l8-1.6v5.894A4.37 4.37 0 0015 12c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V3z"></path>
-        </svg>
-       </div>
-       <h4 class="font-semibold text-green-800">Audio Alert</h4>
-       <p id="audio-alert-text" class="text-sm text-green-600 mt-1">Sound system OK</p>
-       <div class="mt-2"><span id="audio-alert-indicator" class="inline-block w-3 h-3 bg-green-500 rounded-full pulse-animation"></span> <span id="audio-alert-status" class="text-xs text-green-600 ml-1">Functional</span>
-       </div>
-      </div>
-     </div><!-- Test Results -->
-     <div class="mt-6 p-4 bg-blue-50 rounded-lg">
-      <h4 class="font-semibold text-blue-800 mb-3">Latest Test Results</h4>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-       <div class="flex justify-between"><span class="text-gray-600">Metal Detection:</span> <span id="metal-detection-result" class="text-green-600 font-semibold">✓ Red LED + Sound</span>
-       </div>
-       <div class="flex justify-between"><span class="text-gray-600">Last Calibration:</span> <span id="last-calibration" class="text-blue-600 font-semibold">Today 06:00</span>
-       </div>
-       <div class="flex justify-between"><span class="text-gray-600">Next Check:</span> <span id="next-check" class="text-blue-600 font-semibold">Tomorrow 06:00</span>
-       </div>
-      </div>
-     </div>
-    </div>
-   </section><!-- Walkthrough Metal Detector Section -->
-   <section class="mb-8">
-    <h3 id="walkthrough-section-title" class="text-2xl font-bold text-blue-900 mb-4">Walkthrough Metal Detector Status <span class="text-sm text-gray-500 ml-2">(Last Update: <span id="walkthrough-last-update"></span>)</span></h3>
-    <div class="bg-white rounded-lg p-6 card-shadow">
-     <div id="walkthrough-zones-container" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-      <div class="text-center p-4 bg-green-50 rounded-lg border-2 border-green-200">
-       <h4 class="text-lg font-semibold text-blue-800 mb-2">Zone 1</h4>
-       <div class="flex items-center justify-center"><span class="status-indicator status-online"></span> <span class="text-green-600 font-semibold text-sm">Online</span>
-       </div>
-      </div>
-      <div class="text-center p-4 bg-green-50 rounded-lg border-2 border-green-200">
-       <h4 class="text-lg font-semibold text-blue-800 mb-2">Zone 2</h4>
-       <div class="flex items-center justify-center"><span class="status-indicator status-online"></span> <span class="text-green-600 font-semibold text-sm">Online</span>
-       </div>
-      </div>
-      <div class="text-center p-4 bg-yellow-50 rounded-lg border-2 border-yellow-200">
-       <h4 class="text-lg font-semibold text-blue-800 mb-2">Zone 3</h4>
-       <div class="flex items-center justify-center"><span class="status-indicator status-warning"></span> <span class="text-yellow-600 font-semibold text-sm">Maintenance</span>
-       </div>
-      </div>
-      <div class="text-center p-4 bg-green-50 rounded-lg border-2 border-green-200">
-       <h4 class="text-lg font-semibold text-blue-800 mb-2">Zone 4</h4>
-       <div class="flex items-center justify-center"><span class="status-indicator status-online"></span> <span class="text-green-600 font-semibold text-sm">Online</span>
-       </div>
-      </div>
-      <div class="text-center p-4 bg-red-50 rounded-lg border-2 border-red-200">
-       <h4 class="text-lg font-semibold text-blue-800 mb-2">Zone 5</h4>
-       <div class="flex items-center justify-center"><span class="status-indicator status-offline"></span> <span class="text-red-600 font-semibold text-sm">Offline</span>
-       </div>
-      </div>
-      <div class="text-center p-4 bg-green-50 rounded-lg border-2 border-green-200">
-       <h4 class="text-lg font-semibold text-blue-800 mb-2">Zone 6</h4>
-       <div class="flex items-center justify-center"><span class="status-indicator status-online"></span> <span class="text-green-600 font-semibold text-sm">Online</span>
-       </div>
-      </div>
-     </div><!-- Summary -->
-     <div class="mt-6 pt-4 border-t border-gray-200">
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-       <div class="p-3 bg-green-50 rounded-lg">
-        <div id="walkthrough-online-count" class="text-xl font-bold text-green-600">
-         4
-        </div>
-        <div class="text-sm text-green-700">
-         Online
-        </div>
-       </div>
-       <div class="p-3 bg-yellow-50 rounded-lg">
-        <div id="walkthrough-maintenance-count" class="text-xl font-bold text-yellow-600">
-         1
-        </div>
-        <div class="text-sm text-yellow-700">
-         Maintenance
-        </div>
-       </div>
-       <div class="p-3 bg-red-50 rounded-lg">
-        <div id="walkthrough-offline-count" class="text-xl font-bold text-red-600">
-         1
-        </div>
-        <div class="text-sm text-red-700">
-         Offline
-        </div>
-       </div>
-       <div class="p-3 bg-blue-50 rounded-lg">
-        <div id="walkthrough-operational-percentage" class="text-xl font-bold text-blue-600">
-         67%
-        </div>
-        <div class="text-sm text-blue-700">
-         Operational
-        </div>
-       </div>
-      </div>
-     </div>
-    </div>
-   </section><!-- Footer -->
-   <footer class="text-center text-blue-600 text-sm">
-    <p>Last Updated: <span id="last-updated"></span> | System Status: <span class="text-green-600 font-semibold">All Systems Operational</span></p>
-   </footer>
-  </div><!-- Settings Modal -->
-  <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
-   <div class="flex items-center justify-center min-h-full p-4">
-    <div class="bg-white rounded-lg max-w-4xl w-full max-h-full overflow-y-auto"><!-- Modal Header -->
-     <div class="flex items-center justify-between p-6 border-b border-gray-200">
-      <h3 class="text-2xl font-bold text-blue-900">System Settings</h3><button id="close-modal" class="text-gray-400 hover:text-gray-600 transition-colors">
-       <svg class="w-6 h-6" fill="currentColor" viewbox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
-       </svg></button>
-     </div><!-- Modal Content -->
-     <div class="p-6"><!-- Tab Navigation -->
-      <div class="flex flex-col space-y-1 md:flex-row md:space-x-1 md:space-y-0 mb-6 bg-gray-100 p-1 rounded-lg"><button class="tab-btn active flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors" data-tab="profile">
-        <svg class="w-4 h-4 inline mr-2" fill="currentColor" viewbox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
-        </svg> User Profile </button> <button class="tab-btn flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors" data-tab="staff">
-        <svg class="w-4 h-4 inline mr-2" fill="currentColor" viewbox="0 0 20 20"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"></path>
-        </svg> Staff Management </button> <button class="tab-btn flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors" data-tab="roles">
-        <svg class="w-4 h-4 inline mr-2" fill="currentColor" viewbox="0 0 20 20"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-        </svg> Role Management </button>
-      </div><!-- Tab Content --> <!-- User Profile Tab -->
-      <div id="profile-tab" class="tab-content">
-       <h4 class="text-lg font-semibold text-blue-800 mb-4">User Profile Settings</h4>
-       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="space-y-4">
-         <div><label class="block text-sm font-medium text-gray-700 mb-2">Full Name</label> <input type="text" id="profile-name" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" value="Admin User">
-         </div>
-         <div><label class="block text-sm font-medium text-gray-700 mb-2">Email</label> <input type="email" id="profile-email" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" value="admin@westerndigital.com">
-         </div>
-         <div><label class="block text-sm font-medium text-gray-700 mb-2">Department</label> <select id="profile-department" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"> <option value="security">Security Department</option> <option value="it">IT Department</option> <option value="hr">HR Department</option> <option value="operations">Operations</option> </select>
-         </div>
-        </div>
-        <div class="space-y-4">
-         <div><label class="block text-sm font-medium text-gray-700 mb-2">Phone Number</label> <input type="tel" id="profile-phone" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" value="+66 2 123 4567">
-         </div>
-         <div><label class="block text-sm font-medium text-gray-700 mb-2">Employee ID</label> <input type="text" id="profile-employee-id" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100" value="WD001" readonly>
-         </div>
-         <div><label class="block text-sm font-medium text-gray-700 mb-2">Last Login</label> <input type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100" value="Today, 08:30 AM" readonly>
-         </div>
-        </div>
-       </div>
-       <div class="mt-6 flex justify-end"><button id="save-profile" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md transition-colors"> Save Changes </button>
-       </div>
-      </div><!-- Staff Management Tab -->
-      <div id="staff-tab" class="tab-content hidden">
-       <div class="flex justify-between items-center mb-4">
-        <h4 class="text-lg font-semibold text-blue-800">Staff Management</h4><a href="edit_officer.php" id="add-staff-btn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition-colors">
-         <svg class="w-4 h-4 inline mr-2" fill="currentColor" viewbox="0 0 20 20"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"></path>
-         </svg> Add Staff </a> <a href="manage_officers.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors ml-2">Manage Officers</a>
-       </div><!-- Staff List -->
-       <div class="bg-gray-50 rounded-lg overflow-hidden">
-        <table class="w-full">
-         <thead class="bg-gray-100">
-          <tr>
-           <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Name</th>
-           <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Employee ID</th>
-           <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Role</th>
-           <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Shift</th>
-           <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Status</th>
-           <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Actions</th>
-          </tr>
-         </thead>
-         <tbody id="staff-list" class="divide-y divide-gray-200">
-          <tr class="bg-white">
-           <td class="px-4 py-3 text-sm text-gray-900">John Smith</td>
-           <td class="px-4 py-3 text-sm text-gray-600">SEC001</td>
-           <td class="px-4 py-3 text-sm text-gray-600">Security Guard</td>
-           <td class="px-4 py-3 text-sm text-gray-600">Day Shift</td>
-           <td class="px-4 py-3"><span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Active</span></td>
-           <td class="px-4 py-3 text-sm"><a href="edit_officer.php?officer_id=1" class="text-blue-600 hover:text-blue-800 mr-3 edit-staff-btn">Edit</a> <button class="text-red-600 hover:text-red-800 delete-staff-btn">Delete</button></td>
-          </tr>
-          <tr class="bg-white">
-           <td class="px-4 py-3 text-sm text-gray-900">Sarah Johnson</td>
-           <td class="px-4 py-3 text-sm text-gray-600">SEC002</td>
-           <td class="px-4 py-3 text-sm text-gray-600">Security Supervisor</td>
-           <td class="px-4 py-3 text-sm text-gray-600">Night Shift</td>
-           <td class="px-4 py-3"><span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Active</span></td>
-           <td class="px-4 py-3 text-sm"><a href="edit_officer.php?officer_id=2" class="text-blue-600 hover:text-blue-800 mr-3 edit-staff-btn">Edit</a> <button class="text-red-600 hover:text-red-800 delete-staff-btn">Delete</button></td>
-          </tr>
-          <tr class="bg-white">
-           <td class="px-4 py-3 text-sm text-gray-900">Mike Chen</td>
-           <td class="px-4 py-3 text-sm text-gray-600">SEC003</td>
-           <td class="px-4 py-3 text-sm text-gray-600">Security Guard</td>
-           <td class="px-4 py-3 text-sm text-gray-600">Day Shift</td>
-           <td class="px-4 py-3"><span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">On Leave</span></td>
-           <td class="px-4 py-3 text-sm"><a href="edit_officer.php?officer_id=3" class="text-blue-600 hover:text-blue-800 mr-3 edit-staff-btn">Edit</a> <button class="text-red-600 hover:text-red-800 delete-staff-btn">Delete</button></td>
-          </tr>
-         </tbody>
-        </table>
-       </div>
-      </div><!-- Role Management Tab -->
-      <div id="roles-tab" class="tab-content hidden">
-       <div class="flex justify-between items-center mb-4">
-        <h4 class="text-lg font-semibold text-blue-800">Role Management</h4><a href="edit_role.php" id="add-role-btn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition-colors">
-         <svg class="w-4 h-4 inline mr-2" fill="currentColor" viewbox="0 0 20 20"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"></path>
-         </svg> Add Role </a> <a href="manage_roles.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors ml-2">Manage Roles</a>
-       </div><!-- Roles Grid -->
-       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div class="bg-white border border-gray-200 rounded-lg p-4">
-         <div class="flex items-center justify-between mb-3">
-          <h5 class="font-semibold text-gray-900">System Administrator</h5>
-          <div class="flex space-x-2"><a href="edit_role.php?role_id=1" class="text-blue-600 hover:text-blue-800 edit-role-btn">
-            <svg class="w-4 h-4" fill="currentColor" viewbox="0 0 20 20"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"></path>
-            </svg></a> <button class="text-red-600 hover:text-red-800 delete-role-btn">
-            <svg class="w-4 h-4" fill="currentColor" viewbox="0 0 20 20"><path fill-rule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" clip-rule="evenodd"></path> <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
-            </svg></button>
-          </div>
-         </div>
-         <p class="text-sm text-gray-600 mb-3">Full system access and management</p>
-         <div class="text-xs text-gray-500">
-          <div class="mb-1">
-           ✓ Dashboard Access
-          </div>
-          <div class="mb-1">
-           ✓ User Management
-          </div>
-          <div class="mb-1">
-           ✓ System Settings
-          </div>
-          <div class="mb-1">
-           ✓ Reports &amp; Analytics
-          </div>
-         </div>
-         <div class="mt-3 text-sm"><span class="text-gray-600">Users: </span> <span class="font-semibold">2</span>
-         </div>
-        </div>
-        <div class="bg-white border border-gray-200 rounded-lg p-4">
-         <div class="flex items-center justify-between mb-3">
-          <h5 class="font-semibold text-gray-900">Security Supervisor</h5>
-          <div class="flex space-x-2"><a href="edit_role.php?role_id=2" class="text-blue-600 hover:text-blue-800 edit-role-btn">
-            <svg class="w-4 h-4" fill="currentColor" viewbox="0 0 20 20"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"></path>
-            </svg></a> <button class="text-red-600 hover:text-red-800 delete-role-btn">
-            <svg class="w-4 h-4" fill="currentColor" viewbox="0 0 20 20"><path fill-rule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" clip-rule="evenodd"></path> <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
-            </svg></button>
-          </div>
-         </div>
-         <p class="text-sm text-gray-600 mb-3">Supervise security operations</p>
-         <div class="text-xs text-gray-500">
-          <div class="mb-1">
-           ✓ Dashboard Access
-          </div>
-          <div class="mb-1">
-           ✓ Staff Scheduling
-          </div>
-          <div class="mb-1">
-           ✓ Incident Reports
-          </div>
-          <div class="mb-1">
-           ✗ System Settings
-          </div>
-         </div>
-         <div class="mt-3 text-sm"><span class="text-gray-600">Users: </span> <span class="font-semibold">5</span>
-         </div>
-        </div>
-        <div class="bg-white border border-gray-200 rounded-lg p-4">
-         <div class="flex items-center justify-between mb-3">
-          <h5 class="font-semibold text-gray-900">Security Guard</h5>
-          <div class="flex space-x-2"><a href="edit_role.php?role_id=3" class="text-blue-600 hover:text-blue-800 edit-role-btn">
-            <svg class="w-4 h-4" fill="currentColor" viewbox="0 0 20 20"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"></path>
-            </svg></a> <button class="text-red-600 hover:text-red-800 delete-role-btn">
-            <svg class="w-4 h-4" fill="currentColor" viewbox="0 0 20 20"><path fill-rule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" clip-rule="evenodd"></path> <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
-            </svg></button>
-          </div>
-         </div>
-         <p class="text-sm text-gray-600 mb-3">Basic security operations</p>
-         <div class="text-xs text-gray-500">
-          <div class="mb-1">
-           ✓ Dashboard View
-          </div>
-          <div class="mb-1">
-           ✓ Check-in/Check-out
-          </div>
-          <div class="mb-1">
-           ✗ Staff Management
-          </div>
-          <div class="mb-1">
-           ✗ System Settings
-          </div>
-         </div>
-         <div class="mt-3 text-sm"><span class="text-gray-600">Users: </span> <span class="font-semibold">18</span>
-         </div>
-        </div>
-       </div>
-      </div>
-     </div>
-    </div>
-   </div>
-  </div><!-- Add Staff Modal -->
-  <div id="add-staff-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
-   <div class="flex items-center justify-center min-h-full p-4">
-    <div class="bg-white rounded-lg max-w-md w-full">
-     <div class="flex items-center justify-between p-6 border-b border-gray-200">
-      <h3 class="text-lg font-bold text-blue-900">Add New Staff</h3><button class="close-add-staff text-gray-400 hover:text-gray-600">
-       <svg class="w-6 h-6" fill="currentColor" viewbox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
-       </svg></button>
-     </div>
-     <div class="p-6">
-      <form id="add-staff-form" class="space-y-4">
-       <div><label class="block text-sm font-medium text-gray-700 mb-2">Full Name</label> <input type="text" id="new-staff-name" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-       </div>
-       <div><label class="block text-sm font-medium text-gray-700 mb-2">Employee ID</label> <input type="text" id="new-staff-id" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-       </div>
-       <div><label class="block text-sm font-medium text-gray-700 mb-2">Role</label> <select id="new-staff-role" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required> <option value="">Select Role</option> <option value="Security Guard">Security Guard</option> <option value="Security Supervisor">Security Supervisor</option> <option value="System Administrator">System Administrator</option> </select>
-       </div>
-       <div><label class="block text-sm font-medium text-gray-700 mb-2">Shift</label> <select id="new-staff-shift" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required> <option value="">Select Shift</option> <option value="Day Shift">Day Shift (06:00 - 18:00)</option> <option value="Night Shift">Night Shift (18:00 - 06:00)</option> </select>
-       </div>
-       <div class="flex justify-end space-x-3 pt-4"><button type="button" class="close-add-staff px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button> <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Add Staff</button>
-       </div>
-      </form>
-     </div>
-    </div>
-   </div>
-  </div>
-  <script>
+    <script>
         // Configuration object
         const defaultConfig = {
             dashboard_title: "Security System Dashboard",
@@ -870,7 +1175,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
             });
             document.getElementById('current-time').textContent = timeString;
             document.getElementById('last-updated').textContent = timeString;
-            
+
             // Update shift status based on current time
             updateShiftStatus(now);
             // Update section timestamps
@@ -995,7 +1300,9 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
         async function fetchNvrStatus() {
             console.log('fetchNvrStatus called');
             try {
-                const response = await fetch('get_nvr_status.php');
+                // Add timestamp to bypass browser cache
+                const timestamp = new Date().getTime();
+                const response = await fetch(`get_nvr_status.php?t=${timestamp}`);
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const data = await response.json();
                 console.log('NVR Status data received:', data);
@@ -1008,7 +1315,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 
                 // Process each building
                 Object.entries(buildings).forEach(([buildingKey, buildingData]) => {
-                    const sanitizedBuildingKey = buildingKey.replace(/\./g, '_');
+                    // Building names are now B2, B3, B4, B9 (no dots, no sanitization needed)
                     const online = buildingData.online || 0;
                     const total = buildingData.total || 0;
                     const offline = buildingData.offline || 0;
@@ -1023,19 +1330,19 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
                     totalFailCount += nvrFailCount;
 
                     // Update elements for the NVR status summary (if they exist)
-                    const passEl = document.getElementById(`nvr-pass-${sanitizedBuildingKey}`);
-                    const totalEl = document.getElementById(`nvr-total-${sanitizedBuildingKey}`);
-                    const percentEl = document.getElementById(`nvr-percent-${sanitizedBuildingKey}`);
+                    const passEl = document.getElementById(`nvr-pass-${buildingKey}`);
+                    const totalEl = document.getElementById(`nvr-total-${buildingKey}`);
+                    const percentEl = document.getElementById(`nvr-percent-${buildingKey}`);
                     if (passEl) passEl.textContent = online;
                     if (totalEl) totalEl.textContent = total;
                     if (percentEl) percentEl.textContent = Math.round(percent);
 
                     // Update elements for the 62-day criteria
-                    const nvrPassCountEl = document.getElementById(`nvr-passcount-62-${sanitizedBuildingKey}`);
-                    const nvrTotalCountEl = document.getElementById(`nvr-totalcount-62-${sanitizedBuildingKey}`);
-                    const nvrProgressBarEl = document.getElementById(`nvr-progressbar-62-${sanitizedBuildingKey}`);
-                    const nvrProgressBarFillEl = document.getElementById(`nvr-progressbar-fill-62-${sanitizedBuildingKey}`);
-                    const nvrCountTextEl = document.getElementById(`nvr-count-62-${sanitizedBuildingKey}`);
+                    const nvrPassCountEl = document.getElementById(`nvr-passcount-62-${buildingKey}`);
+                    const nvrTotalCountEl = document.getElementById(`nvr-totalcount-62-${buildingKey}`);
+                    const nvrProgressBarEl = document.getElementById(`nvr-progressbar-62-${buildingKey}`);
+                    const nvrProgressBarFillEl = document.getElementById(`nvr-progressbar-fill-62-${buildingKey}`);
+                    const nvrCountTextEl = document.getElementById(`nvr-count-62-${buildingKey}`);
 
                     if (nvrPassCountEl) nvrPassCountEl.textContent = nvrPassCount;
                     if (nvrTotalCountEl) nvrTotalCountEl.textContent = nvrCount; // Use nvrCount from PHP
@@ -1218,8 +1525,9 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
             }
         }
 
-        fetchHandHeldDetectorStatus();
-        setInterval(fetchHandHeldDetectorStatus, 30000);
+        // Disabled: These functions block camera status execution
+        // fetchHandHeldDetectorStatus();
+        // setInterval(fetchHandHeldDetectorStatus, 30000);
 
         async function fetchWalkthroughDetectorStatus() {
             console.log('fetchWalkthroughDetectorStatus called');
@@ -1264,9 +1572,11 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
             }
         }
 
-        fetchWalkthroughDetectorStatus();
-        setInterval(fetchWalkthroughDetectorStatus, 30000);
+        // Disabled: These functions block camera status execution
+        // fetchWalkthroughDetectorStatus();
+        // setInterval(fetchWalkthroughDetectorStatus, 30000);
 
+        console.log('DEBUG: About to define fetchCameraStatus function');
         async function fetchCameraStatus() {
             console.log('fetchCameraStatus called');
             try {
@@ -1295,7 +1605,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
                         const buildingData = cameraData.buildings[building];
                         const buildingDiv = document.createElement('div');
                         buildingDiv.className = 'bg-white rounded-lg p-6 card-shadow';
-                        
+
                         let nvrHtml = '';
                         let buildingOnlineCameras = 0; // Initialize for current building
                         let buildingTotalCameras = 0; // Initialize for current building
@@ -1310,7 +1620,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
                             if (buildingRecordingData && buildingRecordingData.nvrs) {
                                 nvrRecordingHistory = buildingRecordingData.nvrs.find(recNvr => recNvr.nvr_name === nvr.nvr_name);
                             }
-                            
+
                             const lastRecordedText = nvrRecordingHistory && nvrRecordingHistory.last_recorded ? `Last Recorded: ${nvrRecordingHistory.last_recorded}` : 'Recording history N/A';
                             const recordingStatusClass = nvrRecordingHistory && nvrRecordingHistory.status && nvrRecordingHistory.status.includes('Passed') ? 'text-green-600' : 'text-red-600';
                             const recordingStatusText = nvrRecordingHistory && nvrRecordingHistory.status ? `Status: <span class="${recordingStatusClass}">${nvrRecordingHistory.status}</span>` : '';
@@ -1384,7 +1694,9 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
             }
         }
 
+        console.log('DEBUG: About to call fetchCameraStatus()');
         fetchCameraStatus();
+        console.log('DEBUG: fetchCameraStatus() called, setting up interval');
         setInterval(fetchCameraStatus, 30000);
 
         // Modal and Tab Management
@@ -1403,7 +1715,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
         tabBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 const targetTab = btn.getAttribute('data-tab');
-                
+
                 // Update active tab button
                 tabBtns.forEach(b => {
                     b.classList.remove('active', 'bg-white', 'text-blue-600', 'shadow-sm');
@@ -1411,7 +1723,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
                 });
                 btn.classList.add('active', 'bg-white', 'text-blue-600', 'shadow-sm');
                 btn.classList.remove('text-gray-500', 'hover:text-gray-700');
-                
+
                 // Show target tab content
                 tabContents.forEach(content => {
                     content.classList.add('hidden');
@@ -1464,12 +1776,12 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
         // Add staff form submission
         addStaffForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            
+
             const name = document.getElementById('new-staff-name').value;
             const employeeId = document.getElementById('new-staff-id').value;
             const role = document.getElementById('new-staff-role').value;
             const shift = document.getElementById('new-staff-shift').value;
-            
+
             // Create new staff row
             const newRow = document.createElement('tr');
             newRow.className = 'bg-white';
@@ -1486,16 +1798,16 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
                     <button class="text-red-600 hover:text-red-800 delete-staff-btn">Delete</button>
                 </td>
             `;
-            
+
             staffList.appendChild(newRow);
-            
+
             // Add event listeners to new buttons
             addStaffEventListeners(newRow);
-            
+
             // Close modal and reset form
             addStaffModal.classList.add('hidden');
             addStaffForm.reset();
-            
+
             // Show success message
             showNotification('Staff member added successfully!', 'success');
         });
@@ -1503,7 +1815,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
         // Staff management functions
         function addStaffEventListeners(row) {
             const deleteBtn = row.querySelector('.delete-staff-btn');
-            
+
             deleteBtn.addEventListener('click', () => {
                 if (confirm('Are you sure you want to delete this staff member?')) {
                     row.remove();
@@ -1528,10 +1840,10 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
             const email = document.getElementById('profile-email').value;
             const department = document.getElementById('profile-department').value;
             const phone = document.getElementById('profile-phone').value;
-            
+
             // Update header display
             document.getElementById('user-name').textContent = name;
-            
+
             showNotification('Profile updated successfully!', 'success');
         });
 
@@ -1539,24 +1851,24 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
         function showNotification(message, type = 'info') {
             const notification = document.createElement('div');
             notification.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 transition-all duration-300 transform translate-x-full`;
-            
+
             const colors = {
                 success: 'bg-green-500 text-white',
                 error: 'bg-red-500 text-white',
                 info: 'bg-blue-500 text-white',
                 warning: 'bg-yellow-500 text-white'
             };
-            
+
             notification.className += ` ${colors[type]}`;
             notification.textContent = message;
-            
+
             document.body.appendChild(notification);
-            
+
             // Animate in
             setTimeout(() => {
                 notification.classList.remove('translate-x-full');
             }, 100);
-            
+
             // Remove after 3 seconds
             setTimeout(() => {
                 notification.classList.add('translate-x-full');
@@ -1614,6 +1926,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
             });
         }
     </script>
-<!-- Removed injected Cloudflare challenge iframe/script to avoid 404 errors on local environment -->
+    <!-- Removed injected Cloudflare challenge iframe/script to avoid 404 errors on local environment -->
 </body>
+
 </html>

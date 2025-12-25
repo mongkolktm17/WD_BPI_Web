@@ -1,45 +1,99 @@
 <?php
 /**
  * check_permissions.php
- *
- * This script checks if the currently logged-in user has permission to access the current page.
- * It should be included at the top of any page that requires authentication and authorization.
- *
- * It performs the following checks:
- * 1. Verifies that a user is logged in. If not, redirects to login.php.
- * 2. Checks if the user is an 'admin'. If so, grants access by checking for the 'all' permission.
- * 3. Checks if the current page is in the user's permissions list stored in the session.
- * 4. If access is denied, redirects to dashboard.php with an error.
+ * 
+ * Central authentication and permission checking script.
+ * This file should be included at the top of protected pages.
+ * 
+ * It performs the following:
+ * 1. Includes config.php (which starts the session and database connection)
+ * 2. Checks if user is logged in
+ * 3. Loads user permissions into the session
+ * 4. Optionally checks if user has permission to access the current page
  */
 
-// Ensure config is loaded, which starts the session.
+// Include config (which starts session and database connection)
 require_once 'config.php';
 
-// 1. Check if the user is logged in. If not, redirect to the login page.
+// --- Authentication Check ---
+// Check if user is logged in
 if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
     header("location: login.php");
     exit;
 }
 
-// 2. If the user has the 'all' permission (i.e., is an admin), grant access.
-if (isset($_SESSION['permissions']) && in_array('all', $_SESSION['permissions'])) {
-    return; // Grant access and stop further checks.
+// --- Load User Permissions (if not already loaded) ---
+if (!isset($_SESSION['permissions'])) {
+    // Fetch user permissions from database
+    $user_id = $_SESSION["id"];
+
+    // Get user's role_id
+    $stmt = $conn->prepare("SELECT role_id, user_type FROM users WHERE id = ?");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $user_data = $result->fetch_assoc();
+    $stmt->close();
+
+    if ($user_data) {
+        $_SESSION['user_type'] = $user_data['user_type'];
+
+        // If user is admin, grant all permissions
+        if ($user_data['user_type'] === 'admin') {
+            $_SESSION['permissions'] = ['all'];
+        } else if ($user_data['role_id']) {
+            // Get permissions for the role
+            $stmt = $conn->prepare("SELECT page_name FROM role_permissions WHERE role_id = ?");
+            $stmt->bind_param("i", $user_data['role_id']);
+            $stmt->execute();
+            $result = $stmt->get_result();
+
+            $permissions = [];
+            while ($row = $result->fetch_assoc()) {
+                $permissions[] = $row['page_name'];
+            }
+            $stmt->close();
+
+            $_SESSION['permissions'] = $permissions;
+        } else {
+            // No role assigned, no permissions
+            $_SESSION['permissions'] = [];
+        }
+    } else {
+        // User not found in database, invalid session
+        $_SESSION['permissions'] = [];
+    }
 }
 
-// 3. Check for page-specific permissions for non-admin users.
+// --- Optional: Check Page-Specific Permissions ---
+// This function can be called from individual pages to check specific permissions
+function checkPagePermission($page_name)
+{
+    $user_permissions = $_SESSION['permissions'] ?? [];
+
+    // Admins have access to all pages
+    if (in_array('all', $user_permissions)) {
+        return true;
+    }
+
+    // Check if user has permission for this specific page
+    if (in_array($page_name, $user_permissions)) {
+        return true;
+    }
+
+    // No permission
+    return false;
+}
+
+// --- Optional: Enforce Page Permission Check ---
+// Uncomment the following code if you want to automatically check permissions
+// based on the current script name:
+/*
 $current_page = basename($_SERVER['PHP_SELF']);
-
-// Allow access to core pages for any logged-in user.
-$always_allowed_pages = ['report_page.php', 'edit_report.php', 'delete_report.php'];
-if (in_array($current_page, $always_allowed_pages)) {
-    return; // Grant access for these specific pages.
-}
-
-if (!isset($_SESSION['permissions']) || !in_array($current_page, $_SESSION['permissions'])) {
-    // 4. Access Denied: Redirect to the dashboard.
-    // A GET parameter is added to allow the dashboard to show an error message.
-    header("location: access_denied.php");
+if (!checkPagePermission($current_page)) {
+    header("location: access_denied.php?error=access_denied");
     exit;
 }
+*/
 
 ?>
