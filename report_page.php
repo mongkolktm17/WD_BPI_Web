@@ -17,26 +17,164 @@ $page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int) $_GET['page'] 
 $records_per_page = 10;
 $offset = ($page - 1) * $records_per_page;
 
+// Define the queries for each report type to ensure consistency between COUNT and SELECT
+// Format: [Table Name, Select SELECT Part, Count WHERE Part, Main WHERE Part]
+$report_queries = [];
+$collate = "COLLATE utf8mb4_unicode_ci";
+
+// 1. General Reports
+$report_queries[] = [
+    'select' => "SELECT
+        r.submission_time,
+        'รายงานทั่วไป' $collate AS report_type,
+        CONCAT('อาคาร: ', r.building, ', จุด: ', r.guard_post, ' - ', r.incident_report) $collate AS details,
+        r.full_name $collate AS submitted_by,
+        CONCAT('view_report.php?id=', r.id) $collate AS report_link,
+        CONCAT('edit_report.php?id=', r.id) $collate AS edit_link,
+        CONCAT('delete_report.php?id=', r.id) $collate AS delete_link,
+        r.employee_id $collate as employee_id,
+        r.updated_by $collate as updated_by
+    FROM reports r
+    WHERE (r.is_deleted IS NULL OR r.is_deleted = 0)",
+    'count' => "SELECT COUNT(*) as c FROM reports WHERE (is_deleted IS NULL OR is_deleted = 0)"
+];
+
+// 2. Car Parking Reports
+$report_queries[] = [
+    'select' => "SELECT
+        cpr.created_at AS submission_time,
+        'ตรวจลานจอดรถ' $collate AS report_type,
+        CONCAT('กะ: ', cpr.shift, ', สถานะยางอะไหล่: ', cpr.spare_tire_status) $collate AS details,
+        cpr.inspector_name $collate AS submitted_by,
+        CONCAT('view_report.php?id=', cpr.id, '&type=car_parking') $collate AS report_link,
+        CONCAT('edit_car_parking.php?id=', cpr.id) $collate AS edit_link,
+        CONCAT('delete_report.php?id=', cpr.id, '&type=car_parking') $collate AS delete_link,
+        cpr.inspector_code $collate as employee_id,
+        CAST(NULL AS CHAR(255)) $collate AS updated_by
+    FROM car_parking_reports cpr",
+    'count' => "SELECT COUNT(*) as c FROM car_parking_reports"
+];
+
+// 3. CCTV Inspections
+$report_queries[] = [
+    'select' => "SELECT
+        ci.created_at AS submission_time,
+        'ตรวจห้อง CCTV' $collate AS report_type,
+        CONCAT('ห้อง: ', ci.cctv_room, ', กะ: ', ci.shift) $collate AS details,
+        ci.employee_name $collate AS submitted_by,
+        CONCAT('view_report.php?id=', ci.id, '&type=cctv_inspection') $collate AS report_link,
+        CONCAT('edit_cctv_inspection.php?id=', ci.id) $collate AS edit_link,
+        CONCAT('delete_report.php?id=', ci.id, '&type=cctv_inspection') $collate AS delete_link,
+        ci.employee_id $collate as employee_id,
+        CAST(NULL AS CHAR(255)) $collate AS updated_by
+    FROM cctv_inspections ci",
+    'count' => "SELECT COUNT(*) as c FROM cctv_inspections"
+];
+
+// 4. Hand Held Checks
+$report_queries[] = [
+    'select' => "SELECT
+        hhc.created_at AS submission_time,
+        'ตรวจ Hand Held' $collate AS report_type,
+        CONCAT('อาคาร: ', hhc.building, ', จุด: ', hhc.guard_post, ', กะ: ', hhc.shift) $collate AS details,
+        hhc.inspector_name $collate AS submitted_by,
+        CONCAT('view_report.php?id=', hhc.id, '&type=hand_held') $collate AS report_link,
+        CONCAT('edit_hand_held.php?id=', hhc.id) $collate AS edit_link,
+        CONCAT('delete_report.php?id=', hhc.id, '&type=hand_held') $collate AS delete_link,
+        hhc.inspector_code $collate as employee_id,
+        CAST(NULL AS CHAR(255)) $collate AS updated_by
+    FROM hand_held_checks hhc",
+    'count' => "SELECT COUNT(*) as c FROM hand_held_checks"
+];
+
+// 5. Patrol Reports
+$report_queries[] = [
+    'select' => "SELECT
+        pr.created_at AS submission_time,
+        'Checklist Patrol' $collate AS report_type,
+        CONCAT('อาคาร: ', pr.building, ', กะ: ', pr.shift, ', เวลา: ', pr.patrol_time) $collate AS details,
+        pr.inspector_name $collate AS submitted_by,
+        CONCAT('view_report.php?id=', pr.id, '&type=patrol') $collate AS report_link,
+        CONCAT('edit_patrol.php?id=', pr.id) $collate AS edit_link,
+        CONCAT('delete_report.php?id=', pr.id, '&type=patrol') $collate AS delete_link,
+        pr.employee_id $collate as employee_id,
+        CAST(NULL AS CHAR(255)) $collate AS updated_by
+    FROM patrol_reports pr",
+    'count' => "SELECT COUNT(*) as c FROM patrol_reports"
+];
+
+// 6. Security Guard Counts
+$report_queries[] = [
+    'select' => "SELECT
+        sgc.created_at AS submission_time,
+        'บันทึกจำนวน รปภ.' $collate AS report_type,
+        CONCAT('กะเช้า: ', sgc.morning_shift, ', กะค่ำ: ', sgc.evening_shift, ', รวม: ', sgc.total) $collate AS details,
+        CONCAT(u.first_name, ' ', u.last_name) $collate AS submitted_by,
+        CONCAT('view_report.php?id=', sgc.id, '&type=guard_count') $collate AS report_link,
+        CONCAT('edit_guard_count.php?id=', sgc.id) $collate AS edit_link,
+        CONCAT('delete_report.php?id=', sgc.id, '&type=guard_count') $collate AS delete_link,
+        CAST(NULL AS CHAR(255)) $collate as employee_id,
+        CAST(NULL AS CHAR(255)) $collate as updated_by
+    FROM security_guard_counts sgc
+    LEFT JOIN users u ON sgc.submitted_by_id = u.id
+    WHERE (sgc.is_deleted IS NULL OR sgc.is_deleted = 0)",
+    'count' => "SELECT COUNT(*) as c FROM security_guard_counts WHERE (is_deleted IS NULL OR is_deleted = 0)"
+];
+
+// 7. CCTV Reports
+$report_queries[] = [
+    'select' => "SELECT
+        cr.report_time AS submission_time,
+        'NVR Recording' $collate AS report_type,
+        CONCAT('อาคาร: ', cr.building, ', Online: ', cr.online_channels, '/', cr.total_channels) $collate AS details,
+        CONCAT(u.first_name, ' ', u.last_name) $collate AS submitted_by,
+        CONCAT('cctv_report.php') $collate AS report_link,
+        CAST(NULL AS CHAR(255)) $collate AS edit_link,
+        CONCAT('delete_report.php?id=', cr.id, '&type=cctv_report') $collate AS delete_link,
+        u.employee_id $collate as employee_id,
+        CAST(NULL AS CHAR(255)) $collate AS updated_by
+    FROM cctv_reports cr
+    JOIN users u ON cr.submitted_by_id = u.id
+    WHERE (cr.is_deleted IS NULL OR cr.is_deleted = 0)",
+    'count' => "SELECT COUNT(*) as c FROM cctv_reports WHERE (is_deleted IS NULL OR is_deleted = 0)"
+];
+
+// 8. CCTV Angle Reports
+$report_queries[] = [
+    'select' => "SELECT
+        car.report_date AS submission_time,
+        'CCTV Angle Check' $collate AS report_type,
+        CONCAT('ตึก: ', car.building, ', NVR: ', car.nvr, ', Correct: ', car.correct_cameras, '/', car.total_cameras) $collate AS details,
+        car.checked_by $collate AS submitted_by,
+        CONCAT('view_report.php?id=', car.id, '&type=cctv_angle') $collate AS report_link,
+        CONCAT('edit_cctv_angle.php?id=', car.id) $collate AS edit_link,
+        CONCAT('delete_report.php?id=', car.id, '&type=cctv_angle') $collate AS delete_link,
+        CAST(NULL AS CHAR(255)) $collate as employee_id,
+        CAST(NULL AS CHAR(255)) $collate AS updated_by
+    FROM cctv_angle_reports car
+    WHERE (car.is_deleted IS NULL OR car.is_deleted = 0)",
+    'count' => "SELECT COUNT(*) as c FROM cctv_angle_reports WHERE (is_deleted IS NULL OR is_deleted = 0)"
+];
+
+// 9. Metal Detector Checks
+$report_queries[] = [
+    'select' => "SELECT
+        mdc.created_at AS submission_time,
+        'ตรวจ Metal Detector' $collate AS report_type,
+        CONCAT('อาคาร: ', mdc.building, ', จุด: ', mdc.guard_post, ', ยี่ห้อ: ', mdc.scanner_brand) $collate AS details,
+        mdc.employee_name $collate AS submitted_by,
+        CONCAT('view_report.php?id=', mdc.id, '&type=metal_detector') $collate AS report_link,
+        CONCAT('edit_metal_detector.php?id=', mdc.id) $collate AS edit_link,
+        CONCAT('delete_report.php?id=', mdc.id, '&type=metal_detector') $collate AS delete_link,
+        mdc.employee_id $collate as employee_id,
+        CAST(NULL AS CHAR(255)) $collate AS updated_by
+    FROM metal_detector_checks mdc",
+    'count' => "SELECT COUNT(*) as c FROM metal_detector_checks"
+];
+
 // --- Get Total Records for Pagination ---
-$count_sql = "SELECT SUM(c) as total_records FROM (
-    (SELECT COUNT(*) as c FROM reports)
-    UNION ALL
-    (SELECT COUNT(*) as c FROM car_parking_reports)
-    UNION ALL
-    (SELECT COUNT(*) as c FROM cctv_inspections)
-    UNION ALL
-    (SELECT COUNT(*) as c FROM hand_held_checks)
-    UNION ALL
-    (SELECT COUNT(*) as c FROM patrol_reports)
-    UNION ALL
-    (SELECT COUNT(*) as c FROM security_guard_counts)
-    UNION ALL
-    (SELECT COUNT(*) as c FROM cctv_reports)
-    UNION ALL
-    (SELECT COUNT(*) as c FROM cctv_angle_reports)
-    UNION ALL
-    (SELECT COUNT(*) as c FROM metal_detector_checks)
-) as counts";
+$count_subqueries = array_column($report_queries, 'count');
+$count_sql = "SELECT SUM(c) as total_records FROM (" . implode(" UNION ALL ", $count_subqueries) . ") as counts";
 
 $count_stmt = $conn->prepare($count_sql);
 $total_records = 0;
@@ -54,122 +192,13 @@ if ($count_stmt) {
 }
 $total_pages = $total_records > 0 ? ceil($total_records / $records_per_page) : 0;
 
-// Fetch reports from the database using a prepared statement for consistency.
-$reports_result = null;
-$sql = "(SELECT
-    r.submission_time,
-    'รายงานทั่วไป' COLLATE utf8mb4_unicode_ci AS report_type,
-    CONCAT('อาคาร: ', r.building, ', จุด: ', r.guard_post, ' - ', r.incident_report) COLLATE utf8mb4_unicode_ci AS details,
-    r.full_name COLLATE utf8mb4_unicode_ci AS submitted_by,
-    CONCAT('view_report.php?id=', r.id) COLLATE utf8mb4_unicode_ci AS report_link,
-    CONCAT('edit_report.php?id=', r.id) COLLATE utf8mb4_unicode_ci AS edit_link,
-    CONCAT('delete_report.php?id=', r.id) COLLATE utf8mb4_unicode_ci AS delete_link,
-    r.employee_id COLLATE utf8mb4_unicode_ci as employee_id,
-    r.updated_by COLLATE utf8mb4_unicode_ci as updated_by
-FROM reports r WHERE (r.is_deleted IS NULL OR r.is_deleted = 0))
-UNION ALL
-(SELECT
-    cpr.created_at AS submission_time,
-    'ตรวจลานจอดรถ' COLLATE utf8mb4_unicode_ci AS report_type,
-    CONCAT('กะ: ', cpr.shift, ', สถานะยางอะไหล่: ', cpr.spare_tire_status) COLLATE utf8mb4_unicode_ci AS details,
-    cpr.inspector_name COLLATE utf8mb4_unicode_ci AS submitted_by,
-    CONCAT('view_report.php?id=', cpr.id, '&type=car_parking') COLLATE utf8mb4_unicode_ci AS report_link,
-    CONCAT('edit_car_parking.php?id=', cpr.id) COLLATE utf8mb4_unicode_ci AS edit_link,
-    CONCAT('delete_report.php?id=', cpr.id, '&type=car_parking') COLLATE utf8mb4_unicode_ci AS delete_link,
-    cpr.inspector_code COLLATE utf8mb4_unicode_ci as employee_id,
-    CAST(NULL AS CHAR(255)) COLLATE utf8mb4_unicode_ci AS updated_by
-FROM car_parking_reports cpr WHERE (cpr.is_deleted IS NULL OR cpr.is_deleted = 0))
-UNION ALL
-(SELECT
-    ci.created_at AS submission_time,
-    'ตรวจห้อง CCTV' COLLATE utf8mb4_unicode_ci AS report_type,
-    CONCAT('ห้อง: ', ci.cctv_room, ', กะ: ', ci.shift) COLLATE utf8mb4_unicode_ci AS details,
-    ci.employee_name COLLATE utf8mb4_unicode_ci AS submitted_by,
-    CONCAT('view_report.php?id=', ci.id, '&type=cctv_inspection') COLLATE utf8mb4_unicode_ci AS report_link,
-    CONCAT('edit_cctv_inspection.php?id=', ci.id) COLLATE utf8mb4_unicode_ci AS edit_link,
-    CONCAT('delete_report.php?id=', ci.id, '&type=cctv_inspection') COLLATE utf8mb4_unicode_ci AS delete_link,
-    ci.employee_id COLLATE utf8mb4_unicode_ci as employee_id,
-    CAST(NULL AS CHAR(255)) COLLATE utf8mb4_unicode_ci AS updated_by
-FROM cctv_inspections ci WHERE (ci.is_deleted IS NULL OR ci.is_deleted = 0))
-UNION ALL
-(SELECT
-    hhc.created_at AS submission_time,
-    'ตรวจ Hand Held' COLLATE utf8mb4_unicode_ci AS report_type,
-    CONCAT('อาคาร: ', hhc.building, ', จุด: ', hhc.guard_post, ', กะ: ', hhc.shift) COLLATE utf8mb4_unicode_ci AS details,
-    hhc.inspector_name COLLATE utf8mb4_unicode_ci AS submitted_by,
-    CONCAT('view_report.php?id=', hhc.id, '&type=hand_held') COLLATE utf8mb4_unicode_ci AS report_link,
-    CONCAT('edit_hand_held.php?id=', hhc.id) COLLATE utf8mb4_unicode_ci AS edit_link,
-    CONCAT('delete_report.php?id=', hhc.id, '&type=hand_held') COLLATE utf8mb4_unicode_ci AS delete_link,
-    hhc.inspector_code COLLATE utf8mb4_unicode_ci as employee_id,
-    CAST(NULL AS CHAR(255)) COLLATE utf8mb4_unicode_ci AS updated_by
-FROM hand_held_checks hhc WHERE (hhc.is_deleted IS NULL OR hhc.is_deleted = 0))
-UNION ALL
-(SELECT
-    pr.created_at AS submission_time,
-    'Checklist Patrol' COLLATE utf8mb4_unicode_ci AS report_type,
-    CONCAT('อาคาร: ', pr.building, ', กะ: ', pr.shift, ', เวลา: ', pr.patrol_time) COLLATE utf8mb4_unicode_ci AS details,
-    pr.inspector_name COLLATE utf8mb4_unicode_ci AS submitted_by,
-    CONCAT('view_report.php?id=', pr.id, '&type=patrol') COLLATE utf8mb4_unicode_ci AS report_link,
-    CONCAT('edit_patrol.php?id=', pr.id) COLLATE utf8mb4_unicode_ci AS edit_link,
-    CONCAT('delete_report.php?id=', pr.id, '&type=patrol') COLLATE utf8mb4_unicode_ci AS delete_link,
-    pr.employee_id COLLATE utf8mb4_unicode_ci as employee_id,
-    CAST(NULL AS CHAR(255)) COLLATE utf8mb4_unicode_ci AS updated_by
-FROM patrol_reports pr WHERE (pr.is_deleted IS NULL OR pr.is_deleted = 0))
-UNION ALL
-(SELECT
-    sgc.created_at AS submission_time,
-    'บันทึกจำนวน รปภ.' COLLATE utf8mb4_unicode_ci AS report_type,
-    CONCAT('กะเช้า: ', sgc.morning_shift, ', กะค่ำ: ', sgc.evening_shift, ', รวม: ', sgc.total) COLLATE utf8mb4_unicode_ci AS details,
-    CONCAT(u.first_name, ' ', u.last_name) COLLATE utf8mb4_unicode_ci AS submitted_by,
-    CONCAT('view_report.php?id=', sgc.id, '&type=guard_count') COLLATE utf8mb4_unicode_ci AS report_link,
-    CONCAT('edit_guard_count.php?id=', sgc.id) COLLATE utf8mb4_unicode_ci AS edit_link,
-    CONCAT('delete_report.php?id=', sgc.id, '&type=guard_count') COLLATE utf8mb4_unicode_ci AS delete_link,
-    CAST(NULL AS CHAR(255)) COLLATE utf8mb4_unicode_ci as employee_id,
-    sgc.updated_by COLLATE utf8mb4_unicode_ci as updated_by
-FROM security_guard_counts sgc
-LEFT JOIN users u ON sgc.submitted_by_id = u.id
-WHERE (sgc.is_deleted IS NULL OR sgc.is_deleted = 0))
-UNION ALL
-(SELECT
-    cr.report_time AS submission_time,
-    'NVR Recording' COLLATE utf8mb4_unicode_ci AS report_type,
-    CONCAT('อาคาร: ', cr.building, ', Online: ', cr.online_channels, '/', cr.total_channels) COLLATE utf8mb4_unicode_ci AS details,
-    CONCAT(u.first_name, ' ', u.last_name) COLLATE utf8mb4_unicode_ci AS submitted_by,
-    CONCAT('cctv_report.php') COLLATE utf8mb4_unicode_ci AS report_link,
-    CAST(NULL AS CHAR(255)) COLLATE utf8mb4_unicode_ci AS edit_link,
-    CONCAT('delete_report.php?id=', cr.id, '&type=cctv_report') COLLATE utf8mb4_unicode_ci AS delete_link,
-    u.employee_id COLLATE utf8mb4_unicode_ci as employee_id,
-    CAST(NULL AS CHAR(255)) COLLATE utf8mb4_unicode_ci AS updated_by
-FROM cctv_reports cr
-JOIN users u ON cr.submitted_by_id = u.id
-WHERE (cr.is_deleted IS NULL OR cr.is_deleted = 0))
-UNION ALL
-(SELECT
-    car.report_date AS submission_time,
-    'CCTV Angle Check' COLLATE utf8mb4_unicode_ci AS report_type,
-    CONCAT('ตึก: ', car.building, ', NVR: ', car.nvr, ', Correct: ', car.correct_cameras, '/', car.total_cameras) COLLATE utf8mb4_unicode_ci AS details,
-    car.checked_by COLLATE utf8mb4_unicode_ci AS submitted_by,
-    CONCAT('view_report.php?id=', car.id, '&type=cctv_angle') COLLATE utf8mb4_unicode_ci AS report_link,
-    CONCAT('edit_cctv_angle.php?id=', car.id) COLLATE utf8mb4_unicode_ci AS edit_link,
-    CONCAT('delete_report.php?id=', car.id, '&type=cctv_angle') COLLATE utf8mb4_unicode_ci AS delete_link,
-    CAST(NULL AS CHAR(255)) COLLATE utf8mb4_unicode_ci as employee_id,
-    CAST(NULL AS CHAR(255)) COLLATE utf8mb4_unicode_ci AS updated_by
-FROM cctv_angle_reports car WHERE (car.is_deleted IS NULL OR car.is_deleted = 0))
-UNION ALL
-(SELECT
-    mdc.created_at AS submission_time,
-    'ตรวจ Metal Detector' COLLATE utf8mb4_unicode_ci AS report_type,
-    CONCAT('อาคาร: ', mdc.building, ', จุด: ', mdc.guard_post, ', ยี่ห้อ: ', mdc.scanner_brand) COLLATE utf8mb4_unicode_ci AS details,
-    mdc.employee_name COLLATE utf8mb4_unicode_ci AS submitted_by,
-    CONCAT('view_report.php?id=', mdc.id, '&type=metal_detector') COLLATE utf8mb4_unicode_ci AS report_link,
-    CONCAT('edit_metal_detector.php?id=', mdc.id) COLLATE utf8mb4_unicode_ci AS edit_link,
-    CONCAT('delete_report.php?id=', mdc.id, '&type=metal_detector') COLLATE utf8mb4_unicode_ci AS delete_link,
-    mdc.employee_id COLLATE utf8mb4_unicode_ci as employee_id,
-    CAST(NULL AS CHAR(255)) COLLATE utf8mb4_unicode_ci AS updated_by
-FROM metal_detector_checks mdc WHERE (mdc.is_deleted IS NULL OR mdc.is_deleted = 0))
-ORDER BY submission_time DESC
-LIMIT ? OFFSET ?";
+// --- Fetch main records ---
+$select_subqueries = array_column($report_queries, 'select');
+// Wrap in parentheses only if needed, but UNION ALL without parens is often cleaner if no per-query LIMIT
+// However, the original code used (SELECT ...) UNION ALL (SELECT ...).
+$sql = "(" . implode(") UNION ALL (", $select_subqueries) . ") ORDER BY submission_time DESC LIMIT ? OFFSET ?";
 
+$reports_result = null;
 $stmt = $conn->prepare($sql);
 
 if ($stmt) {
@@ -177,15 +206,12 @@ if ($stmt) {
     if ($stmt->execute()) {
         $reports_result = $stmt->get_result();
     } else {
-        // In a production app, log this error. For now, display it.
         $error_message = "Error executing query: " . htmlspecialchars($stmt->error);
     }
     $stmt->close();
 } else {
-    // In a production app, log this error. For now, display it.
     $error_message = "Error preparing query: " . htmlspecialchars($conn->error);
 }
-
 ?>
 <!DOCTYPE html>
 <html lang="th">
@@ -216,10 +242,10 @@ if ($stmt) {
                         class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-xl transition-colors">กลับ
                         Dashboard</a>
                     <?php if (isset($_SESSION['permissions']) && in_array('all', $_SESSION['permissions'])): ?>
-                        <a href="manage_officers.php"
-                            class="submit-btn-modern text-white text-sm font-semibold py-2 px-4 rounded-xl">จัดการเจ้าหน้าที่</a>
-                        <a href="manage_roles.php"
-                            class="submit-btn-modern text-white text-sm font-semibold py-2 px-4 rounded-xl">จัดการ Role</a>
+                            <a href="manage_officers.php"
+                                class="submit-btn-modern text-white text-sm font-semibold py-2 px-4 rounded-xl">จัดการเจ้าหน้าที่</a>
+                            <a href="manage_roles.php"
+                                class="submit-btn-modern text-white text-sm font-semibold py-2 px-4 rounded-xl">จัดการ Role</a>
                     <?php endif; ?>
                     <a href="logout.php"
                         class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-xl transition-colors">ออกจากระบบ</a>
@@ -250,22 +276,22 @@ if ($stmt) {
                 $page_name = strtok($form['link'], '?'); // Get the file name from the link
                 if (in_array('all', $user_permissions) || in_array($page_name, $user_permissions)):
                     ?>
-                    <a href="<?php echo $form['link']; ?>"
-                        class="glass-card rounded-2xl p-6 text-center text-slate-700 hover:text-blue-600 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-                        <div class="text-blue-500 mx-auto"><?php echo $form['icon']; ?></div>
-                        <span class="font-semibold mt-2 block"><?php echo $form['title']; ?></span>
-                    </a>
-                    <?php
+                            <a href="<?php echo $form['link']; ?>"
+                                class="glass-card rounded-2xl p-6 text-center text-slate-700 hover:text-blue-600 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                                <div class="text-blue-500 mx-auto"><?php echo $form['icon']; ?></div>
+                                <span class="font-semibold mt-2 block"><?php echo $form['title']; ?></span>
+                            </a>
+                            <?php
                 endif;
             endforeach;
             ?>
         </div>
 
         <?php if (!empty($error_message)): ?>
-            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-                <strong class="font-bold">Notice:</strong>
-                <span class="block sm:inline"><?php echo htmlspecialchars($error_message); ?></span>
-            </div>
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+                    <strong class="font-bold">Notice:</strong>
+                    <span class="block sm:inline"><?php echo htmlspecialchars($error_message); ?></span>
+                </div>
         <?php endif; ?>
 
         <!-- Reports Table -->
@@ -284,71 +310,71 @@ if ($stmt) {
                     </thead>
                     <tbody class="text-slate-600 text-sm font-light">
                         <?php if ($reports_result && $reports_result->num_rows > 0): ?>
-                            <?php while ($row = $reports_result->fetch_assoc()): ?>
-                                <tr class="border-b border-slate-200/50 hover:bg-white/50">
-                                    <td class="py-4 px-6 text-left whitespace-nowrap">
-                                        <?php echo htmlspecialchars($row["submission_time"]); ?>
-                                    </td>
-                                    <td class="py-4 px-6 text-left"><?php echo htmlspecialchars($row["report_type"]); ?></td>
-                                    <td class="py-4 px-6 text-left max-w-xs truncate">
-                                        <?php echo htmlspecialchars($row["details"]); ?>
-                                    </td>
-                                    <td class="py-4 px-6 text-left">
-                                        <?php
-                                        echo htmlspecialchars($row["submitted_by"]);
-                                        if (!empty($row["updated_by"])) {
-                                            echo '<br><span class="text-xs text-orange-500 font-semibold">(Edited by: ' . htmlspecialchars($row["updated_by"]) . ')</span>';
-                                        }
-                                        ?>
-                                    </td>
-                                    <td class="py-4 px-6 text-center">
-                                        <div class="flex item-center justify-center">
-                                            <?php
-                                            $is_admin = (isset($_SESSION['permissions']) && in_array('all', $_SESSION['permissions'])) || (isset($_SESSION['username']) && strcasecmp($_SESSION['username'], 'admin') === 0);
-                                            $is_author = isset($_SESSION['employee_id']) && isset($row['employee_id']) && $_SESSION['employee_id'] == $row['employee_id'];
-
-                                            if ($row['report_link']):
+                                <?php while ($row = $reports_result->fetch_assoc()): ?>
+                                        <tr class="border-b border-slate-200/50 hover:bg-white/50">
+                                            <td class="py-4 px-6 text-left whitespace-nowrap">
+                                                <?php echo htmlspecialchars($row["submission_time"]); ?>
+                                            </td>
+                                            <td class="py-4 px-6 text-left"><?php echo htmlspecialchars($row["report_type"]); ?></td>
+                                            <td class="py-4 px-6 text-left max-w-xs truncate">
+                                                <?php echo htmlspecialchars($row["details"]); ?>
+                                            </td>
+                                            <td class="py-4 px-6 text-left">
+                                                <?php
+                                                echo htmlspecialchars($row["submitted_by"]);
+                                                if (!empty($row["updated_by"])) {
+                                                    echo '<br><span class="text-xs text-orange-500 font-semibold">(Edited by: ' . htmlspecialchars($row["updated_by"]) . ')</span>';
+                                                }
                                                 ?>
-                                                <a href="<?php echo htmlspecialchars($row['report_link']); ?>"
-                                                    class="w-5 mr-2 transform text-blue-500 hover:text-blue-700 hover:scale-110">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                                        stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                    </svg>
-                                                </a>
-                                            <?php endif; ?>
-                                            <?php if (($is_admin || $is_author) && $row['edit_link']): ?>
-                                                <a href="<?php echo htmlspecialchars($row['edit_link']); ?>"
-                                                    class="w-5 mr-2 transform text-yellow-500 hover:text-yellow-700 hover:scale-110">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                                        stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                                    </svg>
-                                                </a>
-                                            <?php endif; ?>
-                                            <?php if ($is_admin && $row['delete_link']): ?>
-                                                <a href="<?php echo htmlspecialchars($row['delete_link']); ?>"
-                                                    onclick="return confirm('คุณแน่ใจหรือไม่ว่าต้องการลบรายงานนี้?');"
-                                                    class="w-5 transform text-red-500 hover:text-red-700 hover:scale-110">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                                        stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                    </svg>
-                                                </a>
-                                            <?php endif; ?>
-                                        </div>
-                                    </td>
-                                </tr>
-                            <?php endwhile; ?>
+                                            </td>
+                                            <td class="py-4 px-6 text-center">
+                                                <div class="flex item-center justify-center">
+                                                    <?php
+                                                    $is_admin = (isset($_SESSION['permissions']) && in_array('all', $_SESSION['permissions'])) || (isset($_SESSION['username']) && strcasecmp($_SESSION['username'], 'admin') === 0);
+                                                    $is_author = isset($_SESSION['employee_id']) && isset($row['employee_id']) && $_SESSION['employee_id'] == $row['employee_id'];
+
+                                                    if ($row['report_link']):
+                                                        ?>
+                                                            <a href="<?php echo htmlspecialchars($row['report_link']); ?>"
+                                                                class="w-5 mr-2 transform text-blue-500 hover:text-blue-700 hover:scale-110">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                                    stroke="currentColor">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                                </svg>
+                                                            </a>
+                                                    <?php endif; ?>
+                                                    <?php if (($is_admin || $is_author) && $row['edit_link']): ?>
+                                                            <a href="<?php echo htmlspecialchars($row['edit_link']); ?>"
+                                                                class="w-5 mr-2 transform text-yellow-500 hover:text-yellow-700 hover:scale-110">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                                    stroke="currentColor">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                                </svg>
+                                                            </a>
+                                                    <?php endif; ?>
+                                                    <?php if ($is_admin && $row['delete_link']): ?>
+                                                            <a href="<?php echo htmlspecialchars($row['delete_link']); ?>"
+                                                                onclick="return confirm('คุณแน่ใจหรือไม่ว่าต้องการลบรายงานนี้?');"
+                                                                class="w-5 transform text-red-500 hover:text-red-700 hover:scale-110">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                                    stroke="currentColor">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                </svg>
+                                                            </a>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                <?php endwhile; ?>
                         <?php else: ?>
-                            <tr>
-                                <td colspan="5" class="py-6 text-center text-slate-500">ยังไม่มีรายงาน</td>
-                            </tr>
+                                <tr>
+                                    <td colspan="5" class="py-6 text-center text-slate-500">ยังไม่มีรายงาน</td>
+                                </tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
@@ -356,55 +382,55 @@ if ($stmt) {
 
             <!-- Pagination -->
             <?php if ($total_pages > 1): ?>
-                <div class="mt-6 flex items-center justify-between">
-                    <div class="text-sm text-slate-600">
-                        Showing page <?php echo $page; ?> of <?php echo $total_pages; ?>
-                    </div>
-                    <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                        <?php if ($page > 1): ?>
-                            <a href="?page=<?php echo $page - 1; ?>"
-                                class="relative inline-flex items-center px-3 py-2 rounded-l-md border border-slate-300 bg-white text-sm font-medium text-slate-500 hover:bg-slate-50 transition-colors">
-                                <span>Previous</span>
-                            </a>
-                        <?php endif; ?>
+                    <div class="mt-6 flex items-center justify-between">
+                        <div class="text-sm text-slate-600">
+                            Showing page <?php echo $page; ?> of <?php echo $total_pages; ?>
+                        </div>
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                            <?php if ($page > 1): ?>
+                                    <a href="?page=<?php echo $page - 1; ?>"
+                                        class="relative inline-flex items-center px-3 py-2 rounded-l-md border border-slate-300 bg-white text-sm font-medium text-slate-500 hover:bg-slate-50 transition-colors">
+                                        <span>Previous</span>
+                                    </a>
+                            <?php endif; ?>
 
-                        <?php
-                        // Pagination with ellipsis
-                        $start = max(1, $page - 2);
-                        $end = min($total_pages, $page + 2);
+                            <?php
+                            // Pagination with ellipsis
+                            $start = max(1, $page - 2);
+                            $end = min($total_pages, $page + 2);
 
-                        if ($start > 1) {
-                            echo '<a href="?page=1" class="relative inline-flex items-center px-4 py-2 border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">1</a>';
-                            if ($start > 2) {
-                                echo '<span class="relative inline-flex items-center px-4 py-2 border border-slate-300 bg-white text-sm font-medium text-slate-700">...</span>';
+                            if ($start > 1) {
+                                echo '<a href="?page=1" class="relative inline-flex items-center px-4 py-2 border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">1</a>';
+                                if ($start > 2) {
+                                    echo '<span class="relative inline-flex items-center px-4 py-2 border border-slate-300 bg-white text-sm font-medium text-slate-700">...</span>';
+                                }
                             }
-                        }
 
-                        for ($i = $start; $i <= $end; $i++):
+                            for ($i = $start; $i <= $end; $i++):
+                                ?>
+                                    <a href="?page=<?php echo $i; ?>"
+                                        class="relative inline-flex items-center px-4 py-2 border text-sm font-medium <?php echo $i == $page ? 'z-10 bg-blue-50 border-blue-500 text-blue-600' : 'bg-white border-slate-300 text-slate-500 hover:bg-slate-50'; ?> transition-colors">
+                                        <?php echo $i; ?>
+                                    </a>
+                            <?php endfor; ?>
+
+                            <?php
+                            if ($end < $total_pages) {
+                                if ($end < $total_pages - 1) {
+                                    echo '<span class="relative inline-flex items-center px-4 py-2 border border-slate-300 bg-white text-sm font-medium text-slate-700">...</span>';
+                                }
+                                echo '<a href="?page=' . $total_pages . '" class="relative inline-flex items-center px-4 py-2 border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">' . $total_pages . '</a>';
+                            }
                             ?>
-                            <a href="?page=<?php echo $i; ?>"
-                                class="relative inline-flex items-center px-4 py-2 border text-sm font-medium <?php echo $i == $page ? 'z-10 bg-blue-50 border-blue-500 text-blue-600' : 'bg-white border-slate-300 text-slate-500 hover:bg-slate-50'; ?> transition-colors">
-                                <?php echo $i; ?>
-                            </a>
-                        <?php endfor; ?>
 
-                        <?php
-                        if ($end < $total_pages) {
-                            if ($end < $total_pages - 1) {
-                                echo '<span class="relative inline-flex items-center px-4 py-2 border border-slate-300 bg-white text-sm font-medium text-slate-700">...</span>';
-                            }
-                            echo '<a href="?page=' . $total_pages . '" class="relative inline-flex items-center px-4 py-2 border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">' . $total_pages . '</a>';
-                        }
-                        ?>
-
-                        <?php if ($page < $total_pages): ?>
-                            <a href="?page=<?php echo $page + 1; ?>"
-                                class="relative inline-flex items-center px-3 py-2 rounded-r-md border border-slate-300 bg-white text-sm font-medium text-slate-500 hover:bg-slate-50 transition-colors">
-                                <span>Next</span>
-                            </a>
-                        <?php endif; ?>
-                    </nav>
-                </div>
+                            <?php if ($page < $total_pages): ?>
+                                    <a href="?page=<?php echo $page + 1; ?>"
+                                        class="relative inline-flex items-center px-3 py-2 rounded-r-md border border-slate-300 bg-white text-sm font-medium text-slate-500 hover:bg-slate-50 transition-colors">
+                                        <span>Next</span>
+                                    </a>
+                            <?php endif; ?>
+                        </nav>
+                    </div>
             <?php endif; ?>
         </div>
     </div>

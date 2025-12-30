@@ -1,0 +1,201 @@
+/**
+ * WD Security Dashboard - Main Stylesheet
+ * 
+ * This file contains all custom CSS for the dashboard.
+ * Extracted from dashboard.php for better maintainability.
+ * 
+ * @version 1.1
+ * @date 2025-12-30
+ */
+
+/* ==========================================================================
+   Base Styles
+   ========================================================================== */
+
+body {
+    box-sizing: border-box;
+}
+
+/* ==========================================================================
+   Background & Layout
+   ========================================================================== */
+
+.gradient-bg {
+    background: linear-gradient(135deg, #f0f9ff 0%, #dbeafe 100%);
+}
+
+.card-shadow {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* ==========================================================================
+   Animations
+   ========================================================================== */
+
+.pulse-animation {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.7;
+    }
+}
+
+/* ==========================================================================
+   Status Indicators
+   ========================================================================== */
+
+.status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+}
+
+.status-online {
+    background-color: #10b981;
+}
+
+.status-offline {
+    background-color: #ef4444;
+}
+
+.status-warning {
+    background-color: #f59e0b;
+}
+
+/* ==========================================================================
+   View Transitions (Modern Browsers)
+   ========================================================================== */
+
+@view-transition {
+    navigation: auto;
+}
+
+/* ==========================================================================
+   Clock Override
+   ========================================================================== */
+
+#current-time {
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+}
+
+/* ==========================================================================
+   Settings Modal Enhancements
+   ========================================================================== */
+
+/* Tab Button Styles */
+.tab-btn {
+    position: relative;
+    color: #64748b;
+    background: transparent;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tab-btn:hover {
+    color: #3b82f6;
+    background: #eff6ff;
+}
+
+.tab-btn.active {
+    color: #ffffff;
+    background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.tab-btn.active svg {
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+/* Form Input Enhancements */
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+input[type="password"],
+select {
+    transition: all 0.2s ease;
+    border: 1.5px solid #e2e8f0;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="tel"]:focus,
+input[type="password"]:focus,
+select:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    transform: translateY(-1px);
+}
+
+input[readonly] {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-color: #e2e8f0;
+    cursor: not-allowed;
+}
+
+/* Button Enhancements */
+button[type="submit"],
+.bg-blue-600,
+.bg-green-600,
+.bg-orange-600 {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+button[type="submit"]:hover,
+.bg-blue-600:hover,
+.bg-green-600:hover,
+.bg-orange-600:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
+button[type="submit"]:active,
+.bg-blue-600:active,
+.bg-green-600:active,
+.bg-orange-600:active {
+    transform: translateY(0);
+}
+
+/* Modal Animation */
+#settings-modal {
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* Smooth Scrollbar */
+.overflow-y-auto::-webkit-scrollbar {
+    width: 8px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}

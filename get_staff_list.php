@@ -9,7 +9,14 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 }
 
 // Check if user is admin
-$is_admin = isset($_SESSION['permissions']) && in_array('all', $_SESSION['permissions']);
+$is_admin = false;
+if (isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'admin') {
+    $is_admin = true;
+} elseif (isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1) {
+    $is_admin = true;
+} elseif (isset($_SESSION['permissions']) && in_array('all', $_SESSION['permissions'])) {
+    $is_admin = true;
+}
 
 if (!$is_admin) {
     header("Content-Type: application/json");

@@ -191,60 +191,7 @@ $conn->close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WD Security Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body {
-            box-sizing: border-box;
-        }
-
-        .gradient-bg {
-            background: linear-gradient(135deg, #f0f9ff 0%, #dbeafe 100%);
-        }
-
-        .card-shadow {
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        }
-
-        .pulse-animation {
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-
-            0%,
-            100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.7;
-            }
-        }
-
-        .status-indicator {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 8px;
-        }
-
-        .status-online {
-            background-color: #10b981;
-        }
-
-        .status-offline {
-            background-color: #ef4444;
-        }
-
-        .status-warning {
-            background-color: #f59e0b;
-        }
-    </style>
-    <style>
-        @view-transition {
-            navigation: auto;
-        }
-    </style>
+    <link rel="stylesheet" href="public/css/dashboard.css">
     <script>
         // Safe loader for optional SDKs: append script tags and log failures instead of throwing 404 errors.
         (function () {
@@ -293,7 +240,7 @@ $conn->close();
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
-                            <span id="current-time" class="text-sm font-medium tracking-wide font-mono"></span>
+                            <span id="current-time" class="text-sm font-medium tracking-wide"></span>
                         </div>
                     </div>
                 </div>
@@ -1012,293 +959,388 @@ $conn->close();
                     Systems Operational</span></p>
         </footer>
     </div><!-- Settings Modal -->
-    <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+    <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm hidden z-50">
         <div class="flex items-center justify-center min-h-full p-2 sm:p-4">
             <div
-                class="bg-white rounded-lg w-full max-w-full sm:max-w-xl md:max-w-2xl lg:max-w-2xl max-h-[85vh] flex flex-col">
-                <!-- Modal Header -->
-                <div class="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
-                    <h3 class="text-xl font-bold text-blue-900">System Settings</h3><button id="close-modal"
-                        class="text-gray-400 hover:text-gray-600 transition-colors">
-                        <svg class="w-6 h-6" fill="currentColor" viewbox="0 0 20 20">
-                            <path fill-rule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clip-rule="evenodd"></path>
-                        </svg></button>
-                </div><!-- Modal Content -->
-                <div class="p-4 overflow-y-auto flex-1"><!-- Tab Navigation -->
-                    <div
-                        class="flex flex-col space-y-1 md:flex-row md:space-x-1 md:space-y-0 mb-6 bg-gray-100 p-1 rounded-lg">
-                        <button class="tab-btn active flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors"
-                            data-tab="profile">
-                            <svg class="w-4 h-4 inline mr-2" fill="currentColor" viewbox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                class="bg-white rounded-2xl shadow-2xl w-full max-w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+                <!-- Modal Header with Gradient -->
+                <div class="relative bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 p-6 flex-shrink-0">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="bg-white/20 backdrop-blur-sm p-3 rounded-xl">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
+                                    </path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-2xl font-bold text-white">System Settings</h3>
+                                <p class="text-blue-100 text-sm mt-0.5">Manage your profile and system preferences</p>
+                            </div>
+                        </div>
+                        <button id="close-modal"
+                            class="text-white/80 hover:text-white hover:bg-white/20 p-2 rounded-lg transition-all duration-200">
+                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
                                     clip-rule="evenodd"></path>
-                            </svg> User Profile </button> <button
-                            class="tab-btn flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors"
+                            </svg>
+                        </button>
+                    </div>
+                </div><!-- Modal Content -->
+                <!-- Tab Navigation (Fixed) -->
+                <div class="bg-gray-50 px-6 pt-6 pb-2 border-b border-gray-200 z-10 flex-shrink-0">
+                    <div
+                        class="flex flex-col md:flex-row gap-2 bg-white p-2 rounded-xl shadow-sm border border-gray-200">
+                        <button
+                            class="tab-btn active group relative flex-1 py-3 px-4 rounded-lg text-sm font-semibold transition-all duration-300 overflow-hidden"
+                            data-tab="profile">
+                            <div class="relative z-10 flex items-center justify-center gap-2">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                                        clip-rule="evenodd"></path>
+                                </svg>
+                                <span>User Profile</span>
+                            </div>
+                        </button>
+                        <button
+                            class="tab-btn group relative flex-1 py-3 px-4 rounded-lg text-sm font-semibold transition-all duration-300 overflow-hidden"
                             data-tab="staff">
-                            <svg class="w-4 h-4 inline mr-2" fill="currentColor" viewbox="0 0 20 20">
-                                <path
-                                    d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z">
-                                </path>
-                            </svg> Staff Management </button> <button
-                            class="tab-btn flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors"
+                            <div class="relative z-10 flex items-center justify-center gap-2">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path
+                                        d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z">
+                                    </path>
+                                </svg>
+                                <span>Staff Management</span>
+                            </div>
+                        </button>
+                        <button
+                            class="tab-btn group relative flex-1 py-3 px-4 rounded-lg text-sm font-semibold transition-all duration-300 overflow-hidden"
                             data-tab="roles">
-                            <svg class="w-4 h-4 inline mr-2" fill="currentColor" viewbox="0 0 20 20">
-                                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg> Role Management </button>
-                    </div><!-- Tab Content --> <!-- User Profile Tab -->
+                            <div class="relative z-10 flex items-center justify-center gap-2">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <span>Role Management</span>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Modal Content (Scrollable) -->
+                <div class="p-6 overflow-y-auto bg-gray-50 flex-1"><!-- Tab Content --> <!-- User Profile Tab -->
                     <div id="profile-tab" class="tab-content">
-                        <h4 class="text-lg font-semibold text-blue-800 mb-4">User Profile Settings</h4>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div class="space-y-4">
-                                <div><label class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
-                                    <input type="text" id="profile-name"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        value="Admin User">
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+                            <div class="flex items-center gap-3 mb-6">
+                                <div class="bg-gradient-to-br from-blue-500 to-indigo-600 p-2 rounded-lg">
+                                    <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd">
+                                        </path>
+                                    </svg>
                                 </div>
-                                <div><label class="block text-sm font-medium text-gray-700 mb-2">Email</label> <input
-                                        type="email" id="profile-email"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        value="admin@westerndigital.com">
+                                <h4 class="text-xl font-bold text-gray-800">User Profile Settings</h4>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="space-y-4">
+                                    <div><label class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                                        <input type="text" id="profile-name"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            value="Admin User">
+                                    </div>
+                                    <div><label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                                        <input type="email" id="profile-email"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            value="admin@westerndigital.com">
+                                    </div>
+                                    <div><label class="block text-sm font-medium text-gray-700 mb-2">Department</label>
+                                        <select id="profile-department"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                            <option value="security">Security Department</option>
+                                            <option value="it">IT Department</option>
+                                            <option value="hr">HR Department</option>
+                                            <option value="operations">Operations</option>
+                                        </select>
+                                    </div>
                                 </div>
-                                <div><label class="block text-sm font-medium text-gray-700 mb-2">Department</label>
-                                    <select id="profile-department"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                        <option value="security">Security Department</option>
-                                        <option value="it">IT Department</option>
-                                        <option value="hr">HR Department</option>
-                                        <option value="operations">Operations</option>
-                                    </select>
+                                <div class="space-y-4">
+                                    <div><label class="block text-sm font-medium text-gray-700 mb-2">Phone
+                                            Number</label>
+                                        <input type="tel" id="profile-phone"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            value="+66 2 123 4567">
+                                    </div>
+                                    <div><label class="block text-sm font-medium text-gray-700 mb-2">Employee ID</label>
+                                        <input type="text" id="profile-employee-id"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
+                                            value="WD001" readonly>
+                                    </div>
+                                    <div><label class="block text-sm font-medium text-gray-700 mb-2">Last Login</label>
+                                        <input type="text"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
+                                            value="Today, 08:30 AM" readonly>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="space-y-4">
-                                <div><label class="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-                                    <input type="tel" id="profile-phone"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        value="+66 2 123 4567">
-                                </div>
-                                <div><label class="block text-sm font-medium text-gray-700 mb-2">Employee ID</label>
-                                    <input type="text" id="profile-employee-id"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
-                                        value="WD001" readonly>
-                                </div>
-                                <div><label class="block text-sm font-medium text-gray-700 mb-2">Last Login</label>
-                                    <input type="text"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
-                                        value="Today, 08:30 AM" readonly>
-                                </div>
-                            </div>
-                        </div>
 
-                        <!-- Password Change Section -->
-                        <div class="mt-6 pt-6 border-t border-gray-200">
-                            <h5 class="text-md font-semibold text-gray-800 mb-4">Change Password</h5>
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
-                                    <input type="password" id="current-password"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <!-- Password Change Section -->
+                            <div class="mt-6 pt-6 border-t border-gray-200">
+                                <h5 class="text-md font-semibold text-gray-800 mb-4">Change Password</h5>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Current
+                                            Password</label>
+                                        <input type="password" id="current-password"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">New Password</label>
+                                        <input type="password" id="new-password"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Confirm New
+                                            Password</label>
+                                        <input type="password" id="confirm-password"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    </div>
                                 </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">New Password</label>
-                                    <input type="password" id="new-password"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Confirm New
-                                        Password</label>
-                                    <input type="password" id="confirm-password"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <div class="mt-4">
+                                    <button id="change-password-btn"
+                                        class="bg-orange-600 hover:bg-orange-700 text-white px-6 py-2 rounded-md transition-colors">
+                                        Change Password
+                                    </button>
                                 </div>
                             </div>
-                            <div class="mt-4">
-                                <button id="change-password-btn"
-                                    class="bg-orange-600 hover:bg-orange-700 text-white px-6 py-2 rounded-md transition-colors">
-                                    Change Password
-                                </button>
-                            </div>
-                        </div>
 
-                        <div class="mt-6 flex justify-end"><button id="save-profile"
-                                class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md transition-colors">
-                                Save Changes </button>
+
+                            <div class="mt-6 flex justify-end"><button id="save-profile"
+                                    class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md transition-colors">
+                                    Save Changes </button>
+                            </div>
                         </div>
-                    </div><!-- Staff Management Tab -->
+                    </div>
+
+                    <!-- Staff Management Tab -->
                     <div id="staff-tab" class="tab-content hidden">
-                        <div class="flex justify-between items-center mb-4">
-                            <h4 class="text-lg font-semibold text-blue-800">Staff Management</h4><a
-                                href="edit_officer.php" id="add-staff-btn"
-                                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition-colors">
-                                <svg class="w-4 h-4 inline mr-2" fill="currentColor" viewbox="0 0 20 20">
-                                    <path fill-rule="evenodd"
-                                        d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-                                        clip-rule="evenodd"></path>
-                                </svg> Add Staff </a> <a href="manage_officers.php"
-                                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors ml-2">Manage
-                                Officers</a>
-                        </div><!-- Staff List -->
-                        <div class="bg-gray-50 rounded-lg overflow-hidden">
-                            <table class="w-full">
-                                <thead class="bg-gray-100">
-                                    <tr>
-                                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Name</th>
-                                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Employee ID
-                                        </th>
-                                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Role</th>
-                                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Shift</th>
-                                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Status</th>
-                                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="staff-list" class="divide-y divide-gray-200">
-                                    <!-- Staff data will be loaded dynamically -->
-                                    <tr>
-                                        <td colspan="6" class="px-4 py-8 text-center text-gray-500">
-                                            <div
-                                                class="animate-spin inline-block w-6 h-6 border-4 border-current border-t-transparent text-blue-600 rounded-full mb-2">
-                                            </div>
-                                            <p>Loading staff data...</p>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <div class="flex justify-between items-center mb-6">
+                                <div class="flex items-center gap-3">
+                                    <div class="bg-gradient-to-br from-blue-500 to-indigo-600 p-2 rounded-lg">
+                                        <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                            <path
+                                                d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z">
+                                            </path>
+                                        </svg>
+                                    </div>
+                                    <h4 class="text-xl font-bold text-gray-800">Staff Management</h4>
+                                </div>
+                                <div class="flex gap-2">
+                                    <a href="add_officer.php"
+                                        class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition-colors inline-flex items-center gap-2">
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd"
+                                                d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                                                clip-rule="evenodd"></path>
+                                        </svg>
+                                        Add Staff
+                                    </a>
+                                    <a href="manage_officers.php"
+                                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors">
+                                        Manage Officers
+                                    </a>
+                                </div>
+                            </div>
+
+                            <!-- Staff List -->
+                            <div class="bg-gray-50 rounded-lg overflow-hidden">
+                                <table class="w-full">
+                                    <thead class="bg-gray-100">
+                                        <tr>
+                                            <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Name</th>
+                                            <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Employee
+                                                ID
+                                            </th>
+                                            <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Role</th>
+                                            <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Shift</th>
+                                            <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Status
+                                            </th>
+                                            <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Actions
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="staff-list" class="divide-y divide-gray-200">
+                                        <!-- Staff data will be loaded dynamically -->
+                                        <tr>
+                                            <td colspan="6" class="px-4 py-8 text-center text-gray-500">
+                                                <div
+                                                    class="animate-spin inline-block w-6 h-6 border-4 border-current border-t-transparent text-blue-600 rounded-full mb-2">
+                                                </div>
+                                                <p>Loading staff data...</p>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                    </div><!-- Role Management Tab -->
+                    </div>
+
+                    <!-- Role Management Tab -->
                     <div id="roles-tab" class="tab-content hidden">
-                        <div class="flex justify-between items-center mb-4">
-                            <h4 class="text-lg font-semibold text-blue-800">Role Management</h4><a href="edit_role.php"
-                                id="add-role-btn"
-                                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition-colors">
-                                <svg class="w-4 h-4 inline mr-2" fill="currentColor" viewbox="0 0 20 20">
-                                    <path fill-rule="evenodd"
-                                        d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-                                        clip-rule="evenodd"></path>
-                                </svg> Add Role </a> <a href="manage_roles.php"
-                                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors ml-2">Manage
-                                Roles</a>
-                        </div><!-- Roles Grid -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            <div class="bg-white border border-gray-200 rounded-lg p-4">
-                                <div class="flex items-center justify-between mb-3">
-                                    <h5 class="font-semibold text-gray-900">System Administrator</h5>
-                                    <div class="flex space-x-2"><a href="edit_role.php?role_id=1"
-                                            class="text-blue-600 hover:text-blue-800 edit-role-btn">
-                                            <svg class="w-4 h-4" fill="currentColor" viewbox="0 0 20 20">
-                                                <path
-                                                    d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z">
-                                                </path>
-                                            </svg></a> <button class="text-red-600 hover:text-red-800 delete-role-btn">
-                                            <svg class="w-4 h-4" fill="currentColor" viewbox="0 0 20 20">
-                                                <path fill-rule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"
-                                                    clip-rule="evenodd"></path>
-                                                <path fill-rule="evenodd"
-                                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                                                    clip-rule="evenodd"></path>
-                                            </svg></button>
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <div class="flex justify-between items-center mb-6">
+                                <div class="flex items-center gap-3">
+                                    <div class="bg-gradient-to-br from-blue-500 to-indigo-600 p-2 rounded-lg">
+                                        <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
                                     </div>
+                                    <h4 class="text-xl font-bold text-gray-800">Role Management</h4>
                                 </div>
-                                <p class="text-sm text-gray-600 mb-3">Full system access and management</p>
-                                <div class="text-xs text-gray-500">
-                                    <div class="mb-1">
-                                        ✓ Dashboard Access
-                                    </div>
-                                    <div class="mb-1">
-                                        ✓ User Management
-                                    </div>
-                                    <div class="mb-1">
-                                        ✓ System Settings
-                                    </div>
-                                    <div class="mb-1">
-                                        ✓ Reports &amp; Analytics
-                                    </div>
-                                </div>
-                                <div class="mt-3 text-sm"><span class="text-gray-600">Users: </span> <span
-                                        class="font-semibold">2</span>
+                                <div class="flex gap-2">
+                                    <a href="edit_role.php"
+                                        class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition-colors inline-flex items-center gap-2">
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd"
+                                                d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                                                clip-rule="evenodd"></path>
+                                        </svg>
+                                        Add Role
+                                    </a>
+                                    <a href="manage_roles.php"
+                                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors">
+                                        Manage Roles
+                                    </a>
                                 </div>
                             </div>
-                            <div class="bg-white border border-gray-200 rounded-lg p-4">
-                                <div class="flex items-center justify-between mb-3">
-                                    <h5 class="font-semibold text-gray-900">Security Supervisor</h5>
-                                    <div class="flex space-x-2"><a href="edit_role.php?role_id=2"
-                                            class="text-blue-600 hover:text-blue-800 edit-role-btn">
-                                            <svg class="w-4 h-4" fill="currentColor" viewbox="0 0 20 20">
-                                                <path
-                                                    d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z">
-                                                </path>
-                                            </svg></a> <button class="text-red-600 hover:text-red-800 delete-role-btn">
-                                            <svg class="w-4 h-4" fill="currentColor" viewbox="0 0 20 20">
-                                                <path fill-rule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"
-                                                    clip-rule="evenodd"></path>
-                                                <path fill-rule="evenodd"
-                                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                                                    clip-rule="evenodd"></path>
-                                            </svg></button>
+
+                            <!-- Roles Grid -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <!-- System Administrator Role -->
+                                <div class="bg-white border border-gray-200 rounded-lg p-4">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <h5 class="font-semibold text-gray-900">System Administrator</h5>
+                                        <div class="flex space-x-2">
+                                            <a href="edit_role.php?role_id=1"
+                                                class="text-blue-600 hover:text-blue-800 edit-role-btn">
+                                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path
+                                                        d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z">
+                                                    </path>
+                                                </svg>
+                                            </a>
+                                            <button class="text-red-600 hover:text-red-800 delete-role-btn">
+                                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"
+                                                        clip-rule="evenodd"></path>
+                                                    <path fill-rule="evenodd"
+                                                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                                        clip-rule="evenodd"></path>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <p class="text-sm text-gray-600 mb-3">Full system access and management</p>
+                                    <div class="text-xs text-gray-500">
+                                        <div class="mb-1">✓ Dashboard Access</div>
+                                        <div class="mb-1">✓ User Management</div>
+                                        <div class="mb-1">✓ System Settings</div>
+                                        <div class="mb-1">✓ Reports & Analytics</div>
+                                    </div>
+                                    <div class="mt-3 text-sm">
+                                        <span class="text-gray-600">Users: </span>
+                                        <span class="font-semibold">2</span>
                                     </div>
                                 </div>
-                                <p class="text-sm text-gray-600 mb-3">Supervise security operations</p>
-                                <div class="text-xs text-gray-500">
-                                    <div class="mb-1">
-                                        ✓ Dashboard Access
+
+                                <!-- Security Supervisor Role -->
+                                <div class="bg-white border border-gray-200 rounded-lg p-4">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <h5 class="font-semibold text-gray-900">Security Supervisor</h5>
+                                        <div class="flex space-x-2">
+                                            <a href="edit_role.php?role_id=2"
+                                                class="text-blue-600 hover:text-blue-800 edit-role-btn">
+                                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path
+                                                        d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z">
+                                                    </path>
+                                                </svg>
+                                            </a>
+                                            <button class="text-red-600 hover:text-red-800 delete-role-btn">
+                                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"
+                                                        clip-rule="evenodd"></path>
+                                                    <path fill-rule="evenodd"
+                                                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                                        clip-rule="evenodd"></path>
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div class="mb-1">
-                                        ✓ Staff Scheduling
+                                    <p class="text-sm text-gray-600 mb-3">Supervise security operations</p>
+                                    <div class="text-xs text-gray-500">
+                                        <div class="mb-1">✓ Dashboard Access</div>
+                                        <div class="mb-1">✓ Staff Scheduling</div>
+                                        <div class="mb-1">✓ Incident Reports</div>
+                                        <div class="mb-1">✗ System Settings</div>
                                     </div>
-                                    <div class="mb-1">
-                                        ✓ Incident Reports
-                                    </div>
-                                    <div class="mb-1">
-                                        ✗ System Settings
-                                    </div>
-                                </div>
-                                <div class="mt-3 text-sm"><span class="text-gray-600">Users: </span> <span
-                                        class="font-semibold">5</span>
-                                </div>
-                            </div>
-                            <div class="bg-white border border-gray-200 rounded-lg p-4">
-                                <div class="flex items-center justify-between mb-3">
-                                    <h5 class="font-semibold text-gray-900">Security Guard</h5>
-                                    <div class="flex space-x-2"><a href="edit_role.php?role_id=3"
-                                            class="text-blue-600 hover:text-blue-800 edit-role-btn">
-                                            <svg class="w-4 h-4" fill="currentColor" viewbox="0 0 20 20">
-                                                <path
-                                                    d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z">
-                                                </path>
-                                            </svg></a> <button class="text-red-600 hover:text-red-800 delete-role-btn">
-                                            <svg class="w-4 h-4" fill="currentColor" viewbox="0 0 20 20">
-                                                <path fill-rule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"
-                                                    clip-rule="evenodd"></path>
-                                                <path fill-rule="evenodd"
-                                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                                                    clip-rule="evenodd"></path>
-                                            </svg></button>
-                                    </div>
-                                </div>
-                                <p class="text-sm text-gray-600 mb-3">Basic security operations</p>
-                                <div class="text-xs text-gray-500">
-                                    <div class="mb-1">
-                                        ✓ Dashboard View
-                                    </div>
-                                    <div class="mb-1">
-                                        ✓ Check-in/Check-out
-                                    </div>
-                                    <div class="mb-1">
-                                        ✗ Staff Management
-                                    </div>
-                                    <div class="mb-1">
-                                        ✗ System Settings
+                                    <div class="mt-3 text-sm">
+                                        <span class="text-gray-600">Users: </span>
+                                        <span class="font-semibold">5</span>
                                     </div>
                                 </div>
-                                <div class="mt-3 text-sm"><span class="text-gray-600">Users: </span> <span
-                                        class="font-semibold">18</span>
+
+                                <!-- Security Guard Role -->
+                                <div class="bg-white border border-gray-200 rounded-lg p-4">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <h5 class="font-semibold text-gray-900">Security Guard</h5>
+                                        <div class="flex space-x-2">
+                                            <a href="edit_role.php?role_id=3"
+                                                class="text-blue-600 hover:text-blue-800 edit-role-btn">
+                                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path
+                                                        d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z">
+                                                    </path>
+                                                </svg>
+                                            </a>
+                                            <button class="text-red-600 hover:text-red-800 delete-role-btn">
+                                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"
+                                                        clip-rule="evenodd"></path>
+                                                    <path fill-rule="evenodd"
+                                                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                                        clip-rule="evenodd"></path>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <p class="text-sm text-gray-600 mb-3">Basic security operations</p>
+                                    <div class="text-xs text-gray-500">
+                                        <div class="mb-1">✓ Dashboard View</div>
+                                        <div class="mb-1">✓ Check-in/Check-out</div>
+                                        <div class="mb-1">✗ Staff Management</div>
+                                        <div class="mb-1">✗ System Settings</div>
+                                    </div>
+                                    <div class="mt-3 text-sm">
+                                        <span class="text-gray-600">Users: </span>
+                                        <span class="font-semibold">18</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
+                </div><!-- End of scrollable container -->
             </div>
         </div>
-    </div><!-- Add Staff Modal -->
+    </div>
+    </div>
+    </div>
+
+    <!-- Add Staff Modal -->
     <div id="add-staff-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
         <div class="flex items-center justify-center min-h-full p-4">
             <div class="bg-white rounded-lg max-w-md w-full">
@@ -1345,1063 +1387,17 @@ $conn->close();
                         <div class="flex justify-end space-x-3 pt-4"><button type="button"
                                 class="close-add-staff px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
                             <button type="submit"
-                                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Add Staff</button>
+                                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Add
+                                Staff</button>
                         </div>
                     </form>
                 </div>
             </div>
         </div>
     </div>
-    <script>
-        // Configuration object
-        const defaultConfig = {
-            dashboard_title: "Security System Dashboard",
-            company_name: "BPI Western Digital Storage Technologies (Thailand) Ltd.",
-            security_section_title: "Security Personnel Status",
-            nvr_section_title: "NVR Recording Status",
-            camera_section_title: "Camera Online Status",
-            parking_section_title: "Parking Lot Report",
-            detector_section_title: "Hand Held Metal Detector Status",
-            walkthrough_section_title: "Walkthrough Metal Detector Status",
-            user_name: "<?php echo isset($_SESSION['first_name']) && isset($_SESSION['last_name']) ? htmlspecialchars($_SESSION['first_name'] . ' ' . $_SESSION['last_name']) : htmlspecialchars($_SESSION['username']); ?>",
-            user_role: "<?php echo htmlspecialchars($current_user_role_name); ?>"
-        };
+    <!-- Dashboard JavaScript -->
+    <script src="public/js/dashboard-all.js?v=<?php echo time(); ?>"></script>
 
-        function updateShiftStatus(now) {
-            const currentHour = now.getHours();
-            const currentShiftCountElement = document.getElementById('current-shift-count');
-            const currentShiftStatusElement = document.getElementById('current-shift-status');
-            const shiftChangeTimeElement = document.getElementById('shift-change-time');
-
-            if (currentHour >= 6 && currentHour < 18) {
-                // Day Shift (06:00 - 18:00)
-                currentShiftStatusElement.textContent = 'Day Shift Active';
-                currentShiftStatusElement.className = 'text-sm font-medium text-green-600';
-                shiftChangeTimeElement.textContent = 'Next change: 18:00';
-            } else {
-                // Night Shift (18:00 - 06:00)
-                currentShiftStatusElement.textContent = 'Night Shift Active';
-                currentShiftStatusElement.className = 'text-sm font-medium text-indigo-600';
-                shiftChangeTimeElement.textContent = 'Next change: 06:00';
-            }
-        }
-
-        // Update time display and shift status
-        function updateTime() {
-            const now = new Date();
-            const timeString = now.toLocaleString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'
-            });
-            document.getElementById('current-time').textContent = timeString;
-            document.getElementById('last-updated').textContent = timeString;
-
-            // Update shift status based on current time
-            updateShiftStatus(now);
-            // Update section timestamps
-            updateSectionTimestamps(timeString);
-        }
-
-        function updateSectionTimestamps(timeString) {
-            const sections = [
-                // 'nvr-last-update', // Removed as it's updated by fetchNvrStatus
-                // 'camera-last-update', // Removed as it should be updated by its own fetch function
-                // 'parking-last-update', // Removed as it should be updated by its own fetch function
-                // 'detector-last-update', // Removed as it should be updated by its own fetch function
-                // 'walkthrough-last-update' // Removed as it should be updated by its own fetch function
-            ];
-            sections.forEach(id => {
-                const element = document.getElementById(id);
-                if (element) {
-                    element.textContent = timeString;
-                }
-            });
-        }
-
-
-
-
-        async function fetchCameraStatus() {
-            console.log('fetchCameraStatus called');
-            try {
-                const cameraStatusResponse = await fetch('get_camera_status.php');
-
-                if (!cameraStatusResponse.ok) throw new Error(`HTTP error! status: ${cameraStatusResponse.status}`);
-
-                const rawCameraResponseText = await cameraStatusResponse.text();
-                console.log('Raw Camera Status Response:', rawCameraResponseText); // Log raw text
-                const cameraData = JSON.parse(rawCameraResponseText); // Manually parse JSON
-
-                const recordingDataResponse = await fetch('get_nvr_recording_data.php');
-                if (!recordingDataResponse.ok) throw new Error(`HTTP error! status: ${recordingDataResponse.status}`);
-                const recordingData = await recordingDataResponse.json(); // Parse recording history
-                console.log('Camera data received:', cameraData);
-                console.log('Recording data received:', recordingData);
-
-                const cameraStatusContainer = document.getElementById('camera-status-container');
-                if (cameraStatusContainer) {
-                    cameraStatusContainer.innerHTML = ''; // Clear existing content
-
-                    let totalOnlineCameras = 0;
-                    let totalCameras = 0;
-
-                    for (const building in cameraData.buildings) {
-                        const buildingData = cameraData.buildings[building];
-                        const buildingDiv = document.createElement('div');
-                        buildingDiv.className = 'bg-white rounded-lg p-6 card-shadow';
-
-                        let nvrHtml = '';
-                        let buildingOnlineCameras = 0; // Initialize for current building
-                        let buildingTotalCameras = 0; // Initialize for current building
-
-                        buildingData.forEach(nvr => {
-                            const barColor = nvr.percentage >= 95 ? 'bg-green-500' : nvr.percentage >= 80 ? 'bg-yellow-500' : 'bg-red-500';
-                            const cappedPercentage = Math.min(100, nvr.percentage);
-
-                            // Get recording history for this NVR
-                            const buildingRecordingData = recordingData.buildings[building];
-                            let nvrRecordingHistory = null;
-                            if (buildingRecordingData && buildingRecordingData.nvrs) {
-                                nvrRecordingHistory = buildingRecordingData.nvrs.find(recNvr => recNvr.nvr_name === nvr.nvr_name);
-                            }
-
-                            const lastRecordedText = nvrRecordingHistory && nvrRecordingHistory.last_recorded ? `Last Recorded: ${nvrRecordingHistory.last_recorded}` : 'Recording history N/A';
-                            const recordingStatusClass = nvrRecordingHistory && nvrRecordingHistory.status && nvrRecordingHistory.status.includes('Passed') ? 'text-green-600' : 'text-red-600';
-                            const recordingStatusText = nvrRecordingHistory && nvrRecordingHistory.status ? `Status: <span class="${recordingStatusClass}">${nvrRecordingHistory.status}</span>` : '';
-
-
-                            nvrHtml += `
-                                <div class="p-3 bg-blue-50 rounded">
-                                    <div class="flex flex-wrap justify-between items-center mb-2">
-                                        <span class="font-medium">${nvr.nvr_name}</span>
-                                        <span class="text-sm font-semibold">${nvr.online_channels}/${nvr.total_channels} (${cappedPercentage.toFixed(0)}%)</span>
-                                    </div>
-                                    <div class="w-full bg-gray-200 rounded-full h-2">
-                                        <div class="${barColor} h-2 rounded-full" style="width: ${cappedPercentage}%"></div>
-                                    </div>
-                                    <div class="text-xs text-gray-500 mt-2">
-                                        <div>${lastRecordedText}</div>
-                                        <div>${recordingStatusText}</div>
-                                    </div>
-                                </div>
-                            `;
-                            buildingOnlineCameras += nvr.online_channels; // Accumulate for current building
-                            buildingTotalCameras += nvr.total_channels; // Accumulate for current building
-                            totalOnlineCameras += nvr.online_channels;
-                            totalCameras += nvr.total_channels;
-                        });
-
-                        const buildingOverallPercentage = buildingTotalCameras > 0 ? Math.round((buildingOnlineCameras / buildingTotalCameras) * 100) : 0;
-
-                        // Log the camera counts for Building B.3 to the console
-                        if (building === 'B.3') {
-                            console.log(`Building B.3 Camera Summary: Online - ${buildingOnlineCameras}, Total - ${buildingTotalCameras}, Percentage - ${buildingOverallPercentage}%`);
-                        }
-
-                        buildingDiv.innerHTML = `
-                            <h4 class="text-xl font-semibold text-blue-800 mb-2">Building ${building}</h4>
-                            <p class="text-sm text-gray-600 mb-4">Online Cameras: ${buildingOnlineCameras}/${buildingTotalCameras} (${buildingOverallPercentage}%)</p>
-                            <div class="space-y-4">
-                                ${nvrHtml}
-                            </div>
-                        `;
-                        cameraStatusContainer.appendChild(buildingDiv);
-                    }
-
-                    // Update Camera Summary
-                    const totalOfflineCameras = totalCameras - totalOnlineCameras;
-                    const overallCameraPercentage = totalCameras > 0 ? Math.round((totalOnlineCameras / totalCameras) * 100) : 0;
-
-                    const cameraSummaryOnlineTotalElement = document.getElementById('camera-summary-online-total');
-                    if (cameraSummaryOnlineTotalElement) cameraSummaryOnlineTotalElement.textContent = `${totalOnlineCameras}/${totalCameras}`;
-
-                    const cameraSummaryOnlineElement = document.getElementById('camera-summary-online');
-                    if (cameraSummaryOnlineElement) cameraSummaryOnlineElement.textContent = totalOnlineCameras;
-
-                    const cameraSummaryOfflineElement = document.getElementById('camera-summary-offline');
-                    if (cameraSummaryOfflineElement) cameraSummaryOfflineElement.textContent = totalOfflineCameras;
-
-                    const cameraSummaryPercentageElement = document.getElementById('camera-summary-percentage');
-                    if (cameraSummaryPercentageElement) cameraSummaryPercentageElement.textContent = overallCameraPercentage;
-                }
-
-                // Update last update label
-                const cameraLastUpdateElement = document.getElementById('camera-last-update');
-                if (cameraLastUpdateElement && cameraData.last_update) { // Use cameraData for last_update
-                    let ds = cameraData.last_update;
-                    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(ds)) ds = ds.replace(' ', 'T');
-                    cameraLastUpdateElement.textContent = formatRelativeTime(ds);
-                }
-
-            } catch (err) {
-                console.error('Error fetching camera status:', err);
-            }
-        }
-
-        console.log('DEBUG: About to call fetchCameraStatus()');
-        fetchCameraStatus();
-        console.log('DEBUG: fetchCameraStatus() called, setting up interval');
-        setInterval(fetchCameraStatus, 30000);
-
-        // Modal and Tab Management
-        const settingsModal = document.getElementById('settings-modal');
-        const addStaffModal = document.getElementById('add-staff-modal');
-        const settingsBtn = document.getElementById('settings-btn');
-        const closeModalBtn = document.getElementById('close-modal');
-        const addStaffBtn = document.getElementById('add-staff-btn');
-        const addStaffForm = document.getElementById('add-staff-form');
-        const staffList = document.getElementById('staff-list');
-
-        // Tab functionality
-        const tabBtns = document.querySelectorAll('.tab-btn');
-        const tabContents = document.querySelectorAll('.tab-content');
-
-        tabBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const targetTab = btn.getAttribute('data-tab');
-
-                // Update active tab button
-                tabBtns.forEach(b => {
-                    b.classList.remove('active', 'bg-white', 'text-blue-600', 'shadow-sm');
-                    b.classList.add('text-gray-500', 'hover:text-gray-700');
-                });
-                btn.classList.add('active', 'bg-white', 'text-blue-600', 'shadow-sm');
-                btn.classList.remove('text-gray-500', 'hover:text-gray-700');
-
-                // Show target tab content
-                tabContents.forEach(content => {
-                    content.classList.add('hidden');
-                });
-                document.getElementById(targetTab + '-tab').classList.remove('hidden');
-            });
-        });
-
-        // Initialize first tab as active
-        tabBtns[0].classList.add('bg-white', 'text-blue-600', 'shadow-sm');
-        tabBtns[0].classList.remove('text-gray-500', 'hover:text-gray-700');
-
-        // Settings modal
-        settingsBtn.addEventListener('click', () => {
-            settingsModal.classList.remove('hidden');
-            loadUserProfile(); // Load profile data when modal opens
-        });
-
-        closeModalBtn.addEventListener('click', () => {
-            settingsModal.classList.add('hidden');
-        });
-
-        // Close modal when clicking outside
-        settingsModal.addEventListener('click', (e) => {
-            if (e.target === settingsModal) {
-                settingsModal.classList.add('hidden');
-            }
-        });
-
-        // Add staff modal
-        addStaffBtn.addEventListener('click', () => {
-            addStaffModal.classList.remove('hidden');
-        });
-
-        // Close add staff modal
-        document.querySelectorAll('.close-add-staff').forEach(btn => {
-            btn.addEventListener('click', () => {
-                addStaffModal.classList.add('hidden');
-                addStaffForm.reset();
-            });
-        });
-
-        // Close add staff modal when clicking outside
-        addStaffModal.addEventListener('click', (e) => {
-            if (e.target === addStaffModal) {
-                addStaffModal.classList.add('hidden');
-                addStaffForm.reset();
-            }
-        });
-
-        // Add staff form submission
-        addStaffForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-
-            const name = document.getElementById('new-staff-name').value;
-            const employeeId = document.getElementById('new-staff-id').value;
-            const role = document.getElementById('new-staff-role').value;
-            const shift = document.getElementById('new-staff-shift').value;
-
-            // Create new staff row
-            const newRow = document.createElement('tr');
-            newRow.className = 'bg-white';
-            newRow.innerHTML = `
-                <td class="px-4 py-3 text-sm text-gray-900">${name}</td>
-                <td class="px-4 py-3 text-sm text-gray-600">${employeeId}</td>
-                <td class="px-4 py-3 text-sm text-gray-600">${role}</td>
-                <td class="px-4 py-3 text-sm text-gray-600">${shift}</td>
-                <td class="px-4 py-3">
-                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Active</span>
-                </td>
-                <td class="px-4 py-3 text-sm">
-                    <button class="text-blue-600 hover:text-blue-800 mr-3 edit-staff-btn">Edit</button>
-                    <button class="text-red-600 hover:text-red-800 delete-staff-btn">Delete</button>
-                </td>
-            `;
-
-            staffList.appendChild(newRow);
-
-            // Add event listeners to new buttons
-            addStaffEventListeners(newRow);
-
-            // Close modal and reset form
-            addStaffModal.classList.add('hidden');
-            addStaffForm.reset();
-
-            // Show success message
-            showNotification('Staff member added successfully!', 'success');
-        });
-
-        // Staff management functions
-        function addStaffEventListeners(row) {
-            const deleteBtn = row.querySelector('.delete-staff-btn');
-
-            deleteBtn.addEventListener('click', () => {
-                if (confirm('Are you sure you want to delete this staff member?')) {
-                    row.remove();
-                    showNotification('Staff member deleted successfully!', 'success');
-                }
-            });
-        }
-
-        // Role management functions
-        document.querySelectorAll('.delete-role-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                if (confirm('Are you sure you want to delete this role?')) {
-                    btn.closest('.bg-white').remove();
-                    showNotification('Role deleted successfully!', 'success');
-                }
-            });
-        });
-
-        // Load user profile data
-        async function loadUserProfile() {
-            try {
-                const response = await fetch('update_profile.php');
-                const result = await response.json();
-
-                if (result.status === 'success') {
-                    const data = result.data;
-                    const fullName = `${data.first_name} ${data.last_name}`;
-                    document.getElementById('profile-name').value = fullName;
-                    document.getElementById('profile-email').value = data.email || '';
-                    document.getElementById('profile-phone').value = data.phone || '';
-                    document.getElementById('profile-department').value = data.department || 'security';
-                    document.getElementById('profile-employee-id').value = data.employee_id || '';
-
-                    // Update last login if available
-                    if (data.last_login) {
-                        const lastLoginDate = new Date(data.last_login);
-                        const formattedLogin = lastLoginDate.toLocaleString('th-TH');
-                        const lastLoginInputs = document.querySelectorAll('input[readonly]');
-                        lastLoginInputs.forEach(input => {
-                            if (input.value.includes('Today') || input.value.includes('08:30')) {
-                                input.value = formattedLogin;
-                            }
-                        });
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading profile:', error);
-            }
-        }
-
-        // Profile save functionality
-        document.getElementById('save-profile').addEventListener('click', async () => {
-            const fullName = document.getElementById('profile-name').value;
-            const [firstName, ...lastNameParts] = fullName.split(' ');
-            const lastName = lastNameParts.join(' ');
-            const email = document.getElementById('profile-email').value;
-            const department = document.getElementById('profile-department').value;
-            const phone = document.getElementById('profile-phone').value;
-
-            const formData = new FormData();
-            formData.append('action', 'update_profile');
-            formData.append('first_name', firstName);
-            formData.append('last_name', lastName);
-            formData.append('email', email);
-            formData.append('department', department);
-            formData.append('phone', phone);
-
-            try {
-                const response = await fetch('update_profile.php', {
-                    method: 'POST',
-                    body: formData
-                });
-                const result = await response.json();
-
-                if (result.status === 'success') {
-                    // Update header display
-                    document.getElementById('user-name').textContent = fullName;
-                    showNotification('Profile updated successfully!', 'success');
-                } else {
-                    showNotification(result.message || 'Failed to update profile', 'error');
-                }
-            } catch (error) {
-                showNotification('Error updating profile', 'error');
-            }
-        });
-
-        // Change password functionality
-        document.getElementById('change-password-btn').addEventListener('click', async () => {
-            const currentPassword = document.getElementById('current-password').value;
-            const newPassword = document.getElementById('new-password').value;
-            const confirmPassword = document.getElementById('confirm-password').value;
-
-            if (!currentPassword || !newPassword || !confirmPassword) {
-                showNotification('Please fill in all password fields', 'warning');
-                return;
-            }
-
-            if (newPassword !== confirmPassword) {
-                showNotification('New passwords do not match', 'error');
-                return;
-            }
-
-            const formData = new FormData();
-            formData.append('action', 'change_password');
-            formData.append('current_password', currentPassword);
-            formData.append('new_password', newPassword);
-            formData.append('confirm_password', confirmPassword);
-
-            try {
-                const response = await fetch('update_profile.php', {
-                    method: 'POST',
-                    body: formData
-                });
-                const result = await response.json();
-
-                if (result.status === 'success') {
-                    showNotification('Password changed successfully!', 'success');
-                    // Clear password fields
-                    document.getElementById('current-password').value = '';
-                    document.getElementById('new-password').value = '';
-                    document.getElementById('confirm-password').value = '';
-                } else {
-                    showNotification(result.message || 'Failed to change password', 'error');
-                }
-            } catch (error) {
-                showNotification('Error changing password', 'error');
-            }
-        });
-
-        // Load staff list
-        async function loadStaffList() {
-            try {
-                const response = await fetch('get_staff_list.php');
-                const result = await response.json();
-
-                if (result.status === 'success') {
-                    const staffList = document.getElementById('staff-list');
-                    staffList.innerHTML = '';
-
-                    if (result.data.length === 0) {
-                        staffList.innerHTML = `
-                            <tr>
-                                <td colspan="6" class="px-4 py-8 text-center text-gray-500">
-                                    No staff members found
-                                </td>
-                            </tr>
-                        `;
-                        return;
-                    }
-
-                    result.data.forEach(staff => {
-                        const statusClass = staff.status === 'active' ?
-                            'bg-green-100 text-green-800' :
-                            'bg-yellow-100 text-yellow-800';
-                        const statusText = staff.status === 'active' ? 'Active' : 'On Leave';
-
-                        const row = document.createElement('tr');
-                        row.className = 'bg-white';
-                        row.innerHTML = `
-                            <td class="px-4 py-3 text-sm text-gray-900">${staff.name}</td>
-                            <td class="px-4 py-3 text-sm text-gray-600">${staff.employee_id}</td>
-                            <td class="px-4 py-3 text-sm text-gray-600">${staff.role}</td>
-                            <td class="px-4 py-3 text-sm text-gray-600">${staff.shift}</td>
-                            <td class="px-4 py-3">
-                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statusClass}">
-                                    ${statusText}
-                                </span>
-                            </td>
-                            <td class="px-4 py-3 text-sm">
-                                <a href="edit_officer.php?officer_id=${staff.id}" 
-                                    class="text-blue-600 hover:text-blue-800 mr-3">Edit</a>
-                                <button class="text-red-600 hover:text-red-800 delete-staff-btn" 
-                                    data-id="${staff.id}">Delete</button>
-                            </td>
-                        `;
-                        staffList.appendChild(row);
-                    });
-
-                    // Add delete event listeners
-                    document.querySelectorAll('.delete-staff-btn').forEach(btn => {
-                        btn.addEventListener('click', () => {
-                            const staffId = btn.getAttribute('data-id');
-                            if (confirm('Are you sure you want to delete this staff member?')) {
-                                showNotification('Delete functionality to be implemented', 'info');
-                            }
-                        });
-                    });
-                }
-            } catch (error) {
-                console.error('Error loading staff list:', error);
-                const staffList = document.getElementById('staff-list');
-                staffList.innerHTML = `
-                    <tr>
-                        <td colspan="6" class="px-4 py-8 text-center text-red-500">
-                            Error loading staff data
-                        </td>
-                    </tr>
-                `;
-            }
-        }
-
-        // Load staff list when switching to staff tab
-        document.querySelector('[data-tab="staff"]').addEventListener('click', () => {
-            loadStaffList();
-        });
-
-        // Notification system
-        function showNotification(message, type = 'info') {
-            const notification = document.createElement('div');
-            notification.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 transition-all duration-300 transform translate-x-full`;
-
-            const colors = {
-                success: 'bg-green-500 text-white',
-                error: 'bg-red-500 text-white',
-                info: 'bg-blue-500 text-white',
-                warning: 'bg-yellow-500 text-white'
-            };
-
-            notification.className += ` ${colors[type]}`;
-            notification.textContent = message;
-
-            document.body.appendChild(notification);
-
-            // Animate in
-            setTimeout(() => {
-                notification.classList.remove('translate-x-full');
-            }, 100);
-
-            // Remove after 3 seconds
-            setTimeout(() => {
-                notification.classList.add('translate-x-full');
-                setTimeout(() => {
-                    document.body.removeChild(notification);
-                }, 300);
-            }, 3000);
-        }
-
-        // Element SDK implementation
-        async function onConfigChange(config) {
-            document.getElementById('dashboard-title').textContent = config.dashboard_title || defaultConfig.dashboard_title;
-            document.getElementById('company-name').textContent = config.company_name || defaultConfig.company_name;
-            document.getElementById('security-section-title').textContent = config.security_section_title || defaultConfig.security_section_title;
-            document.getElementById('nvr-section-title').textContent = config.nvr_section_title || defaultConfig.nvr_section_title;
-            document.getElementById('camera-section-title').textContent = config.camera_section_title || defaultConfig.camera_section_title;
-            document.getElementById('parking-section-title').textContent = config.parking_section_title || defaultConfig.parking_section_title;
-            document.getElementById('detector-section-title').textContent = config.detector_section_title || defaultConfig.detector_section_title;
-            document.getElementById('walkthrough-section-title').textContent = config.walkthrough_section_title || defaultConfig.walkthrough_section_title;
-            document.getElementById('user-name').textContent = config.user_name || defaultConfig.user_name;
-            document.getElementById('user-role').textContent = config.user_role || defaultConfig.user_role;
-        }
-
-        function mapToCapabilities(config) {
-            return {
-                recolorables: [],
-                borderables: [],
-                fontEditable: undefined,
-                fontSizeable: undefined
-            };
-        }
-
-        function mapToEditPanelValues(config) {
-            return new Map([
-                ["dashboard_title", config.dashboard_title || defaultConfig.dashboard_title],
-                ["company_name", config.company_name || defaultConfig.company_name],
-                ["security_section_title", config.security_section_title || defaultConfig.security_section_title],
-                ["nvr_section_title", config.nvr_section_title || defaultConfig.nvr_section_title],
-                ["camera_section_title", config.camera_section_title || defaultConfig.camera_section_title],
-                ["parking_section_title", config.parking_section_title || defaultConfig.parking_section_title],
-                ["detector_section_title", config.detector_section_title || defaultConfig.detector_section_title],
-                ["walkthrough_section_title", config.walkthrough_section_title || defaultConfig.walkthrough_section_title],
-                ["user_name", config.user_name || defaultConfig.user_name],
-                ["user_role", config.user_role || defaultConfig.user_role]
-            ]);
-        }
-
-        // Initialize Element SDK
-        if (window.elementSdk) {
-            window.elementSdk.init({
-                defaultConfig,
-                onConfigChange,
-                mapToCapabilities,
-                mapToEditPanelValues
-            });
-        }
-        function formatRelativeTime(dateString) {
-            console.log('formatRelativeTime input:', dateString);
-            if (!dateString) return 'N/A';
-            const date = new Date(dateString);
-            console.log('Parsed date:', date);
-            const now = new Date();
-            const diffInSeconds = Math.floor((now - date) / 1000);
-            console.log('Diff in seconds:', diffInSeconds);
-
-            if (isNaN(diffInSeconds)) return 'Invalid Date';
-
-            if (diffInSeconds < 60) return 'Just now';
-            if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
-            if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
-            return date.toLocaleString('th-TH');
-        }
-
-        // Consolidated fetchSecurityStatus function
-        // Consolidated fetchSecurityStatus function
-        async function fetchSecurityStatus() {
-            try {
-                const response = await fetch('get_security_status.php');
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const data = await response.json();
-
-                // Helper to format the display HTML
-                const formatDisplay = (actual, contract) => {
-                    const actualNum = Number(actual) || 0;
-                    const contractNum = contract !== null ? Number(contract) : null;
-
-                    if (contractNum === null) {
-                        return `<span class="text-green-500">${actualNum}</span>`;
-                    }
-
-                    const colorClass = actualNum < contractNum ? 'text-orange-500' : 'text-green-500';
-                    return `<span class="${colorClass}">${actualNum}</span><span class="text-blue-400 text-2xl"> / ${contractNum}</span>`;
-                };
-
-                const dayShiftCountElement = document.getElementById('day-shift-count');
-                if (dayShiftCountElement) {
-                    dayShiftCountElement.innerHTML = formatDisplay(data.morning_shift, data.morning_shift_contract);
-                }
-
-                const nightShiftCountElement = document.getElementById('night-shift-count');
-                if (nightShiftCountElement) {
-                    nightShiftCountElement.innerHTML = formatDisplay(data.evening_shift, data.evening_shift_contract);
-                }
-
-                const currentShiftCountElement = document.getElementById('current-shift-count');
-                if (currentShiftCountElement) {
-                    // Total Logic
-                    const totalActual = (Number(data.morning_shift) || 0) + (Number(data.evening_shift) || 0);
-                    let totalContract = null;
-                    if (data.morning_shift_contract !== null || data.evening_shift_contract !== null) {
-                        totalContract = (Number(data.morning_shift_contract) || 0) + (Number(data.evening_shift_contract) || 0);
-                    }
-                    currentShiftCountElement.innerHTML = formatDisplay(totalActual, totalContract);
-                }
-
-                const securityLastUpdateElement = document.getElementById('security-last-update');
-                if (data.last_update && securityLastUpdateElement) {
-                    // Normalize MySQL datetime to ISO
-                    let ds = data.last_update;
-                    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(ds)) ds = ds.replace(' ', 'T');
-                    const formattedTime = formatRelativeTime(ds);
-                    securityLastUpdateElement.textContent = formattedTime;
-                }
-
-            } catch (error) {
-                console.error('Error fetching security status:', error);
-            }
-        }
-
-        // Consolidated fetchParkingStatus function
-        async function fetchParkingStatus() {
-            try {
-                const response = await fetch('get_parking_status.php');
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                const data = await response.json();
-
-                // Update summary cards
-                const carParkingTotalElement = document.getElementById('car-parking-total');
-                if (carParkingTotalElement) {
-                    carParkingTotalElement.textContent = `${data.total_car_occupied}/${data.total_car_slots}`;
-                }
-                const carOccupancy = Math.min(100, data.total_car_slots > 0 ? Math.round((data.total_car_occupied / data.total_car_slots) * 100) : 0);
-                const carParkingPercentageElement = document.getElementById('car-parking-percentage');
-                if (carParkingPercentageElement) {
-                    carParkingPercentageElement.textContent = `${carOccupancy}% Occupied`;
-                }
-
-                const motorcycleParkingTotalElement = document.getElementById('motorcycle-parking-total');
-                if (motorcycleParkingTotalElement) {
-                    motorcycleParkingTotalElement.textContent = `${data.total_motorcycle_occupied}/${data.total_motorcycle_slots}`;
-                }
-                const motorcycleOccupancy = Math.min(100, data.total_motorcycle_slots > 0 ? Math.round((data.total_motorcycle_occupied / data.total_motorcycle_slots) * 100) : 0);
-                const motorcycleParkingPercentageElement = document.getElementById('motorcycle-parking-percentage');
-                if (motorcycleParkingPercentageElement) {
-                    motorcycleParkingPercentageElement.textContent = `${motorcycleOccupancy}% Occupied`;
-                }
-
-                // Update individual car lots (if data exists)
-                if (data.car_lots_data) {
-                    data.car_lots_data.forEach(lot => {
-                        const lotNameId = lot.name.replace(/[^a-zA-Z0-9]/g, '-');
-                        const statusElement = document.getElementById(`car-lot-${lotNameId}-status`);
-                        const barElement = document.getElementById(`car-lot-${lotNameId}-bar`);
-                        const cappedLotPercentage = Math.min(100, lot.percentage);
-                        if (statusElement) {
-                            statusElement.textContent = `${lot.occupied}/${lot.capacity} (${cappedLotPercentage.toFixed(0)}%)`;
-                        }
-                        if (barElement) {
-                            barElement.style.width = `${cappedLotPercentage}%`;
-                            if (cappedLotPercentage >= 75) barElement.className = 'bg-red-500 h-2 rounded-full';
-                            else if (cappedLotPercentage >= 50) barElement.className = 'bg-orange-500 h-2 rounded-full';
-                            else barElement.className = 'bg-green-500 h-2 rounded-full';
-                        }
-                    });
-                }
-
-                // Update individual motorcycle lots (if data exists)
-                if (data.motorcycle_lots_data) {
-                    data.motorcycle_lots_data.forEach(lot => {
-                        const lotNameId = lot.name.replace(/[^a-zA-Z0-9]/g, '-');
-                        const statusElement = document.getElementById(`motorcycle-lot-${lotNameId}-status`);
-                        const barElement = document.getElementById(`motorcycle-lot-${lotNameId}-bar`);
-                        const cappedLotPercentage = Math.min(100, lot.percentage);
-                        if (statusElement) {
-                            statusElement.textContent = `${lot.occupied}/${lot.capacity} (${cappedLotPercentage.toFixed(0)}%)`;
-                        }
-                        if (barElement) {
-                            barElement.style.width = `${cappedLotPercentage}%`;
-                            if (cappedLotPercentage >= 75) barElement.className = 'bg-red-500 h-2 rounded-full';
-                            else if (cappedLotPercentage >= 50) barElement.className = 'bg-orange-500 h-2 rounded-full';
-                            else barElement.className = 'bg-green-500 h-2 rounded-full';
-                        }
-                    });
-                }
-
-                // Update last update label
-                const parkingLastUpdateElement = document.getElementById('parking-last-update');
-                if (parkingLastUpdateElement && data.last_update) {
-                    let ds = data.last_update;
-                    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(ds)) ds = ds.replace(' ', 'T');
-                    parkingLastUpdateElement.textContent = formatRelativeTime(ds);
-                }
-
-            } catch (err) {
-                console.error('Error fetching parking status:', err);
-            }
-        }
-
-        async function fetchNVRRecordingStatus() {
-            try {
-                const response = await fetch('get_nvr_recording_status.php');
-                if (!response.ok) throw new Error('Network response was not ok');
-                const data = await response.json();
-
-                // Update Summary Stats
-                const totalPassed = data.total_passed;
-                const totalNVRs = data.total_nvrs;
-                const percentage = totalNVRs > 0 ? Math.round((totalPassed / totalNVRs) * 100) : 0;
-                const totalFailed = totalNVRs - totalPassed;
-
-                const summaryCountEl = document.getElementById('nvr-summary-count');
-                const summaryPercentageEl = document.getElementById('nvr-summary-percentage');
-                const passedCountEl = document.getElementById('nvr-passed-count');
-                const failedCountEl = document.getElementById('nvr-failed-count');
-
-                if (summaryCountEl) summaryCountEl.textContent = `${totalPassed}/${totalNVRs}`;
-                if (summaryPercentageEl) summaryPercentageEl.textContent = percentage;
-                if (passedCountEl) passedCountEl.textContent = totalPassed;
-                if (failedCountEl) failedCountEl.textContent = totalFailed;
-
-                // Update Last Update Time
-                if (data.last_update) {
-                    const lastUpdateEl = document.getElementById('nvr-last-update');
-                    if (lastUpdateEl) {
-                        let ds = data.last_update;
-                        // Fix for Safari/Firefox date parsing if needed, but local typically fine
-                        if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(ds)) ds = ds.replace(' ', 'T');
-                        lastUpdateEl.textContent = formatRelativeTime(ds);
-                    }
-                }
-
-                // Update Building Status Bars if possible
-                // (Requires adding IDs to building cards, skipping for now as per user focus on Summary)
-
-            } catch (error) {
-                console.error('Error fetching NVR recording status:', error);
-            }
-        }
-
-        // Initial call
-        fetchNVRRecordingStatus();
-        setInterval(fetchNVRRecordingStatus, 60000); // Update every minute
-
-        // Handheld Detector Status Fetcher
-        async function fetchHandheldStatus() {
-            try {
-                const response = await fetch('get_handheld_status.php');
-                if (!response.ok) throw new Error('Network response was not ok');
-                const data = await response.json();
-
-                // Helper to update status cards
-                const updateCard = (prefix, status) => {
-                    const statusEl = document.getElementById(prefix + '-status');
-                    const textEl = document.getElementById(prefix + '-text');
-                    const indicatorEl = document.getElementById(prefix + '-indicator');
-
-                    if (statusEl) statusEl.textContent = status || 'Unknown';
-
-                    // Simple logic for colors based on "Normal", "Pass", "Active", "Online" vs others
-                    const isGood = ['Normal', 'Pass', 'Active', 'Online', 'Good', 'Functional'].some(key => (status || '').includes(key));
-
-                    if (indicatorEl) {
-                        indicatorEl.className = `inline-block w-3 h-3 rounded-full pulse-animation ${isGood ? 'bg-green-500' : 'bg-red-500'}`;
-                    }
-                    if (statusEl) {
-                        statusEl.className = `text-xs ml-1 ${isGood ? 'text-green-600' : 'text-red-600'}`;
-                    }
-                };
-
-                updateCard('battery-check', data.battery_status);
-                updateCard('led-power', data.led_status);
-                updateCard('detection-range', data.detection_status);
-                updateCard('audio-alert', data.alarm_status);
-
-                // Update Last Update
-                if (data.last_update) {
-                    const lastUpdateEl = document.getElementById('detector-last-update');
-                    if (lastUpdateEl) {
-                        let ds = data.last_update;
-                        if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(ds)) ds = ds.replace(' ', 'T');
-                        lastUpdateEl.textContent = formatRelativeTime(ds);
-                    }
-                }
-
-            } catch (error) {
-                console.error('Error fetching handheld status:', error);
-            }
-        }
-
-        // Walkthrough Detector Status Fetcher
-        async function fetchWalkthroughStatus() {
-            try {
-                const response = await fetch('get_walkthrough_status.php');
-                if (!response.ok) throw new Error('Network response was not ok');
-                const data = await response.json();
-
-                // Update Zones
-                const container = document.getElementById('walkthrough-zones-container');
-                if (container && data.zones) {
-                    container.innerHTML = '';
-                    for (const [zoneId, zoneData] of Object.entries(data.zones)) {
-                        let colorClass = 'bg-red-50 border-red-200';
-                        let textColor = 'text-red-800';
-                        let statusColor = 'status-offline';
-                        let statusText = 'text-red-600';
-                        let label = 'Offline';
-
-                        if (zoneData.type === 'online') {
-                            colorClass = 'bg-green-50 border-green-200';
-                            textColor = 'text-blue-800';
-                            statusColor = 'status-online';
-                            statusText = 'text-green-600';
-                            label = 'Online';
-                        } else if (zoneData.type === 'maintenance') {
-                            colorClass = 'bg-yellow-50 border-yellow-200';
-                            textColor = 'text-blue-800';
-                            statusColor = 'status-warning';
-                            statusText = 'text-yellow-600';
-                            label = 'Maintenance';
-                        }
-
-                        const html = `
-                            <div class="text-center p-4 rounded-lg border-2 ${colorClass}">
-                                <h4 class="text-lg font-semibold ${textColor} mb-2">Zone ${zoneId}</h4>
-                                <div class="flex items-center justify-center">
-                                    <span class="status-indicator ${statusColor}"></span>
-                                    <span class="${statusText} font-semibold text-sm">${label}</span>
-                                </div>
-                            </div>
-                        `;
-                        container.insertAdjacentHTML('beforeend', html);
-                    }
-                }
-
-                // Update Summary Stats
-                const onlineCountEl = document.getElementById('walkthrough-online-count');
-                const offlineCountEl = document.getElementById('walkthrough-offline-count');
-                const maintenanceCountEl = document.getElementById('walkthrough-maintenance-count');
-                const percentageEl = document.getElementById('walkthrough-operational-percentage');
-
-                if (onlineCountEl) onlineCountEl.textContent = data.online_count;
-                if (offlineCountEl) offlineCountEl.textContent = data.offline_count;
-                if (maintenanceCountEl) maintenanceCountEl.textContent = data.maintenance_count;
-
-                const total = data.online_count + data.offline_count + data.maintenance_count;
-                const pct = total > 0 ? Math.round((data.online_count / total) * 100) : 0;
-                if (percentageEl) percentageEl.textContent = `${pct}%`;
-
-                // Update Last Update
-                if (data.last_update) {
-                    const lastUpdateEl = document.getElementById('walkthrough-last-update');
-                    if (lastUpdateEl) {
-                        let ds = data.last_update;
-                        if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(ds)) ds = ds.replace(' ', 'T');
-                        lastUpdateEl.textContent = formatRelativeTime(ds);
-                    }
-                }
-
-            } catch (error) {
-                console.error('Error fetching walkthrough status:', error);
-            }
-        }
-
-        // Camera Status Fetcher (Dynamic HTML Generation)
-        async function fetchCameraStatus() {
-            try {
-                const response = await fetch('get_camera_status.php');
-                if (!response.ok) throw new Error('Network response was not ok');
-                const data = await response.json();
-
-                let globalTotal = 0;
-                let globalOnline = 0;
-                let htmlContent = '';
-
-                // Define building visual styles
-                const buildingStyles = {
-                    'B2': { gradient: 'from-emerald-300 to-teal-400', border: 'border-emerald-200', icon: '🏭' },
-                    'B3': { gradient: 'from-violet-300 to-purple-400', border: 'border-violet-200', icon: '🏢' },
-                    'B4': { gradient: 'from-cyan-300 to-sky-400', border: 'border-sky-200', icon: '🏗️' },
-                    'B9': { gradient: 'from-amber-300 to-orange-400', border: 'border-amber-200', icon: '🧬' }
-                };
-
-                if (data.buildings) {
-                    for (const [building, nvrs] of Object.entries(data.buildings)) {
-                        const style = buildingStyles[building] || { gradient: 'from-gray-300 to-gray-400', border: 'border-gray-200', icon: '🏢' };
-                        let buildingTotal = 0;
-                        let buildingOnline = 0;
-                        let nvrHtml = '';
-
-                        // Process NVRs for this building
-                        nvrs.forEach(nvr => {
-                            const total = Number(nvr.total_channels) || 0;
-                            const online = Number(nvr.online_channels) || 0;
-                            const percentage = Number(nvr.percentage);
-
-                            globalTotal += total;
-                            globalOnline += online;
-                            buildingTotal += total;
-                            buildingOnline += online;
-
-                            // Determine colors based on percentage
-                            let progressColor, bgGradient, borderColor, textColor;
-                            if (percentage >= 100) {
-                                progressColor = 'bg-green-500'; bgGradient = 'from-green-50 to-green-100'; borderColor = 'border-green-300'; textColor = 'text-green-700';
-                            } else if (percentage >= 50) {
-                                progressColor = 'bg-yellow-500'; bgGradient = 'from-yellow-50 to-yellow-100'; borderColor = 'border-yellow-300'; textColor = 'text-yellow-700';
-                            } else {
-                                progressColor = 'bg-red-500'; bgGradient = 'from-red-50 to-red-100'; borderColor = 'border-red-300'; textColor = 'text-red-700';
-                            }
-
-                            const sanitizedName = nvr.nvr_name.replace(/[^a-zA-Z0-9]/g, '-');
-
-                            nvrHtml += `
-                                <div id="nvr-${sanitizedName}-container" class="bg-gradient-to-r ${bgGradient} ${borderColor} border-2 rounded-lg px-4 py-3 shadow-sm hover:shadow-md transition-all duration-200">
-                                    <div class="flex justify-between items-center mb-2">
-                                        <span class="font-semibold text-slate-800 text-sm">${nvr.nvr_name}</span>
-                                        <span id="nvr-${sanitizedName}-text" class="font-bold ${textColor} text-base">${online}/${total}</span>
-                                    </div>
-                                    <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
-                                        <div id="nvr-${sanitizedName}-bar" class="${progressColor} h-2.5 rounded-full transition-all duration-500" style="width: ${percentage}%"></div>
-                                    </div>
-                                    <div class="text-xs text-gray-600 mt-1 text-right"><span id="nvr-${sanitizedName}-percent">${percentage}</span>% Online</div>
-                                </div>
-                            `;
-                        });
-
-                        const buildingPercentage = buildingTotal > 0 ? Math.round((buildingOnline / buildingTotal) * 100) : 0;
-
-                        // Build Card HTML
-                        htmlContent += `
-                            <div class="bg-white/80 backdrop-blur-sm border-2 ${style.border} rounded-2xl p-5 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-                                <div class="bg-gradient-to-r ${style.gradient} text-white rounded-xl px-4 py-3 mb-4 shadow-md">
-                                    <p class="text-xl font-bold flex items-center justify-center gap-2">
-                                        <span>${style.icon}</span>
-                                        <span>อาคาร ${building}</span>
-                                    </p>
-                                    <p class="text-sm text-center mt-1 opacity-90">
-                                        Overall: ${buildingOnline}/${buildingTotal} cameras (${buildingPercentage}%)
-                                    </p>
-                                </div>
-                                <div class="space-y-3 max-h-96 overflow-y-auto">
-                                    ${nvrHtml || '<div class="text-center py-8 text-gray-500"><p>ไม่มีข้อมูล NVR</p></div>'}
-                                </div>
-                            </div>
-                        `;
-                    }
-                }
-
-                // Inject HTML into container
-                const container = document.getElementById('camera-status-container');
-                if (container) {
-                    container.innerHTML = htmlContent;
-                }
-
-                // Update Summary Stats (Global)
-                const summaryTotalEl = document.getElementById('camera-summary-online-total');
-                const summaryPercentageEl = document.getElementById('camera-summary-percentage');
-                const summaryOnlineEl = document.getElementById('camera-summary-online');
-                const summaryOfflineEl = document.getElementById('camera-summary-offline');
-
-                const percentage = globalTotal > 0 ? Math.round((globalOnline / globalTotal) * 100) : 0;
-                const offline = globalTotal - globalOnline;
-
-                if (summaryTotalEl) summaryTotalEl.textContent = `${globalOnline}/${globalTotal}`;
-                if (summaryPercentageEl) summaryPercentageEl.textContent = percentage;
-                if (summaryOnlineEl) summaryOnlineEl.textContent = globalOnline;
-                if (summaryOfflineEl) summaryOfflineEl.textContent = offline;
-
-                // Update Last Update
-                if (data.last_update) {
-                    const lastUpdateEl = document.getElementById('camera-last-update');
-                    if (lastUpdateEl) {
-                        let ds = data.last_update;
-                        if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(ds)) ds = ds.replace(' ', 'T');
-                        lastUpdateEl.textContent = formatRelativeTime(ds);
-                    }
-                }
-
-            } catch (error) {
-                console.error('Error fetching camera status:', error);
-            }
-        }
-
-        // Initial calls
-        fetchSecurityStatus();
-        fetchCameraStatus();
-        fetchParkingStatus();
-        fetchHandheldStatus();
-        fetchWalkthroughStatus();
-
-        // Scheduling
-        setInterval(fetchSecurityStatus, 60000);
-        setInterval(fetchCameraStatus, 60000);
-        setInterval(fetchParkingStatus, 60000);
-        setInterval(fetchHandheldStatus, 60000); // 1 min
-        setInterval(fetchWalkthroughStatus, 60000); // 1 min
-    </script>
     <!-- Removed injected Cloudflare challenge iframe/script to avoid 404 errors on local environment -->
     <!-- Footer -->
     <footer class="mt-12 mb-6 text-center">
