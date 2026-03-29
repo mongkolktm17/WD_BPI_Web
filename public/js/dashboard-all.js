@@ -16,23 +16,29 @@ const defaultConfig = {
     user_role: "Role"
 };
 
+let serverTimeOffset = 0;
+let timeSynced = false;
+
 // Helper: Format Relative Time
 function formatRelativeTime(dateString) {
     if (!dateString) return 'N/A';
-    // Fix for dates with space instead of T
+
+    // Ensure the date string is parsed as Bangkok time (+07:00)
     let ds = dateString;
-    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(ds)) ds = ds.replace(' ', 'T');
+    if (ds.includes(' ') && !ds.includes('T')) ds = ds.replace(' ', 'T');
+    if (!ds.includes('+') && !ds.includes('Z')) ds += '+07:00';
 
     const date = new Date(ds);
     if (isNaN(date.getTime())) return 'Invalid Date';
 
-    const now = new Date();
+    // Use synchronized server time for comparison
+    const now = new Date(Date.now() + serverTimeOffset);
     const diffInSeconds = Math.floor((now - date) / 1000);
 
     if (diffInSeconds < 60) return 'Just now';
     if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
     if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
-    return date.toLocaleString('th-TH');
+    return date.toLocaleString('en-US');
 }
 
 // Helper: Notification System
@@ -88,31 +94,30 @@ function updateShiftStatus(now) {
     }
 }
 
+let lastSyncTime = 0;
+
 async function updateTime() {
     try {
-        const response = await fetch('get_server_time.php');
-        const data = await response.json();
+        const now = Date.now();
+        // Only fetch from server every 5 minutes to reduce load, or on first run
+        if (!timeSynced || (now - lastSyncTime > 300000)) {
+            lastSyncTime = now;
+            const response = await fetch('get_server_time.php');
+            const data = await response.json();
 
-        if (data.status === 'success') {
-            const timeString = data.formatted; // e.g., "December 30, 2025 at 07:44:33 PM"
-
-            const currentTimeEl = document.getElementById('current-time');
-            const lastUpdatedEl = document.getElementById('last-updated');
-
-            if (currentTimeEl) currentTimeEl.textContent = timeString;
-            if (lastUpdatedEl) lastUpdatedEl.textContent = timeString;
-
-            const serverTime = new Date(data.timestamp * 1000);
-            updateShiftStatus(serverTime);
-            updateSectionTimestamps(timeString);
+            if (data.status === 'success') {
+                const serverTimestamp = data.timestamp * 1000;
+                serverTimeOffset = serverTimestamp - Date.now();
+                timeSynced = true;
+            }
         }
-    } catch (error) {
-        console.warn('Error fetching server time, falling back to client time:', error);
-        const now = new Date();
-        const timeString = now.toLocaleString('en-US', {
+
+        const currentDate = new Date(Date.now() + serverTimeOffset);
+        const timeString = currentDate.toLocaleString('en-US', {
             year: 'numeric', month: 'long', day: 'numeric',
-            hour: '2-digit', minute: '2-digit', second: '2-digit'
-        });
+            hour: '2-digit', minute: '2-digit', second: '2-digit',
+            hour12: true
+        }) + (timeSynced ? '' : ' (Client Time)');
 
         const currentTimeEl = document.getElementById('current-time');
         const lastUpdatedEl = document.getElementById('last-updated');
@@ -120,8 +125,28 @@ async function updateTime() {
         if (currentTimeEl) currentTimeEl.textContent = timeString;
         if (lastUpdatedEl) lastUpdatedEl.textContent = timeString;
 
-        updateShiftStatus(now);
+        updateShiftStatus(currentDate);
         updateSectionTimestamps(timeString);
+
+    } catch (error) {
+        if (!timeSynced) {
+            console.warn('Error fetching server time, falling back to client time:', error);
+            const fallbackDate = new Date();
+            const timeString = fallbackDate.toLocaleString('en-US', {
+                year: 'numeric', month: 'long', day: 'numeric',
+                hour: '2-digit', minute: '2-digit', second: '2-digit',
+                hour12: true
+            }) + ' (Client Time)';
+
+            const currentTimeEl = document.getElementById('current-time');
+            const lastUpdatedEl = document.getElementById('last-updated');
+
+            if (currentTimeEl) currentTimeEl.textContent = timeString;
+            if (lastUpdatedEl) lastUpdatedEl.textContent = timeString;
+
+            updateShiftStatus(fallbackDate);
+            updateSectionTimestamps(timeString);
+        }
     }
 }
 
@@ -293,28 +318,42 @@ async function fetchHandheldStatus() {
         if (!response.ok) throw new Error('Network response was not ok');
         const data = await response.json();
 
-        const updateCard = (prefix, status) => {
-            const statusEl = document.getElementById(prefix + '-status');
-            const indicatorEl = document.getElementById(prefix + '-indicator');
-            const textEl = document.getElementById(prefix + '-text'); // if text description exists
+        // Update total reports
+        const totalReportsEl = document.getElementById('hh-total-reports');
+        if (totalReportsEl) totalReportsEl.textContent = data.total_reports || 0;
 
-            if (statusEl) statusEl.textContent = status || 'Unknown';
-            if (textEl && status) textEl.textContent = status; // Basic update
+        // Update pass/fail counts per item and card styling
+        const items = ['battery', 'led', 'detection', 'alarm'];
+        let totalPass = 0, totalFail = 0;
 
-            const isGood = ['Normal', 'Pass', 'Active', 'Online', 'Good', 'Functional'].some(key => (status || '').includes(key));
+        items.forEach(item => {
+            const s = data.summary ? data.summary[item] : null;
+            const pass = s ? s.pass : 0;
+            const fail = s ? s.fail : 0;
+            totalPass += pass;
+            totalFail += fail;
 
-            if (indicatorEl) {
-                indicatorEl.className = `inline-block w-3 h-3 rounded-full pulse-animation ${isGood ? 'bg-green-500' : 'bg-red-500'}`;
+            const passEl = document.getElementById(`hh-${item}-pass`);
+            const failEl = document.getElementById(`hh-${item}-fail`);
+            if (passEl) passEl.textContent = pass;
+            if (failEl) failEl.textContent = fail;
+
+            // Update card styling based on fail count
+            const cardEl = document.getElementById(`hh-${item}-card`);
+            if (cardEl) {
+                if (fail > 0) {
+                    cardEl.className = 'p-2 rounded-xl border border-red-200 bg-red-50';
+                } else {
+                    cardEl.className = 'p-2 rounded-xl border border-green-200 bg-green-50';
+                }
             }
-            if (statusEl) {
-                statusEl.className = `text-xs ml-1 ${isGood ? 'text-green-600' : 'text-red-600'}`;
-            }
-        };
+        });
 
-        updateCard('battery-check', data.battery_status);
-        updateCard('led-power', data.led_status);
-        updateCard('detection-range', data.detection_status);
-        updateCard('audio-alert', data.alarm_status);
+        // Update totals
+        const totalPassEl = document.getElementById('hh-total-pass');
+        const totalFailEl = document.getElementById('hh-total-fail');
+        if (totalPassEl) totalPassEl.textContent = totalPass;
+        if (totalFailEl) totalFailEl.textContent = totalFail;
 
         if (data.last_update) {
             const lastUpdateEl = document.getElementById('detector-last-update');
@@ -333,55 +372,70 @@ async function fetchWalkthroughStatus() {
         if (!response.ok) throw new Error('Network response was not ok');
         const data = await response.json();
 
-        const container = document.getElementById('walkthrough-zones-container');
-        if (container && data.zones) {
-            container.innerHTML = '';
-            for (const [zoneId, zoneData] of Object.entries(data.zones)) {
-                let colorClass = 'bg-red-50 border-red-200';
-                let textColor = 'text-red-800';
-                let statusColor = 'status-offline';
-                let statusText = 'text-red-600';
-                let label = 'Offline';
+        // Update total reports
+        const totalReportsEl = document.getElementById('wt-total-reports');
+        if (totalReportsEl) totalReportsEl.textContent = data.total_reports || 0;
 
-                if (zoneData.type === 'online') {
-                    colorClass = 'bg-green-50 border-green-200';
-                    textColor = 'text-blue-800';
-                    statusColor = 'status-online';
-                    statusText = 'text-green-600';
-                    label = 'Online';
-                } else if (zoneData.type === 'maintenance') {
-                    colorClass = 'bg-yellow-50 border-yellow-200';
-                    textColor = 'text-blue-800';
-                    statusColor = 'status-warning';
-                    statusText = 'text-yellow-600';
-                    label = 'Maintenance';
+        // Render zone cards with pass/fail/other counts
+        const container = document.getElementById('walkthrough-zones-container');
+        if (container && data.summary) {
+            container.innerHTML = '';
+            let grandTotalPass = 0, grandTotalFail = 0, grandTotalOther = 0;
+
+            for (let i = 1; i <= 6; i++) {
+                const zoneKey = `zone${i}`;
+                const s = data.summary[zoneKey] || { pass: 0, fail: 0, other: 0 };
+                grandTotalPass += s.pass;
+                grandTotalFail += s.fail;
+                grandTotalOther += s.other;
+
+                // Determine card color based on current status from latest report
+                let borderColor = 'border-green-200';
+                let bgColor = 'bg-green-50';
+                const currentZone = data.zones ? data.zones[i] : null;
+                if (currentZone) {
+                    if (currentZone.type === 'offline') {
+                        borderColor = 'border-red-200';
+                        bgColor = 'bg-red-50';
+                    } else if (currentZone.type === 'maintenance') {
+                        borderColor = 'border-yellow-200';
+                        bgColor = 'bg-yellow-50';
+                    }
                 }
 
                 const html = `
-                            <div class="text-center p-4 rounded-lg border-2 ${colorClass}">
-                                <h4 class="text-lg font-semibold ${textColor} mb-2">Zone ${zoneId}</h4>
-                                <div class="flex items-center justify-center">
-                                    <span class="status-indicator ${statusColor}"></span>
-                                    <span class="${statusText} font-semibold text-sm">${label}</span>
-                                </div>
+                    <div class="text-center p-2 ${bgColor} rounded-xl border ${borderColor}">
+                        <h4 class="text-xs font-bold text-blue-900 mb-1">Zone ${i}</h4>
+                        <div class="flex items-center justify-center gap-2">
+                            <div class="text-center">
+                                <div class="text-sm font-black text-green-600">${s.pass}</div>
+                                <div class="text-[9px] text-green-700 font-semibold">Pass</div>
                             </div>
-                        `;
+                            <div class="text-slate-300 text-sm font-light">/</div>
+                            <div class="text-center">
+                                <div class="text-sm font-black text-red-500">${s.fail}</div>
+                                <div class="text-[9px] text-red-600 font-semibold">Fail</div>
+                            </div>
+                            ${s.other > 0 ? `
+                            <div class="text-slate-300 text-sm font-light">/</div>
+                            <div class="text-center">
+                                <div class="text-sm font-black text-yellow-500">${s.other}</div>
+                                <div class="text-[9px] text-yellow-600 font-semibold">Other</div>
+                            </div>` : ''}
+                        </div>
+                    </div>
+                `;
                 container.insertAdjacentHTML('beforeend', html);
             }
+
+            // Update summary totals
+            const wtTotalPass = document.getElementById('wt-total-pass');
+            const wtTotalFail = document.getElementById('wt-total-fail');
+            const wtTotalOther = document.getElementById('wt-total-other');
+            if (wtTotalPass) wtTotalPass.textContent = grandTotalPass;
+            if (wtTotalFail) wtTotalFail.textContent = grandTotalFail;
+            if (wtTotalOther) wtTotalOther.textContent = grandTotalOther;
         }
-
-        const onlineCountEl = document.getElementById('walkthrough-online-count');
-        const offlineCountEl = document.getElementById('walkthrough-offline-count');
-        const maintenanceCountEl = document.getElementById('walkthrough-maintenance-count');
-        const percentageEl = document.getElementById('walkthrough-operational-percentage');
-
-        if (onlineCountEl) onlineCountEl.textContent = data.online_count;
-        if (offlineCountEl) offlineCountEl.textContent = data.offline_count;
-        if (maintenanceCountEl) maintenanceCountEl.textContent = data.maintenance_count;
-
-        const total = data.online_count + data.offline_count + data.maintenance_count;
-        const pct = total > 0 ? Math.round((data.online_count / total) * 100) : 0;
-        if (percentageEl) percentageEl.textContent = `${pct}%`;
 
         if (data.last_update) {
             const lastUpdateEl = document.getElementById('walkthrough-last-update');
@@ -465,14 +519,14 @@ async function fetchCameraStatus() {
                                 <div class="bg-gradient-to-r ${style.gradient} text-white rounded-xl px-4 py-3 mb-4 shadow-md">
                                     <p class="text-xl font-bold flex items-center justify-center gap-2">
                                         <span>${style.icon}</span>
-                                        <span>อาคาร ${building}</span>
+                                        <span>Building ${building}</span>
                                     </p>
                                     <p class="text-sm text-center mt-1 opacity-90">
                                         Overall: ${buildingOnline}/${buildingTotal} cameras (${buildingPercentage}%)
                                     </p>
                                 </div>
                                 <div class="space-y-3 max-h-96 overflow-y-auto">
-                                    ${nvrHtml || '<div class="text-center py-8 text-gray-500"><p>ไม่มีข้อมูล NVR</p></div>'}
+                                    ${nvrHtml || '<div class="text-center py-8 text-gray-500"><p>No NVR data available</p></div>'}
                                 </div>
                             </div>
                         `;
@@ -532,7 +586,7 @@ async function loadUserProfile() {
 
             if (data.last_login) {
                 const lastLoginDate = new Date(data.last_login);
-                const formattedLogin = lastLoginDate.toLocaleString('th-TH');
+                const formattedLogin = lastLoginDate.toLocaleString('en-US');
                 // Target the 'Last Login' input
                 // It is a read-only input that initially says "Today, 08:30 AM"
                 // Best way is to find the input in the profile section

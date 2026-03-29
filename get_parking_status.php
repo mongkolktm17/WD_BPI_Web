@@ -12,7 +12,7 @@ $lot_mapping = [
     "ลานรถยนต์ 3/2 (264 Slot)" => ["name" => "Parking Lot 3/2", "capacity" => 264, "type" => "car"],
     "ลานรถยนต์ 4 (415 Slot)" => ["name" => "Parking Lot 4", "capacity" => 415, "type" => "car"],
     "ลานรถยนต์ 5 (53 Slot)" => ["name" => "Parking Lot 5", "capacity" => 53, "type" => "car"],
-    "ลานรถยนต์ B.8 (44 Slot)" => ["name" => "Parking Lot B.8", "capacity" => 44, "type" => "car"],
+    "ลานรถยนต์ B.9 (129 Slot)" => ["name" => "Parking Lot B.9", "capacity" => 129, "type" => "car"],
 
     // Motorcycles
     "ลานจอด 1 (296 Slot)" => ["name" => "Motorcycle Lot 1", "capacity" => 296, "type" => "motorcycle"],
@@ -22,7 +22,7 @@ $lot_mapping = [
 
 $response = [
     'total_car_occupied' => 0,
-    'total_car_slots' => 990, // Sum of capacities: 114+100+264+415+53+44 = 990 (matches dashboard hardcoded total)
+    'total_car_slots' => 1075, // Sum of capacities: 114+100+264+415+53+129 = 1075
     'total_motorcycle_occupied' => 0,
     'total_motorcycle_slots' => 757, // Sum: 296+210+251 = 757
     'car_lots_data' => [],

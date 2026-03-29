@@ -52,7 +52,7 @@ $car_lots = [
     "ลานรถยนต์ 3/2 (264 Slot)",
     "ลานรถยนต์ 4 (415 Slot)",
     "ลานรถยนต์ 5 (53 Slot)",
-    "ลานรถยนต์ B.9 (44 Slot)"
+    "ลานรถยนต์ B.9 (112 Slot)"
 ];
 $motorcycle_lots = [
     "ลานจอด 1 (296 Slot)",
@@ -177,7 +177,8 @@ $message = $_GET['message'] ?? $message;
                 <?php endif; ?>
                 <?php if ($error): ?>
                     <div class="mb-6 p-4 rounded-2xl bg-red-50 text-red-700 border border-red-100">
-                        <?php echo htmlspecialchars($error); ?></div>
+                        <?php echo htmlspecialchars($error); ?>
+                    </div>
                 <?php endif; ?>
 
                 <form action="edit_car_parking.php?id=<?php echo $report_id; ?>" method="POST" class="space-y-8">

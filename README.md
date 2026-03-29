@@ -1,77 +1,87 @@
-# WD Security Dashboard
+# WD Security Dashboard - AWS EC2 Deployment Guide
 
-## Project Overview
+A web-based dashboard for real-time monitoring of NVR status, security personnel, parking occupancy, and metal detector health. Integrated with modern visual reporting.
 
-The WD Security Dashboard is a web-based application designed to provide a centralized monitoring interface for various security aspects within a facility. It offers real-time insights into NVR recording status, security personnel deployment, parking lot occupancy, and the operational status of metal detectors.
+---
 
-## Features
+## 🚀 Deployment on AWS EC2 (Ubuntu 22.04/24.04 LTS)
 
-*   **Daily NVR Report:** Track and report the recording days for each NVR, with visual indicators (green/red) based on a 62-day retention target.
-*   **NVR Status Summary:** Overview of NVRs meeting the 62-day recording criteria, displayed with progress bars per building (B.2, B.3, B.4, B.8).
-*   **Security Personnel Status:** Monitor day and night shift security staff counts and overall active personnel.
-*   **Parking Lot Report:** View real-time occupancy for car and motorcycle parking areas, including total available slots and occupied spaces.
-*   **Metal Detector Status:** Check the operational status of Hand Held and Walkthrough Metal Detectors, including battery, LED, detection range, and audio alerts.
-*   **User Authentication:** Secure login and role-based access (admin/user).
-*   **Report History:** View and manage past NVR reports.
+This guide provides a step-by-step process for setting up the WD BPI Web application on an AWS EC2 instance.
 
-## Technologies Used
+### 1. Instance Preparation
+- **Instance Type**: Recommended `t3.small` or higher (depending on user load).
+- **OS**: Ubuntu Server 22.04 LTS or 24.04 LTS.
+- **Security Group Settings**:
+  - `Inbound`: Allow HTTP (Port 80), HTTPS (Port 443), and SSH (Port 22).
+  - Optional: Allow MySQL (Port 3306) only for specific IP ranges if remote access is required.
 
-*   **Backend:** PHP
-*   **Database:** MySQL
-*   **Frontend:** HTML, CSS (Tailwind CSS), JavaScript
-*   **Web Server:** Apache (typically with XAMPP)
+### 2. Update and Install Dependencies
+Connect to your instance via SSH and run:
+```bash
+sudo apt update && sudo apt upgrade -y
+sudo apt install apache2 php libapache2-mod-php php-mysql php-curl php-gd php-mbstring php-xml php-zip mariadb-server git -y
+```
 
-## Installation and Setup
+### 3. Application Deployment
+Clone the repository into the `/var/www/html` directory:
+```bash
+cd /var/www/html
+sudo git clone https://github.com/PCS-IOT/WD_BPI_Web.git .
+```
 
-To set up the WD Security Dashboard locally, follow these steps:
+Set appropriate directory permissions:
+```bash
+sudo chown -R www-data:www-data /var/www/html
+sudo chmod -R 755 /var/www/html
+```
 
-1.  **Prerequisites:**
-    *   Install XAMPP (or a similar Apache/MySQL/PHP stack) on your system.
-    *   Ensure MySQL and Apache services are running.
+### 4. Database Setup
+Secure the MariaDB installation and create the database:
+```bash
+sudo mysql_secure_installation
+# Follow the prompts to set the root password.
 
-2.  **Clone the Repository:**
-    *   Place the project files into your XAMPP `htdocs` directory (e.g., `c:\xampp\htdocs\wd`).
+sudo mysql -u root -p
+```
+Inside the MySQL shell:
+```sql
+CREATE DATABASE wd_security_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'wd_user'@'localhost' IDENTIFIED BY 'your_strong_password';
+GRANT ALL PRIVILEGES ON wd_security_db.* TO 'wd_user'@'localhost';
+FLUSH PRIVILEGES;
+EXIT;
+```
+Import the schema:
+```bash
+# Assuming schema.sql is provided or exported from XAMPP
+mysql -u wd_user -p wd_security_db < schema.sql
+```
 
-3.  **Database Setup:**
-    *   Open phpMyAdmin (usually accessible via `http://localhost/phpmyadmin`).
-    *   Create a new database (e.g., `wd_security_db`).
-    *   Import your database schema and initial data. (You will need to provide your `wd_security_db.sql` file if available, or create tables manually based on the application's needs, e.g., `users`, `cctv_devices`, `cctv_reports`, `cctv_report_details`).
+### 5. Configuration
+Copy the example config and edit it with your database credentials:
+```bash
+cp config.example.php config.php
+nano config.php
+```
+Update the `DB_SERVER`, `DB_USERNAME`, `DB_PASSWORD`, and `DB_NAME` values.
 
-4.  **Configuration:**
-    *   Edit `config.php` in the project root to match your database credentials:
-        ```php
-        <?php
-        define('DB_SERVER', 'localhost');
-        define('DB_USERNAME', 'your_db_username'); // e.g., root
-        define('DB_PASSWORD', 'your_db_password'); // e.g., empty for XAMPP root
-        define('DB_NAME', 'wd_security_db');
+### 6. Apache Configuration (Optional but Recommended)
+Enable `mod_rewrite` if you use `.htaccess` for clean URLs:
+```bash
+sudo a2enmod rewrite
+sudo systemctl restart apache2
+```
+Ensure `AllowOverride All` is set in your `/etc/apache2/sites-available/000-default.conf` for the `/var/www/html` directory.
 
-        $conn = new mysqli(DB_SERVER, DB_USERNAME, DB_PASSWORD, DB_NAME);
+---
 
-        if ($conn->connect_error) {
-            die("Connection failed: " . $conn->connect_error);
-        }
+## 📊 Latest Features
+- **Visual Statistics Dashboard**: Interactive charts using Chart.js for security trends and metal detector health.
+- **NVR Tracking**: 62-day retention monitoring with building-wise progress bars.
+- **Responsive UI**: Optimized for both desktop and mobile views with modern aesthetic.
 
-        session_start();
-        ?>
-        ```
-    *   Update `your_db_username` and `your_db_password` accordingly.
+## 🤝 Contributing
+Contributions are welcome! Please submit a Pull Request to the `main` branch.
 
-5.  **Access the Dashboard:**
-    *   Open your web browser and navigate to `http://localhost/wd/dashboard.php` (or the appropriate URL if you placed it in a different subdirectory).
-    *   Log in using your credentials (default admin credentials might be `admin`/`password` if provided in your database setup).
-
-## Usage
-
-*   **Dashboard:** Provides an overview of all security statuses.
-*   **Daily NVR Report (`nvr_recording_days.php`):** Submit daily reports on NVR recording durations.
-*   **Report Page (`report_page.php`):** Access various detailed reports.
-*   **Manage Officers/Roles (`manage_officers.php`, `manage_roles.php`):** Admin functionalities for user and role management.
-
-## Contributing
-
-If you wish to contribute to this project, please fork the repository and submit a pull request with your proposed changes.
-
-## License
-
-[Specify your project's license here, e.g., MIT License]
+## 📄 License
+This project is licensed under the MIT License.

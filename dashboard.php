@@ -167,9 +167,9 @@ $building_colors = [
 ];
 
 // Get current user's role name for display
-$current_user_role_name = 'เจ้าหน้าที่';
+$current_user_role_name = 'Officer';
 if (isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'admin') {
-    $current_user_role_name = 'ผู้ดูแลระบบ';
+    $current_user_role_name = 'Administrator';
 } elseif (isset($_SESSION['role_id'])) {
     $stmt = $conn->prepare('SELECT role_name FROM roles WHERE id = ?');
     $stmt->bind_param('i', $_SESSION['role_id']);
@@ -210,753 +210,449 @@ $conn->close();
 </head>
 
 <body class="gradient-bg min-h-full">
-    <div class="container mx-auto px-4 py-6"><!-- Header -->
-        <header class="mb-8">
+    <div class="container mx-auto px-3 py-2">
+        <!-- ── Compact Header ── -->
+        <header class="mb-2">
             <div
-                class="bg-white rounded-2xl shadow-xl p-6 md:p-8 flex flex-col md:flex-row justify-between items-center gap-6 border-l-8 border-sky-500 relative overflow-hidden">
-                <!-- Background Decoration -->
-                <div class="absolute -right-10 -top-10 w-40 h-40 bg-sky-100 rounded-full opacity-50 blur-3xl"></div>
-                <div class="absolute -left-10 -bottom-10 w-40 h-40 bg-blue-100 rounded-full opacity-50 blur-3xl"></div>
-
-                <!-- Main Header Content -->
-                <div
-                    class="flex flex-col md:flex-row items-center md:items-start gap-6 z-10 w-full md:w-auto text-center md:text-left">
-                    <!-- WD Logo - Larger and Prominent -->
-                    <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-100 flex-shrink-0">
-                        <img src="report_assets/Images/WD_logo.png" alt="Western Digital Logo"
-                            class="h-16 w-auto object-contain">
-                    </div>
-
-                    <div class="flex flex-col justify-center">
+                class="bg-white rounded-xl shadow-md px-4 py-2 flex items-center justify-between border-l-4 border-sky-500">
+                <!-- Logo + Title -->
+                <div class="flex items-center gap-3">
+                    <img src="report_assets/Images/images_logo.png" alt="WD Logo" class="h-9 w-auto object-contain">
+                    <div>
                         <h1 id="dashboard-title"
-                            class="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-sky-600 mb-1">
-                            Security System Dashboard
-                        </h1>
-                        <h2 id="company-name" class="text-lg md:text-xl font-medium text-slate-500 tracking-wide">
-                            BPI Western Digital Storage Technologies (Thailand) Ltd.
-                        </h2>
-                        <div class="mt-2 text-slate-400 flex items-center justify-center md:justify-start gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            <span id="current-time" class="text-sm font-medium tracking-wide"></span>
-                        </div>
+                            class="text-base font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-sky-500 leading-tight">
+                            Security System Dashboard</h1>
+                        <p class="text-[11px] text-slate-400 leading-tight">BPI Western Digital Storage Technologies
+                            (Thailand) Ltd.</p>
                     </div>
                 </div>
-
-                <!-- Login Status and Settings -->
-                <div class="flex flex-wrap items-center justify-center gap-3 md:gap-4 z-10 w-full md:w-auto">
-                    <!-- User Status -->
-                    <div class="flex items-center bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 shadow-sm">
-                        <div class="relative">
-                            <div class="w-3 h-3 bg-emerald-500 rounded-full pulse-animation"></div>
+                <!-- Right: time + user + buttons -->
+                <div class="flex items-center gap-2">
+                    <div class="text-xs text-slate-400 flex items-center gap-1 mr-2">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span id="current-time" class="font-medium"></span>
+                    </div>
+                    <div class="flex items-center bg-slate-50 border border-slate-200 rounded-lg px-3 py-1">
+                        <div class="relative mr-2">
+                            <div class="w-2 h-2 bg-emerald-500 rounded-full pulse-animation"></div>
                             <div
-                                class="w-3 h-3 bg-emerald-500 rounded-full absolute top-0 left-0 animate-ping opacity-75">
+                                class="w-2 h-2 bg-emerald-500 rounded-full absolute top-0 left-0 animate-ping opacity-75">
                             </div>
                         </div>
-                        <div class="ml-3 text-left">
-                            <div class="font-bold text-slate-700 text-sm leading-tight" id="user-name">
+                        <div>
+                            <div class="font-bold text-slate-700 text-xs leading-tight" id="user-name">
                                 <?php echo isset($_SESSION['first_name']) && isset($_SESSION['last_name']) ? htmlspecialchars($_SESSION['first_name'] . ' ' . $_SESSION['last_name']) : htmlspecialchars($_SESSION['username']); ?>
                             </div>
-                            <div class="text-slate-400 text-xs font-medium" id="user-role">
+                            <div class="text-slate-400 text-[10px]" id="user-role">
                                 <?php echo htmlspecialchars($current_user_role_name); ?>
                             </div>
                         </div>
                     </div>
-
-                    <!-- Action Buttons Group -->
-                    <div class="flex items-center gap-2 bg-slate-50 p-1 rounded-xl border border-slate-200">
-                        <!-- Report Button -->
-                        <a href="report_page.php"
-                            class="group relative bg-white hover:bg-emerald-50 text-slate-600 hover:text-emerald-600 border border-slate-200 hover:border-emerald-200 py-2 px-4 rounded-lg transition-all duration-200 flex items-center gap-2 shadow-sm font-medium text-sm">
-                            <svg class="w-4 h-4 transition-transform group-hover:scale-110" fill="currentColor"
-                                viewBox="0 0 20 20">
-                                <path fill-rule="evenodd"
-                                    d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z"
-                                    clip-rule="evenodd"></path>
-                            </svg>
-                            <span>Report</span>
-                        </a>
-
-                        <!-- Settings Button -->
-                        <button id="settings-btn"
-                            class="p-2 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 transition-colors">
-                            <svg class="w-5 h-5" fill="currentColor" viewbox="0 0 20 20">
-                                <path fill-rule="evenodd"
-                                    d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
-                                    clip-rule="evenodd"></path>
-                            </svg>
-                        </button>
-
-                        <!-- Logout Button -->
-                        <a href="logout.php"
-                            class="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                            </svg>
-                        </a>
-                    </div>
+                    <a href="report_page.php"
+                        class="bg-white hover:bg-emerald-50 text-slate-600 hover:text-emerald-600 border border-slate-200 py-1 px-3 rounded-lg flex items-center gap-1 text-xs font-medium shadow-sm transition-all">
+                        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                                d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z"
+                                clip-rule="evenodd"></path>
+                        </svg>
+                        Report
+                    </a>
+                    <a href="report_visual.php"
+                        class="bg-white hover:bg-blue-50 text-slate-600 hover:text-blue-600 border border-slate-200 py-1 px-3 rounded-lg flex items-center gap-1 text-xs font-medium shadow-sm transition-all">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                        Stats
+                    </a>
+                    <button id="settings-btn"
+                        class="p-1.5 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 transition-colors">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                                d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
+                                clip-rule="evenodd"></path>
+                        </svg>
+                    </button>
+                    <a href="logout.php"
+                        class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                    </a>
                 </div>
             </div>
         </header>
 
         <!-- Security Personnel Section -->
-        <section class="mb-8">
-            <h3 id="security-section-title" class="text-2xl font-bold text-slate-700 mb-4">Security Personnel Status
-                <span class="text-sm text-slate-400 ml-2">(Last Update: <span id="security-last-update"></span>)</span>
-            </h3>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <section class="mb-2">
+            <div class="flex items-center gap-2 mb-2">
+                <h3 id="security-section-title" class="text-sm font-bold text-slate-600">Security Personnel Status</h3>
+                <span class="text-xs text-slate-400">(Last Update: <span id="security-last-update"></span>)</span>
+            </div>
+            <div class="grid grid-cols-3 gap-3">
                 <!-- Day Shift Card -->
-                <div class="bg-white rounded-lg p-6 card-shadow">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <h4 class="text-lg font-semibold text-blue-800 flex items-center">
-                                <svg class="w-5 h-5 mr-2 text-yellow-500" fill="currentColor" viewbox="0 0 20 20">
-                                    <path fill-rule="evenodd"
-                                        d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"
-                                        clip-rule="evenodd"></path>
-                                </svg> Day Shift
-                            </h4>
-                            <p class="text-3xl font-bold" id="day-shift-count">
-                                <?php
-                                $morning_actual = $security_status['morning_shift'];
-                                $morning_contract = $security_status['morning_shift_contract'];
-                                $morning_color = (!is_null($morning_contract) && $morning_actual < $morning_contract) ? 'text-orange-500' : 'text-green-500';
-                                ?>
-                                <span
-                                    class="<?php echo $morning_color; ?>"><?php echo htmlspecialchars($morning_actual); ?></span><?php if (!is_null($morning_contract)): ?><span
-                                        class="text-blue-400 text-2xl"> /
-                                        <?php echo htmlspecialchars($morning_contract); ?></span><?php endif; ?>
-                            </p>
-                            <?php if (!is_null($morning_contract)): ?>
-                                <p class="text-xs text-gray-500"><span class="<?php echo $morning_color; ?>">●</span> Actual
-                                    / <span class="text-blue-400">●</span> Contract</p>
-                            <?php endif; ?>
-                            <p class="text-sm text-gray-600">07:00 - 19:00</p>
+                <div class="bg-white rounded-xl p-3 card-shadow flex items-center gap-3">
+                    <div class="bg-yellow-50 p-2 rounded-lg flex-shrink-0">
+                        <svg class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                                d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"
+                                clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-xs font-semibold text-slate-500">Day Shift <span
+                                class="text-[10px] font-normal text-gray-400">07:00-19:00</span></div>
+                        <div class="text-xl font-black leading-tight" id="day-shift-count">
+                            <?php
+                            $morning_actual = $security_status['morning_shift'];
+                            $morning_contract = $security_status['morning_shift_contract'];
+                            $morning_color = (!is_null($morning_contract) && $morning_actual < $morning_contract) ? 'text-orange-500' : 'text-green-500';
+                            ?>
+                            <span
+                                class="<?php echo $morning_color; ?>"><?php echo htmlspecialchars($morning_actual); ?></span><?php if (!is_null($morning_contract)): ?><span
+                                    class="text-blue-400 text-base"> /
+                                    <?php echo htmlspecialchars($morning_contract); ?></span><?php endif; ?>
                         </div>
-                        <div>
-                            <img src="report_assets/Images/security-officer.png" alt="Day Shift"
-                                class="w-12 h-12 object-contain" />
-                        </div>
+                        <?php if (!is_null($morning_contract)): ?>
+                            <div class="text-[10px] text-gray-400"><span class="<?php echo $morning_color; ?>">●</span>
+                                Actual / <span class="text-blue-400">●</span> Contract</div><?php endif; ?>
                     </div>
                 </div>
 
                 <!-- Night Shift Card -->
-                <div class="bg-white rounded-lg p-6 card-shadow">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <h4 class="text-lg font-semibold text-blue-800 flex items-center">
-                                <svg class="w-5 h-5 mr-2 text-indigo-600" fill="currentColor" viewbox="0 0 20 20">
-                                    <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
-                                </svg> Night Shift
-                            </h4>
-                            <p class="text-3xl font-bold" id="night-shift-count">
-                                <?php
-                                $evening_actual = $security_status['evening_shift'];
-                                $evening_contract = $security_status['evening_shift_contract'];
-                                $evening_color = (!is_null($evening_contract) && $evening_actual < $evening_contract) ? 'text-orange-500' : 'text-green-500';
-                                ?>
-                                <span
-                                    class="<?php echo $evening_color; ?>"><?php echo htmlspecialchars($evening_actual); ?></span><?php if (!is_null($evening_contract)): ?><span
-                                        class="text-blue-400 text-2xl"> /
-                                        <?php echo htmlspecialchars($evening_contract); ?></span><?php endif; ?>
-                            </p>
-                            <?php if (!is_null($evening_contract)): ?>
-                                <p class="text-xs text-gray-500"><span class="<?php echo $evening_color; ?>">●</span> Actual
-                                    / <span class="text-blue-400">●</span> Contract</p>
-                            <?php endif; ?>
-                            <p class="text-sm text-gray-600">19:00 - 07:00</p>
+                <div class="bg-white rounded-xl p-3 card-shadow flex items-center gap-3">
+                    <div class="bg-indigo-50 p-2 rounded-lg flex-shrink-0">
+                        <svg class="w-5 h-5 text-indigo-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-xs font-semibold text-slate-500">Night Shift <span
+                                class="text-[10px] font-normal text-gray-400">19:00-07:00</span></div>
+                        <div class="text-xl font-black leading-tight" id="night-shift-count">
+                            <?php
+                            $evening_actual = $security_status['evening_shift'];
+                            $evening_contract = $security_status['evening_shift_contract'];
+                            $evening_color = (!is_null($evening_contract) && $evening_actual < $evening_contract) ? 'text-orange-500' : 'text-green-500';
+                            ?>
+                            <span
+                                class="<?php echo $evening_color; ?>"><?php echo htmlspecialchars($evening_actual); ?></span><?php if (!is_null($evening_contract)): ?><span
+                                    class="text-blue-400 text-base"> /
+                                    <?php echo htmlspecialchars($evening_contract); ?></span><?php endif; ?>
                         </div>
-                        <div>
-                            <img src="report_assets/Images/security-officer.png" alt="Night Shift"
-                                class="w-12 h-12 object-contain" />
-                        </div>
+                        <?php if (!is_null($evening_contract)): ?>
+                            <div class="text-[10px] text-gray-400"><span class="<?php echo $evening_color; ?>">●</span>
+                                Actual / <span class="text-blue-400">●</span> Contract</div><?php endif; ?>
                     </div>
                 </div>
 
                 <!-- Total Active Card -->
-                <div class="bg-white rounded-lg p-6 card-shadow border-2 border-blue-300">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <h4 class="text-lg font-semibold text-blue-800">Total Active</h4>
-                            <p class="text-3xl font-bold" id="total-shift-count">
-                                <?php
-                                $total_actual = $morning_actual + $evening_actual;
-                                $total_contract = (is_null($morning_contract) ? 0 : $morning_contract) + (is_null($evening_contract) ? 0 : $evening_contract);
-                                $show_contract = !is_null($morning_contract) || !is_null($evening_contract);
-                                $total_color = ($show_contract && $total_actual < $total_contract) ? 'text-orange-500' : 'text-green-500';
-                                ?>
-                                <span
-                                    class="<?php echo $total_color; ?>"><?php echo htmlspecialchars($total_actual); ?></span><?php if ($show_contract): ?><span
-                                        class="text-blue-400 text-2xl"> /
-                                        <?php echo htmlspecialchars($total_contract); ?></span><?php endif; ?>
-                            </p>
-                            <?php if ($show_contract): ?>
-                                <p class="text-xs text-gray-500 mt-1"><span class="<?php echo $total_color; ?>">●</span>
-                                    Actual / <span class="text-blue-400">●</span> Contract</p>
-                            <?php endif; ?>
-                            <p class="text-sm font-medium">Total Daily Force</p>
-                            <p class="text-xs text-gray-500 mt-1">Day + Night Shifts</p>
-
+                <div
+                    class="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl p-3 card-shadow flex items-center gap-3">
+                    <div class="bg-white/20 p-2 rounded-lg flex-shrink-0">
+                        <img src="report_assets/Images/security-officer.png" alt="Total"
+                            class="w-5 h-5 object-contain" />
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-xs font-semibold text-blue-100">Total Active</div>
+                        <div class="text-xl font-black leading-tight text-white" id="total-shift-count">
+                            <?php
+                            $total_actual = $morning_actual + $evening_actual;
+                            $total_contract = (is_null($morning_contract) ? 0 : $morning_contract) + (is_null($evening_contract) ? 0 : $evening_contract);
+                            $show_contract = !is_null($morning_contract) || !is_null($evening_contract);
+                            $total_color = ($show_contract && $total_actual < $total_contract) ? 'text-orange-300' : 'text-green-300';
+                            ?>
+                            <span
+                                class="<?php echo $total_color; ?>"><?php echo htmlspecialchars($total_actual); ?></span><?php if ($show_contract): ?><span
+                                    class="text-blue-200 text-base"> /
+                                    <?php echo htmlspecialchars($total_contract); ?></span><?php endif; ?>
                         </div>
-                        <div>
-                            <img src="report_assets/Images/security-officer.png" alt="Total Active"
-                                class="w-12 h-12 object-contain" />
-                        </div>
+                        <?php if ($show_contract): ?>
+                            <div class="text-[10px] text-blue-200"><span class="<?php echo $total_color; ?>">●</span> Actual
+                                / <span class="text-blue-300">●</span> Contract</div><?php endif; ?>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- NVR Status Section -->
-        <section class="mb-8">
-            <h3 id="nvr-section-title" class="text-2xl font-bold text-slate-700 mb-4">NVR Recording Status
-                <span class="text-sm text-slate-400 ml-2">(Last Update: <span id="nvr-last-update">-</span>)</span>
-            </h3>
-            <!-- Summary Card with Gradient -->
-            <div class="mb-6 bg-gradient-to-r from-sky-400 to-blue-500 rounded-lg p-6 text-white card-shadow">
-                <div class="flex items-center justify-between flex-wrap">
-                    <div>
-                        <h4 class="text-xl font-semibold mb-2">NVR Recording Status Summary</h4>
-                        <div class="text-3xl font-bold">
-                            <span id="nvr-summary-count"><?php echo $total_passed; ?>/<?php echo $total_nvrs; ?></span>
-                            (<span id="nvr-summary-percentage"><?php echo $overall_percentage; ?></span>%)
+        <!-- 4-Quadrant Grid -->
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-3">
+
+            <!-- TOP-LEFT: Parking Lot Report -->
+            <section>
+                <div class="flex items-center gap-2 mb-2">
+                    <h3 id="parking-section-title" class="text-sm font-bold text-blue-900">Parking Lot Report</h3><span
+                        class="text-[10px] text-gray-400">(Last Update: <span id="parking-last-update"></span>)</span>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div
+                        class="bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl p-3 text-white shadow-md flex items-center justify-between">
+                        <div>
+                            <div class="flex items-center gap-2 mb-1">
+                                <img src="report_assets/Images/car2.png" alt="Car" class="w-6 h-6 opacity-90" />
+                                <span class="text-sm font-semibold opacity-90">Car Parking Total</span>
+                            </div>
+                            <div class="text-2xl font-black tracking-tight" id="car-parking-total">0/1075</div>
+                            <div class="text-blue-100 text-xs mt-1" id="car-parking-percentage">76% Occupied</div>
                         </div>
-                        <div class="text-blue-100 text-sm">
-                            NVRs Passed / Total (Percentage)
+                        <div class="bg-white/20 p-3 rounded-full">
+                            <img src="report_assets/Images/car2.png" alt="Car" class="w-8 h-8" />
                         </div>
                     </div>
-                    <div class="text-right">
-                        <div class="grid grid-cols-2 gap-4 text-sm">
-                            <div class="text-center">
-                                <div class="text-2xl font-bold text-green-300">
-                                    <span id="nvr-passed-count"><?php echo $total_passed; ?></span>
-                                </div>
-                                <div class="text-blue-100">
-                                    Passed
-                                </div>
+                    <div
+                        class="bg-gradient-to-br from-emerald-500 to-teal-700 rounded-xl p-3 text-white shadow-md flex items-center justify-between">
+                        <div>
+                            <div class="flex items-center gap-2 mb-1">
+                                <img src="report_assets/Images/motorcycle.png" alt="Moto" class="w-6 h-6 opacity-90" />
+                                <span class="text-sm font-semibold opacity-90">Motorcycle Parking Total</span>
                             </div>
-                            <div class="text-center">
-                                <div class="text-2xl font-bold text-red-300">
-                                    <span id="nvr-failed-count"><?php echo $total_failed; ?></span>
-                                </div>
-                                <div class="text-blue-100">
-                                    Failed
-                                </div>
+                            <div class="text-2xl font-black tracking-tight" id="motorcycle-parking-total">590/757</div>
+                            <div class="text-emerald-50 text-xs mt-1" id="motorcycle-parking-percentage">78% Occupied
                             </div>
+                        </div>
+                        <div class="bg-white/20 p-3 rounded-full">
+                            <img src="report_assets/Images/motorcycle.png" alt="Moto" class="w-8 h-8" />
                         </div>
                     </div>
                 </div>
-            </div>
-            <!-- Building Cards Grid -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                <?php foreach ($nvr_status_counts as $building => $counts):
-                    $percentage = ($counts['total'] > 0) ? round(($counts['passed'] / $counts['total']) * 100) : 0;
-                    $bar_color = ($percentage == 100) ? 'bg-green-600' : 'bg-red-600';
-                    ?>
-                    <div class="bg-white rounded-lg p-4 md:p-6 card-shadow" data-building="<?php echo $building; ?>">
-                        <h4 class="text-base md:text-lg font-semibold text-blue-800 mb-3 md:mb-4">Building
-                            <?php echo $building; ?>
-                        </h4>
-                        <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2 mb-1">
-                            <div class="<?php echo $bar_color; ?> h-2.5 rounded-full"
-                                style="width: <?php echo $percentage; ?>%"></div>
+            </section>
+
+            <!-- TOP-RIGHT: NVR + Camera side by side -->
+            <div class="grid grid-cols-2 gap-3">
+
+                <!-- NVR Recording Status -->
+                <section class="flex flex-col">
+                    <div class="flex items-center gap-2 mb-2">
+                        <h3 id="nvr-section-title" class="text-sm font-bold text-blue-900">NVR Recording Status</h3>
+                        <span class="text-[10px] text-gray-400">(Last Update: <span
+                                id="nvr-last-update">-</span>)</span>
+                    </div>
+                    <div
+                        class="bg-gradient-to-br from-indigo-600 to-blue-700 rounded-xl p-3 text-white shadow-md flex-1 flex flex-col justify-center">
+                        <div class="text-xs font-semibold opacity-80 mb-2">NVR Recording Summary</div>
+                        <div class="text-xl font-black mb-1">
+                            <span id="nvr-summary-count"><?php echo $total_passed; ?>/<?php echo $total_nvrs; ?></span>
+                            <span class="text-base font-bold">(<span
+                                    id="nvr-summary-percentage"><?php echo $overall_percentage; ?></span>%)</span>
                         </div>
-                        <p class="text-sm text-slate-500 mt-2">
-                            <span
-                                class="font-bold <?php echo ($counts['passed'] == $counts['total']) ? 'text-green-600' : 'text-red-600'; ?>"><?php echo $counts['passed']; ?></span>
-                            / <?php echo $counts['total']; ?> Passed
-                        </p>
-                        <div class="mt-2 md:mt-3 text-xs text-gray-500">
-                            <div>Total NVRs: <?php echo $counts['total']; ?></div>
+                        <div class="text-blue-100 text-xs mb-3">NVRs Passed / Total</div>
+                        <div class="flex gap-4 mt-auto">
+                            <div class="flex-1 text-center bg-white/10 rounded-lg py-2">
+                                <div class="text-xl font-black text-green-300" id="nvr-passed-count">
+                                    <?php echo $total_passed; ?>
+                                </div>
+                                <div class="text-xs text-blue-100 font-semibold">Passed</div>
+                            </div>
+                            <div class="flex-1 text-center bg-white/10 rounded-lg py-2">
+                                <div class="text-xl font-black text-rose-300" id="nvr-failed-count">
+                                    <?php echo $total_failed; ?>
+                                </div>
+                                <div class="text-xs text-blue-100 font-semibold">Failed</div>
+                            </div>
                         </div>
                     </div>
-                <?php endforeach; ?>
-            </div>
-        </section><!-- Camera Status Section -->
-        <section class="mb-8">
-            <h3 id="camera-section-title" class="text-2xl font-bold text-slate-700 mb-4">Camera Online Status <span
-                    class="text-sm text-slate-400 ml-2">(Last Update: <span id="camera-last-update"></span>)</span></h3>
-            <!-- Summary Card with Gradient -->
-            <div class="mb-6 bg-gradient-to-r from-sky-400 to-blue-500 rounded-lg p-6 text-white card-shadow">
-                <div class="flex items-center justify-between flex-wrap">
-                    <div>
-                        <h4 class="text-xl font-semibold mb-2">Camera Online Status Summary</h4>
-                        <div class="text-3xl font-bold">
-                            <?php
-                            $global_percentage = $global_total_cameras > 0 ? round(($global_online_cameras / $global_total_cameras) * 100) : 0;
-                            ?>
+                </section>
+
+                <!-- Camera Online Status -->
+                <section class="flex flex-col">
+                    <div class="flex items-center gap-2 mb-2">
+                        <h3 id="camera-section-title" class="text-sm font-bold text-blue-900">Camera Online Status</h3>
+                        <span class="text-[10px] text-gray-400">(Last Update: <span
+                                id="camera-last-update"></span>)</span>
+                    </div>
+                    <?php $global_percentage = $global_total_cameras > 0 ? round(($global_online_cameras / $global_total_cameras) * 100) : 0; ?>
+                    <div
+                        class="bg-gradient-to-br from-sky-600 to-cyan-700 rounded-xl p-3 text-white shadow-md flex-1 flex flex-col justify-center">
+                        <div class="text-xs font-semibold opacity-80 mb-2">Camera Online Summary</div>
+                        <div class="text-xl font-black mb-1">
                             <span
                                 id="camera-summary-online-total"><?php echo $global_online_cameras; ?>/<?php echo $global_total_cameras; ?></span>
-                            (<span id="camera-summary-percentage"><?php echo $global_percentage; ?></span>%)
+                            <span class="text-base font-bold">(<span
+                                    id="camera-summary-percentage"><?php echo $global_percentage; ?></span>%)</span>
                         </div>
-                        <div class="text-blue-100 text-sm">
-                            Online Cameras / Total Cameras (Percentage)
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <div class="grid grid-cols-2 gap-4 text-sm">
-                            <div class="text-center">
-                                <div class="text-2xl font-bold text-green-300" id="camera-summary-online">
+                        <div class="text-blue-100 text-xs mb-3">Online / Total Cameras</div>
+                        <div class="flex gap-4 mt-auto">
+                            <div class="flex-1 text-center bg-white/10 rounded-lg py-2">
+                                <div class="text-xl font-black text-green-300" id="camera-summary-online">
                                     <?php echo $global_online_cameras; ?>
                                 </div>
-                                <div class="text-blue-100">
-                                    Online
-                                </div>
+                                <div class="text-xs text-blue-100 font-semibold">Online</div>
                             </div>
-                            <div class="text-center">
-                                <div class="text-2xl font-bold text-red-300" id="camera-summary-offline">
+                            <div class="flex-1 text-center bg-white/10 rounded-lg py-2">
+                                <div class="text-xl font-black text-rose-300" id="camera-summary-offline">
                                     <?php echo $global_total_cameras - $global_online_cameras; ?>
                                 </div>
-                                <div class="text-blue-100">
-                                    Offline
+                                <div class="text-xs text-blue-100 font-semibold">Offline</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </div><!-- END TOP-RIGHT -->
+
+            <!-- BOTTOM-LEFT: Hand Held Metal Detector Status -->
+            <section class="flex flex-col">
+                <div class="flex items-center gap-2 mb-2">
+                    <h3 id="detector-section-title" class="text-sm font-bold text-blue-900">Hand Held Metal Detector
+                    </h3><span class="text-[10px] text-gray-400">(Last Update: <span id="detector-last-update"></span>)
+                        | Total Reports: <span id="hh-total-reports">0</span></span>
+                </div>
+                <div class="bg-white rounded-xl p-3 card-shadow border border-slate-100 flex-1 flex flex-col">
+                    <div class="grid grid-cols-2 gap-3">
+                        <!-- Battery Check -->
+                        <div id="hh-battery-card" class="p-2 rounded-xl border border-green-200 bg-green-50">
+                            <div class="flex items-center gap-2 mb-1.5">
+                                <div
+                                    class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center shadow-sm flex-shrink-0">
+                                    <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                            clip-rule="evenodd"></path>
+                                    </svg>
+                                </div>
+                                <h4 class="font-bold text-slate-700 text-xs">Battery Check</h4>
+                            </div>
+                            <div class="flex items-center justify-center gap-3">
+                                <div class="text-center">
+                                    <div id="hh-battery-pass" class="text-lg font-black text-green-600">0</div>
+                                    <div class="text-[10px] text-green-700 font-semibold">Pass</div>
+                                </div>
+                                <div class="text-slate-300 text-lg font-light">/</div>
+                                <div class="text-center">
+                                    <div id="hh-battery-fail" class="text-lg font-black text-red-500">0</div>
+                                    <div class="text-[10px] text-red-600 font-semibold">Fail</div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- LED Power -->
+                        <div id="hh-led-card" class="p-2 rounded-xl border border-green-200 bg-green-50">
+                            <div class="flex items-center gap-2 mb-1.5">
+                                <div
+                                    class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center shadow-sm flex-shrink-0">
+                                    <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                        <path
+                                            d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM6 10a1 1 0 01-1 1H4a1 1 0 110-2h1a1 1 0 011 1z">
+                                        </path>
+                                    </svg>
+                                </div>
+                                <h4 class="font-bold text-slate-700 text-xs">LED Power</h4>
+                            </div>
+                            <div class="flex items-center justify-center gap-3">
+                                <div class="text-center">
+                                    <div id="hh-led-pass" class="text-lg font-black text-green-600">0</div>
+                                    <div class="text-[10px] text-green-700 font-semibold">Pass</div>
+                                </div>
+                                <div class="text-slate-300 text-lg font-light">/</div>
+                                <div class="text-center">
+                                    <div id="hh-led-fail" class="text-lg font-black text-red-500">0</div>
+                                    <div class="text-[10px] text-red-600 font-semibold">Fail</div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Detection Range -->
+                        <div id="hh-detection-card" class="p-2 rounded-xl border border-green-200 bg-green-50">
+                            <div class="flex items-center gap-2 mb-1.5">
+                                <div
+                                    class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center shadow-sm flex-shrink-0">
+                                    <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.05 6.05 6.981 6.981 0 003 11a7 7 0 1011.95-4.95c-.592-.591-.98-.985-1.348-1.467-.363-.476-.724-1.063-1.207-2.03zM12.12 15.12A3 3 0 017 13s.879.5 2.5.5c0-1 .5-4 1.25-4.5.5 1 .786 1.293 1.371 1.879A2.99 2.99 0 0113 13a2.99 2.99 0 01-.879 2.121z"
+                                            clip-rule="evenodd"></path>
+                                    </svg>
+                                </div>
+                                <h4 class="font-bold text-slate-700 text-xs">Detection Range</h4>
+                            </div>
+                            <div class="flex items-center justify-center gap-3">
+                                <div class="text-center">
+                                    <div id="hh-detection-pass" class="text-lg font-black text-green-600">0</div>
+                                    <div class="text-[10px] text-green-700 font-semibold">Pass</div>
+                                </div>
+                                <div class="text-slate-300 text-lg font-light">/</div>
+                                <div class="text-center">
+                                    <div id="hh-detection-fail" class="text-lg font-black text-red-500">0</div>
+                                    <div class="text-[10px] text-red-600 font-semibold">Fail</div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Audio Alert -->
+                        <div id="hh-alarm-card" class="p-2 rounded-xl border border-green-200 bg-green-50">
+                            <div class="flex items-center gap-2 mb-1.5">
+                                <div
+                                    class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center shadow-sm flex-shrink-0">
+                                    <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                        <path
+                                            d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V7.82l8-1.6v5.894A4.37 4.37 0 0015 12c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V3z">
+                                        </path>
+                                    </svg>
+                                </div>
+                                <h4 class="font-bold text-slate-700 text-xs">Audio Alert</h4>
+                            </div>
+                            <div class="flex items-center justify-center gap-3">
+                                <div class="text-center">
+                                    <div id="hh-alarm-pass" class="text-lg font-black text-green-600">0</div>
+                                    <div class="text-[10px] text-green-700 font-semibold">Pass</div>
+                                </div>
+                                <div class="text-slate-300 text-lg font-light">/</div>
+                                <div class="text-center">
+                                    <div id="hh-alarm-fail" class="text-lg font-black text-red-500">0</div>
+                                    <div class="text-[10px] text-red-600 font-semibold">Fail</div>
                                 </div>
                             </div>
                         </div>
                     </div>
+                    <!-- Summary Row -->
+                    <div class="grid grid-cols-2 gap-3 text-center pt-3 mt-auto border-t border-slate-100">
+                        <div class="p-1.5 bg-green-50 rounded-lg">
+                            <div id="hh-total-pass" class="text-base font-black text-green-600">0</div>
+                            <div class="text-xs text-green-700 font-semibold">Total Pass</div>
+                        </div>
+                        <div class="p-1.5 bg-red-50 rounded-lg">
+                            <div id="hh-total-fail" class="text-base font-black text-red-600">0</div>
+                            <div class="text-xs text-red-700 font-semibold">Total Fail</div>
+                        </div>
+                    </div>
                 </div>
-            </div>
+            </section>
 
-            <!-- NVR Details by Building with Progress Bars -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <?php foreach ($buildings_list as $building): ?>
-                    <?php if (isset($cctv_summary_by_building[$building])): ?>
-                        <?php
-                        $data = $cctv_summary_by_building[$building];
-                        $colors = $building_colors[$building];
-                        ?>
-                        <div
-                            class="bg-white border <?php echo $colors['border']; ?> rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow duration-200">
-                            <!-- Building Header -->
-                            <div
-                                class="bg-gradient-to-r <?php echo $colors['gradient']; ?> text-white rounded-lg px-4 py-2.5 mb-3 shadow-sm">
-                                <p class="text-lg font-bold flex items-center justify-between">
-                                    <span class="flex items-center gap-2">
-                                        <span><?php echo $colors['icon']; ?></span>
-                                        <span>อาคาร <?php echo $building; ?></span>
-                                    </span>
-                                    <span class="text-sm font-normal opacity-90">
-                                        <?php echo $data['online_cameras']; ?>/<?php echo $data['total_cameras']; ?>
-                                        (<?php echo $data['percentage']; ?>%)
-                                    </span>
-                                </p>
-                            </div>
+            <!-- BOTTOM-RIGHT: Walkthrough Metal Detector Status -->
+            <section class="flex flex-col">
+                <div class="flex items-center gap-2 mb-2">
+                    <h3 id="walkthrough-section-title" class="text-sm font-bold text-blue-900">Walkthrough Metal
+                        Detector</h3><span class="text-[10px] text-gray-400">(Last Update: <span
+                            id="walkthrough-last-update"></span>) | Total Reports: <span
+                            id="wt-total-reports">0</span></span>
+                </div>
+                <div class="bg-white rounded-xl p-3 card-shadow border border-slate-100 flex-1 flex flex-col">
+                    <!-- Zone cards with pass/fail counts -->
+                    <div id="walkthrough-zones-container" class="grid grid-cols-2 md:grid-cols-3 gap-2 mb-2">
+                        <!-- Zone cards will be rendered by JS -->
+                    </div>
+                    <!-- Summary Row -->
+                    <div class="grid grid-cols-3 gap-3 text-center pt-3 mt-auto border-t border-slate-100">
+                        <div class="p-1.5 bg-green-50 rounded-lg">
+                            <div id="wt-total-pass" class="text-base font-black text-green-600">0</div>
+                            <div class="text-xs text-green-700 font-semibold">Total Pass</div>
+                        </div>
+                        <div class="p-1.5 bg-red-50 rounded-lg">
+                            <div id="wt-total-fail" class="text-base font-black text-red-600">0</div>
+                            <div class="text-xs text-red-700 font-semibold">Total Fail</div>
+                        </div>
+                        <div class="p-1.5 bg-yellow-50 rounded-lg">
+                            <div id="wt-total-other" class="text-base font-black text-yellow-600">0</div>
+                            <div class="text-xs text-yellow-700 font-semibold">Total Other</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-                            <!-- NVR List with Compact Progress Bars -->
-                            <div class="space-y-2 max-h-96 overflow-y-auto">
-                                <?php foreach ($data['nvrs'] as $nvr): ?>
-                                    <?php
-                                    $nvr_percentage = $nvr['percentage'];
+        </div><!-- END 4-QUADRANT GRID -->
 
-                                    if ($nvr_percentage >= 95) {
-                                        $progress_color = 'bg-emerald-500';
-                                        $bg_color = 'bg-white';
-                                        $border_color = 'border-slate-200';
-                                        $text_color = 'text-emerald-600';
-                                        $badge_color = 'bg-emerald-100 text-emerald-700';
-                                    } elseif ($nvr_percentage >= 80) {
-                                        $progress_color = 'bg-blue-500';
-                                        $bg_color = 'bg-white';
-                                        $border_color = 'border-slate-200';
-                                        $text_color = 'text-blue-600';
-                                        $badge_color = 'bg-blue-100 text-blue-700';
-                                    } elseif ($nvr_percentage >= 50) {
-                                        $progress_color = 'bg-amber-500';
-                                        $bg_color = 'bg-white';
-                                        $border_color = 'border-amber-200';
-                                        $text_color = 'text-amber-600';
-                                        $badge_color = 'bg-amber-100 text-amber-700';
-                                    } else {
-                                        $progress_color = 'bg-rose-500';
-                                        $bg_color = 'bg-white';
-                                        $border_color = 'border-rose-200';
-                                        $text_color = 'text-rose-600';
-                                        $badge_color = 'bg-rose-100 text-rose-700';
-                                    }
-                                    ?>
-                                    <div
-                                        class="<?php echo $bg_color; ?> border <?php echo $border_color; ?> rounded-lg px-3 py-2 hover:shadow-sm transition-shadow duration-150">
-                                        <div class="flex justify-between items-center mb-1.5">
-                                            <span class="font-medium text-slate-700 text-sm"><?php echo $nvr['name']; ?></span>
-                                            <div class="flex items-center gap-2">
-                                                <span
-                                                    class="<?php echo $badge_color; ?> px-2 py-0.5 rounded text-xs font-semibold"><?php echo $nvr_percentage; ?>%</span>
-                                                <span
-                                                    class="font-semibold <?php echo $text_color; ?> text-sm"><?php echo $nvr['online']; ?>/<?php echo $nvr['total']; ?></span>
-                                            </div>
-                                        </div>
-
-                                        <!-- Compact Progress Bar -->
-                                        <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                                            <div class="<?php echo $progress_color; ?> h-1.5 rounded-full transition-all duration-500"
-                                                style="width: <?php echo $nvr_percentage; ?>%"></div>
-                                        </div>
-                                    </div>
-                                <?php endforeach; ?>
-
-                                <?php if (empty($data['nvrs'])): ?>
-                                    <div class="text-center py-8 text-gray-500">
-                                        <p>ไม่มีข้อมูล NVR</p>
-                                    </div>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    <?php endif; ?>
-                <?php endforeach; ?>
-            </div>
-        </section><!-- Parking Report Section -->
-        <section class="mb-8">
-            <h3 id="parking-section-title" class="text-2xl font-bold text-slate-700 mb-4">Parking Lot Report <span
-                    class="text-sm text-slate-400 ml-2">(Last Update: <span id="parking-last-update"></span>)</span>
-            </h3>
-            <!-- Total Summary Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div class="bg-gradient-to-r from-sky-400 to-blue-500 rounded-lg p-6 text-white card-shadow">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <h4 class="text-xl font-semibold mb-2 flex items-center">
-                                <img src="report_assets/Images/car2.png" alt="Car Icon" class="w-8 h-8 mr-3" /> Car
-                                Parking
-                                Total
-                            </h4>
-                            <div class="text-3xl font-bold" id="car-parking-total">
-                                749/990
-                            </div>
-                            <div class="text-blue-100 text-sm" id="car-parking-percentage">
-                                76% Occupied
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <div class="w-20 h-20 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                                <img src="report_assets/Images/car2.png" alt="Car Icon" class="w-10 h-10" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="bg-gradient-to-r from-emerald-400 to-teal-500 rounded-lg p-6 text-white card-shadow">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <h4 class="text-xl font-semibold mb-2 flex items-center">
-                                <img src="report_assets/Images/motorcycle.png" alt="Motorcycle Icon"
-                                    class="w-8 h-8 mr-3" />
-                                Motorcycle Parking Total
-                            </h4>
-                            <div class="text-3xl font-bold" id="motorcycle-parking-total">
-                                590/757
-                            </div>
-                            <div class="text-green-100 text-sm" id="motorcycle-parking-percentage">
-                                78% Occupied
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <div class="w-20 h-20 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                                <img src="report_assets/Images/motorcycle.png" alt="Motorcycle Icon"
-                                    class="w-10 h-10" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6"><!-- Car Parking -->
-                <div class="bg-white rounded-lg p-6 card-shadow">
-                    <h4 class="text-xl font-semibold text-blue-800 mb-4 flex items-center">
-                        <svg class="w-6 h-6 mr-2" fill="currentColor" viewbox="0 0 20 20">
-                            <path fill-rule="evenodd"
-                                d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm2 6a2 2 0 114 0 2 2 0 01-4 0zm6 0a2 2 0 114 0 2 2 0 01-4 0z"
-                                clip-rule="evenodd"></path>
-                        </svg> Car Parking Areas
-                    </h4>
-                    <div class="space-y-4">
-                        <div class="p-3 bg-blue-50 rounded">
-                            <div class="flex flex-wrap justify-between items-center mb-2"><span
-                                    class="font-medium">Parking
-                                    Lot 2</span> <span class="text-sm font-semibold"
-                                    id="car-lot-Parking-Lot-2-status">89/114 (78%)</span>
-                            </div>
-                            <div class="w-full bg-gray-200 rounded-full h-2">
-                                <div id="car-lot-Parking-Lot-2-bar" class="bg-green-500 h-2 rounded-full"
-                                    style="width: 78%"></div>
-                            </div>
-                        </div>
-                        <div class="p-3 bg-blue-50 rounded">
-                            <div class="flex flex-wrap justify-between items-center mb-2"><span
-                                    class="font-medium">Parking
-                                    Lot 3/1</span> <span class="text-sm font-semibold"
-                                    id="car-lot-Parking-Lot-3-1-status">76/100 (76%)</span>
-                            </div>
-                            <div class="w-full bg-gray-200 rounded-full h-2">
-                                <div id="car-lot-Parking-Lot-3-1-bar" class="bg-green-500 h-2 rounded-full"
-                                    style="width: 76%"></div>
-                            </div>
-                        </div>
-                        <div class="p-3 bg-blue-50 rounded">
-                            <div class="flex flex-wrap justify-between items-center mb-2"><span
-                                    class="font-medium">Parking
-                                    Lot 3/2</span> <span class="text-sm font-semibold"
-                                    id="car-lot-Parking-Lot-3-2-status">198/264 (75%)</span>
-                            </div>
-                            <div class="w-full bg-gray-200 rounded-full h-2">
-                                <div id="car-lot-Parking-Lot-3-2-bar" class="bg-green-500 h-2 rounded-full"
-                                    style="width: 75%"></div>
-                            </div>
-                        </div>
-                        <div class="p-3 bg-blue-50 rounded">
-                            <div class="flex flex-wrap justify-between items-center mb-2"><span
-                                    class="font-medium">Parking
-                                    Lot 4</span> <span class="text-sm font-semibold"
-                                    id="car-lot-Parking-Lot-4-status">312/415 (75%)</span>
-                            </div>
-                            <div class="w-full bg-gray-200 rounded-full h-2">
-                                <div id="car-lot-Parking-Lot-4-bar" class="bg-green-500 h-2 rounded-full"
-                                    style="width: 75%"></div>
-                            </div>
-                        </div>
-                        <div class="p-3 bg-blue-50 rounded">
-                            <div class="flex flex-wrap justify-between items-center mb-2"><span
-                                    class="font-medium">Parking
-                                    Lot 5</span> <span class="text-sm font-semibold"
-                                    id="car-lot-Parking-Lot-5-status">41/53
-                                    (77%)</span>
-                            </div>
-                            <div class="w-full bg-gray-200 rounded-full h-2">
-                                <div id="car-lot-Parking-Lot-5-bar" class="bg-green-500 h-2 rounded-full"
-                                    style="width: 77%"></div>
-                            </div>
-                        </div>
-                        <div class="p-3 bg-blue-50 rounded">
-                            <div class="flex flex-wrap justify-between items-center mb-2"><span
-                                    class="font-medium">Parking
-                                    Lot B.8</span> <span class="text-sm font-semibold"
-                                    id="car-lot-Parking-Lot-B-8-status">33/44 (75%)</span>
-                            </div>
-                            <div class="w-full bg-gray-200 rounded-full h-2">
-                                <div id="car-lot-Parking-Lot-B-8-bar" class="bg-green-500 h-2 rounded-full"
-                                    style="width: 75%"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div><!-- Motorcycle Parking -->
-                <div class="bg-white rounded-lg p-6 card-shadow">
-                    <h4 class="text-xl font-semibold text-blue-800 mb-4 flex items-center">
-                        <svg class="w-6 h-6 mr-2" fill="currentColor" viewbox="0 0 20 20">
-                            <path
-                                d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z">
-                            </path>
-                        </svg> Motorcycle Parking Areas
-                    </h4>
-                    <div class="space-y-4">
-                        <div class="p-3 bg-blue-50 rounded">
-                            <div class="flex flex-wrap justify-between items-center mb-2"><span
-                                    class="font-medium">Motorcycle Lot 1</span> <span class="text-sm font-semibold"
-                                    id="motorcycle-lot-Motorcycle-Lot-1-status">234/296 (79%)</span>
-                            </div>
-                            <div class="w-full bg-gray-200 rounded-full h-2">
-                                <div id="motorcycle-lot-Motorcycle-Lot-1-bar" class="bg-green-500 h-2 rounded-full"
-                                    style="width: 79%"></div>
-                            </div>
-                        </div>
-                        <div class="p-3 bg-blue-50 rounded">
-                            <div class="flex flex-wrap justify-between items-center mb-2"><span
-                                    class="font-medium">Motorcycle Lot 2</span> <span class="text-sm font-semibold"
-                                    id="motorcycle-lot-Motorcycle-Lot-2-status">167/210 (80%)</span>
-                            </div>
-                            <div class="w-full bg-gray-200 rounded-full h-2">
-                                <div id="motorcycle-lot-Motorcycle-Lot-2-bar" class="bg-orange-500 h-2 rounded-full"
-                                    style="width: 80%"></div>
-                            </div>
-                        </div>
-                        <div class="p-3 bg-blue-50 rounded">
-                            <div class="flex flex-wrap justify-between items-center mb-2"><span
-                                    class="font-medium">Motorcycle Lot 3/1</span> <span class="text-sm font-semibold"
-                                    id="motorcycle-lot-Motorcycle-Lot-3-1-status">189/251 (75%)</span>
-                            </div>
-                            <div class="w-full bg-gray-200 rounded-full h-2">
-                                <div id="motorcycle-lot-Motorcycle-Lot-3-1-bar" class="bg-green-500 h-2 rounded-full"
-                                    style="width: 75%"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section><!-- Metal Detector Status Section -->
-        <section class="mb-8">
-            <h3 id="detector-section-title" class="text-2xl font-bold text-blue-900 mb-4">Hand Held Metal Detector
-                Status
-                <span class="text-sm text-gray-500 ml-2">(Last Update: <span id="detector-last-update"></span>)</span>
-            </h3>
-            <div class="bg-white rounded-lg p-6 card-shadow">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div class="text-center p-4 bg-green-50 rounded-lg border-2 border-green-200">
-                        <div class="w-16 h-16 mx-auto mb-3 bg-green-500 rounded-full flex items-center justify-center">
-                            <svg class="w-8 h-8 text-white" fill="currentColor" viewbox="0 0 20 20">
-                                <path fill-rule="evenodd"
-                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                    clip-rule="evenodd"></path>
-                            </svg>
-                        </div>
-                        <h4 class="font-semibold text-green-800">Battery Check</h4>
-                        <p id="battery-check-text" class="text-sm text-green-600 mt-1">All devices checked</p>
-                        <div class="mt-2"><span id="battery-check-indicator"
-                                class="inline-block w-3 h-3 bg-green-500 rounded-full pulse-animation"></span> <span
-                                id="battery-check-status" class="text-xs text-green-600 ml-1">Active</span>
-                        </div>
-                    </div>
-                    <div class="text-center p-4 bg-green-50 rounded-lg border-2 border-green-200">
-                        <div class="w-16 h-16 mx-auto mb-3 bg-green-500 rounded-full flex items-center justify-center">
-                            <svg class="w-8 h-8 text-white" fill="currentColor" viewbox="0 0 20 20">
-                                <path
-                                    d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM6 10a1 1 0 01-1 1H4a1 1 0 110-2h1a1 1 0 011 1zM6.464 14.95A1 1 0 105.05 13.536l-.707.707a1 1 0 001.414 1.414l.707-.707zM11 16a1 1 0 10-2 0v1a1 1 0 102 0v-1zM14.95 13.536a1 1 0 00-1.414 1.414l.707.707a1 1 0 001.414-1.414l-.707-.707z">
-                                </path>
-                            </svg>
-                        </div>
-                        <h4 class="font-semibold text-green-800">LED Power</h4>
-                        <p id="led-power-text" class="text-sm text-green-600 mt-1">Green LED active</p>
-                        <div class="mt-2"><span id="led-power-indicator"
-                                class="inline-block w-3 h-3 bg-green-500 rounded-full pulse-animation"></span> <span
-                                id="led-power-status" class="text-xs text-green-600 ml-1">Online</span>
-                        </div>
-                    </div>
-                    <div class="text-center p-4 bg-green-50 rounded-lg border-2 border-green-200">
-                        <div class="w-16 h-16 mx-auto mb-3 bg-green-500 rounded-full flex items-center justify-center">
-                            <svg class="w-8 h-8 text-white" fill="currentColor" viewbox="0 0 20 20">
-                                <path fill-rule="evenodd"
-                                    d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.05 6.05 6.981 6.981 0 003 11a7 7 0 1011.95-4.95c-.592-.591-.98-.985-1.348-1.467-.363-.476-.724-1.063-1.207-2.03zM12.12 15.12A3 3 0 017 13s.879.5 2.5.5c0-1 .5-4 1.25-4.5.5 1 .786 1.293 1.371 1.879A2.99 2.99 0 0113 13a2.99 2.99 0 01-.879 2.121z"
-                                    clip-rule="evenodd"></path>
-                            </svg>
-                        </div>
-                        <h4 class="font-semibold text-green-800">Detection Range</h4>
-                        <p id="detection-range-text" class="text-sm text-green-600 mt-1">Range tested OK</p>
-                        <div class="mt-2"><span id="detection-range-indicator"
-                                class="inline-block w-3 h-3 bg-green-500 rounded-full pulse-animation"></span> <span
-                                id="detection-range-status" class="text-xs text-green-600 ml-1">Calibrated</span>
-                        </div>
-                    </div>
-                    <div class="text-center p-4 bg-green-50 rounded-lg border-2 border-green-200">
-                        <div class="w-16 h-16 mx-auto mb-3 bg-green-500 rounded-full flex items-center justify-center">
-                            <svg class="w-8 h-8 text-white" fill="currentColor" viewbox="0 0 20 20">
-                                <path
-                                    d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V7.82l8-1.6v5.894A4.37 4.37 0 0015 12c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V3z">
-                                </path>
-                            </svg>
-                        </div>
-                        <h4 class="font-semibold text-green-800">Audio Alert</h4>
-                        <p id="audio-alert-text" class="text-sm text-green-600 mt-1">Sound system OK</p>
-                        <div class="mt-2"><span id="audio-alert-indicator"
-                                class="inline-block w-3 h-3 bg-green-500 rounded-full pulse-animation"></span> <span
-                                id="audio-alert-status" class="text-xs text-green-600 ml-1">Functional</span>
-                        </div>
-                    </div>
-                </div><!-- Test Results -->
-                <div class="mt-6 p-4 bg-blue-50 rounded-lg">
-                    <h4 class="font-semibold text-blue-800 mb-3">Latest Test Results</h4>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                        <div class="flex justify-between"><span class="text-gray-600">Metal Detection:</span> <span
-                                id="metal-detection-result" class="text-green-600 font-semibold">✓ Red LED +
-                                Sound</span>
-                        </div>
-                        <div class="flex justify-between"><span class="text-gray-600">Last Calibration:</span> <span
-                                id="last-calibration" class="text-blue-600 font-semibold">Today 06:00</span>
-                        </div>
-                        <div class="flex justify-between"><span class="text-gray-600">Next Check:</span> <span
-                                id="next-check" class="text-blue-600 font-semibold">Tomorrow 06:00</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section><!-- Walkthrough Metal Detector Section -->
-        <section class="mb-8">
-            <h3 id="walkthrough-section-title" class="text-2xl font-bold text-blue-900 mb-4">Walkthrough Metal Detector
-                Status <span class="text-sm text-gray-500 ml-2">(Last Update: <span
-                        id="walkthrough-last-update"></span>)</span></h3>
-            <div class="bg-white rounded-lg p-6 card-shadow">
-                <div id="walkthrough-zones-container" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                    <div class="text-center p-4 bg-green-50 rounded-lg border-2 border-green-200">
-                        <h4 class="text-lg font-semibold text-blue-800 mb-2">Zone 1</h4>
-                        <div class="flex items-center justify-center"><span
-                                class="status-indicator status-online"></span>
-                            <span class="text-green-600 font-semibold text-sm">Online</span>
-                        </div>
-                    </div>
-                    <div class="text-center p-4 bg-green-50 rounded-lg border-2 border-green-200">
-                        <h4 class="text-lg font-semibold text-blue-800 mb-2">Zone 2</h4>
-                        <div class="flex items-center justify-center"><span
-                                class="status-indicator status-online"></span>
-                            <span class="text-green-600 font-semibold text-sm">Online</span>
-                        </div>
-                    </div>
-                    <div class="text-center p-4 bg-yellow-50 rounded-lg border-2 border-yellow-200">
-                        <h4 class="text-lg font-semibold text-blue-800 mb-2">Zone 3</h4>
-                        <div class="flex items-center justify-center"><span
-                                class="status-indicator status-warning"></span>
-                            <span class="text-yellow-600 font-semibold text-sm">Maintenance</span>
-                        </div>
-                    </div>
-                    <div class="text-center p-4 bg-green-50 rounded-lg border-2 border-green-200">
-                        <h4 class="text-lg font-semibold text-blue-800 mb-2">Zone 4</h4>
-                        <div class="flex items-center justify-center"><span
-                                class="status-indicator status-online"></span>
-                            <span class="text-green-600 font-semibold text-sm">Online</span>
-                        </div>
-                    </div>
-                    <div class="text-center p-4 bg-red-50 rounded-lg border-2 border-red-200">
-                        <h4 class="text-lg font-semibold text-blue-800 mb-2">Zone 5</h4>
-                        <div class="flex items-center justify-center"><span
-                                class="status-indicator status-offline"></span>
-                            <span class="text-red-600 font-semibold text-sm">Offline</span>
-                        </div>
-                    </div>
-                    <div class="text-center p-4 bg-green-50 rounded-lg border-2 border-green-200">
-                        <h4 class="text-lg font-semibold text-blue-800 mb-2">Zone 6</h4>
-                        <div class="flex items-center justify-center"><span
-                                class="status-indicator status-online"></span>
-                            <span class="text-green-600 font-semibold text-sm">Online</span>
-                        </div>
-                    </div>
-                </div><!-- Summary -->
-                <div class="mt-6 pt-4 border-t border-gray-200">
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                        <div class="p-3 bg-green-50 rounded-lg">
-                            <div id="walkthrough-online-count" class="text-xl font-bold text-green-600">
-                                4
-                            </div>
-                            <div class="text-sm text-green-700">
-                                Online
-                            </div>
-                        </div>
-                        <div class="p-3 bg-yellow-50 rounded-lg">
-                            <div id="walkthrough-maintenance-count" class="text-xl font-bold text-yellow-600">
-                                1
-                            </div>
-                            <div class="text-sm text-yellow-700">
-                                Maintenance
-                            </div>
-                        </div>
-                        <div class="p-3 bg-red-50 rounded-lg">
-                            <div id="walkthrough-offline-count" class="text-xl font-bold text-red-600">
-                                1
-                            </div>
-                            <div class="text-sm text-red-700">
-                                Offline
-                            </div>
-                        </div>
-                        <div class="p-3 bg-blue-50 rounded-lg">
-                            <div id="walkthrough-operational-percentage" class="text-xl font-bold text-blue-600">
-                                67%
-                            </div>
-                            <div class="text-sm text-blue-700">
-                                Operational
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section><!-- Footer -->
-        <footer class="text-center text-blue-600 text-sm">
+        <footer class="text-center text-slate-400 text-[10px] mt-1">
             <p>Last Updated: <span id="last-updated"></span> | System Status: <span
-                    class="text-green-600 font-semibold">All
-                    Systems Operational</span></p>
+                    class="text-green-500 font-semibold">All Systems Operational</span></p>
         </footer>
     </div><!-- Settings Modal -->
     <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm hidden z-50">

@@ -311,8 +311,7 @@ $conn->close();
             <div class="screen__content">
                 <form class="login" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
                     <div style="margin-bottom: 0; padding-top: 20px; margin-left: 0;">
-                        <img src="report_assets/Images/western-digital-new-logo.png.thumb.1280.1280.png" alt="Logo"
-                            style="width: 200px;">
+                        <img src="report_assets/Images/images_logo.png" alt="Logo" style="width: 200px;">
                     </div>
 
                     <?php

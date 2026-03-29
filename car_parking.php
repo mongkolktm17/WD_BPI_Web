@@ -14,7 +14,7 @@ $car_lots = [
     "ลานรถยนต์ 3/2 (264 Slot)",
     "ลานรถยนต์ 4 (415 Slot)",
     "ลานรถยนต์ 5 (53 Slot)",
-    "ลานรถยนต์ B.9 (44 Slot)"
+    "ลานรถยนต์ B.9 (129 Slot)"
 ];
 $motorcycle_lots = [
     "ลานจอด 1 (296 Slot)",
@@ -123,6 +123,28 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 $history_sql = "SELECT * FROM car_parking_reports ORDER BY inspection_date DESC, created_at DESC LIMIT 20";
 $history_result = $conn->query($history_sql);
 
+// --- Fetch Latest Data for Pre-fill (Sections 5-8) ---
+$latest_report = null;
+$latest_counts = [];
+$latest_report_sql = "SELECT * FROM car_parking_reports ORDER BY created_at DESC LIMIT 1";
+$latest_report_result = $conn->query($latest_report_sql);
+
+if ($latest_report_result && $latest_report_result->num_rows > 0) {
+    $latest_report = $latest_report_result->fetch_assoc();
+    $report_id = $latest_report['id'];
+
+    // Fetch counts for car and motorcycle lots
+    $counts_sql = "SELECT lot_name, vehicle_count, vehicle_type FROM parking_lot_counts WHERE report_id = ?";
+    $stmt_counts = $conn->prepare($counts_sql);
+    $stmt_counts->bind_param("i", $report_id);
+    $stmt_counts->execute();
+    $counts_result = $stmt_counts->get_result();
+    while ($count_row = $counts_result->fetch_assoc()) {
+        $latest_counts[$count_row['lot_name']] = $count_row['vehicle_count'];
+    }
+    $stmt_counts->close();
+}
+
 
 $conn->close();
 ?>
@@ -216,13 +238,15 @@ $conn->close();
                     <h3 class="text-lg font-bold mb-4 section-title">5. จำนวนรถยนต์ในลานจอด</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <?php foreach ($car_lots as $lot):
+                            $val = $latest_counts[$lot] ?? '';
                             ?>
                             <div>
                                 <label for="car_lot_<?php echo md5($lot); ?>"
                                     class="block text-sm font-medium text-gray-700"><?php echo htmlspecialchars($lot); ?></label>
                                 <input type="number" id="car_lot_<?php echo md5($lot); ?>"
                                     name="car_lots[<?php echo htmlspecialchars($lot); ?>]" placeholder="จำนวน"
-                                    class="input-modern w-full mt-1 px-5 py-4 rounded-2xl font-medium text-gray-700">
+                                    class="input-modern w-full mt-1 px-5 py-4 rounded-2xl font-medium text-gray-700"
+                                    value="<?php echo htmlspecialchars($val); ?>">
                             </div>
                         <?php endforeach;
                         ?>
@@ -233,13 +257,15 @@ $conn->close();
                     <h3 class="text-lg font-bold mb-4 section-title">6. จำนวนรถมอเตอร์ไซค์ในลานจอด</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <?php foreach ($motorcycle_lots as $lot):
+                            $val = $latest_counts[$lot] ?? '';
                             ?>
                             <div>
                                 <label for="moto_lot_<?php echo md5($lot); ?>"
                                     class="block text-sm font-medium text-gray-700"><?php echo htmlspecialchars($lot); ?></label>
                                 <input type="number" id="moto_lot_<?php echo md5($lot); ?>"
                                     name="motorcycle_lots[<?php echo htmlspecialchars($lot); ?>]" placeholder="จำนวน"
-                                    class="input-modern w-full mt-1 px-5 py-4 rounded-2xl font-medium text-gray-700">
+                                    class="input-modern w-full mt-1 px-5 py-4 rounded-2xl font-medium text-gray-700"
+                                    value="<?php echo htmlspecialchars($val); ?>">
                             </div>
                         <?php endforeach;
                         ?>
@@ -248,26 +274,47 @@ $conn->close();
 
                 <div class="border-t border-gray-200 pt-6">
                     <label class="block text-sm font-medium text-gray-700 mb-3">7.
-                        ข้อมูลทะเบียนรถที่มียางอะไหล่กับรถที่ไม่มีางอะไหล่ทั้งหมด <span
+                        ข้อมูลทะเบียนรถที่มียางอะไหล่กับรถที่ไม่มียางอะไหล่ทั้งหมด <span
                             class="text-red-500">*</span></label>
                     <div class="flex gap-3">
-                        <button type="button" onclick="toggleButton(this, 'spare_tire_status', 'มี')"
+                        <button type="button" id="btn-spare-yes" onclick="toggleButton(this, 'spare_tire_status', 'มี')"
                             class="toggle-btn flex-1 px-6 py-4 border-2 border-gray-200 rounded-2xl text-gray-600 hover:border-green-300 hover:bg-green-50 font-medium"><span
                                 class="text-lg">✓</span> มี</button>
-                        <button type="button" onclick="toggleButton(this, 'spare_tire_status', 'ไม่มี')"
+                        <button type="button" id="btn-spare-no"
+                            onclick="toggleButton(this, 'spare_tire_status', 'ไม่มี')"
                             class="toggle-btn flex-1 px-6 py-4 border-2 border-gray-200 rounded-2xl text-gray-600 hover:border-red-300 hover:bg-red-50 font-medium"><span
                                 class="text-lg">✗</span> ไม่มี</button>
                     </div>
-                    <input type="hidden" id="spare_tire_status" name="spare_tire_status" required>
+                    <input type="hidden" id="spare_tire_status" name="spare_tire_status" required
+                        value="<?php echo htmlspecialchars($latest_report['spare_tire_status'] ?? ''); ?>">
                 </div>
 
                 <div class="border-t border-gray-200 pt-6">
                     <label class="block text-sm font-medium text-gray-700 mb-2">8. ป้ายทะเบียนรถ</label>
                     <div id="license-plate-container" class="space-y-2">
-                        <div class="flex items-center space-x-2">
-                            <input type="text" name="license_plates[]" placeholder="ป้ายทะเบียน"
-                                class="input-modern w-full px-5 py-4 rounded-2xl font-medium text-gray-700">
-                        </div>
+                        <?php
+                        $plates = [];
+                        if (!empty($latest_report['license_plates'])) {
+                            $plates = array_map('trim', explode(',', $latest_report['license_plates']));
+                        }
+
+                        if (empty($plates)) {
+                            $plates = [''];
+                        }
+
+                        foreach ($plates as $idx => $plate):
+                            ?>
+                            <div class="flex items-center space-x-2">
+                                <input type="text" name="license_plates[]" placeholder="ป้ายทะเบียน <?php echo $idx + 1; ?>"
+                                    class="input-modern w-full px-5 py-4 rounded-2xl font-medium text-gray-700"
+                                    value="<?php echo htmlspecialchars($plate); ?>">
+                                <?php if ($idx > 0): ?>
+                                    <button type="button"
+                                        class="bg-red-100 text-red-600 px-3 py-1 rounded-md text-sm hover:bg-red-200"
+                                        onclick="removePlate(this.parentElement)">ลบ</button>
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
                     </div>
                     <div class="flex gap-2 mt-4">
                         <button type="button" id="add-plate-btn"
@@ -369,10 +416,18 @@ $conn->close();
             document.addEventListener('DOMContentLoaded', function () {
                 document.getElementById('inspection_date').value = new Date().toISOString().split('T')[0];
 
+                // Pre-select Spare Tire Status
+                const spareStatus = document.getElementById('spare_tire_status').value;
+                if (spareStatus === 'มี') {
+                    toggleButton(document.getElementById('btn-spare-yes'), 'spare_tire_status', 'มี');
+                } else if (spareStatus === 'ไม่มี') {
+                    toggleButton(document.getElementById('btn-spare-no'), 'spare_tire_status', 'ไม่มี');
+                }
+
                 const addPlateBtn = document.getElementById('add-plate-btn');
                 const add10PlatesBtn = document.getElementById('add-10-plates-btn');
                 const plateContainer = document.getElementById('license-plate-container');
-                let plateCount = 1;
+                let plateCount = plateContainer.querySelectorAll('input[type="text"]').length;
                 const maxPlates = 60;
 
                 function addPlate() {
@@ -394,9 +449,7 @@ $conn->close();
                     removeBtn.textContent = 'ลบ';
                     removeBtn.className = 'bg-red-100 text-red-600 px-3 py-1 rounded-md text-sm hover:bg-red-200';
                     removeBtn.onclick = function () {
-                        plateContainer.removeChild(newPlateDiv);
-                        plateCount--;
-                        updateButtons();
+                        removePlate(newPlateDiv);
                     };
 
                     newPlateDiv.appendChild(newPlateInput);
@@ -405,6 +458,14 @@ $conn->close();
 
                     updateButtons();
                     return true;
+                }
+
+                window.removePlate = function (el) {
+                    if (el.parentElement) {
+                        el.parentElement.removeChild(el);
+                        plateCount--;
+                        updateButtons();
+                    }
                 }
 
                 function updateButtons() {

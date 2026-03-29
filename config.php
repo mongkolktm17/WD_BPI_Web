@@ -59,8 +59,11 @@ if ($conn->connect_error) {
 // Set the character set to utf8mb4 to support a wide range of characters.
 if (!$conn->set_charset("utf8mb4")) {
     // Handle character set error if needed.
-    // For example: printf("Error loading character set utf8mb4: %s\n", $conn->error);
 }
+
+// --- MySQL Timezone ---
+// Set the MySQL connection timezone to GMT+7 to match PHP.
+$conn->query("SET time_zone = '+07:00'");
 
 // The $conn object is now ready to be used for database queries
 // in other parts of the application.

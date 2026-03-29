@@ -39,3 +39,14 @@ Thumbs.db
 .fuse_hidden*
 .directory
 .nfs*
+
+# Diagnostic and Meta files
+*.txt
+diag_*.php
+check_*.php
+test_*.php
+*.zip
+*.backup
+query
+report_assets/Images/images_logo.png
+

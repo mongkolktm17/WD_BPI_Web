@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="th" class="h-full">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,44 +10,82 @@
         body {
             box-sizing: border-box;
         }
-        
-        .gradient-bg-1 { background: linear-gradient(135deg, #FF195A 0%, #995DFF 100%); }
-        .gradient-bg-2 { background: linear-gradient(135deg, #995DFF 0%, #5DA7FB 100%); }
-        .gradient-bg-3 { background: linear-gradient(135deg, #5DA7FB 0%, #FF195A 100%); }
-        .gradient-bg-4 { background: linear-gradient(135deg, #FF195A 0%, #5DA7FB 100%); }
-        .gradient-bg-5 { background: linear-gradient(135deg, #995DFF 0%, #FF195A 100%); }
-        .gradient-bg-6 { background: linear-gradient(135deg, #5DA7FB 0%, #995DFF 100%); }
-        .gradient-bg-7 { background: linear-gradient(135deg, #FF195A 20%, #995DFF 80%); }
-        .gradient-bg-8 { background: linear-gradient(135deg, #995DFF 20%, #5DA7FB 80%); }
-        
+
+        .gradient-bg-1 {
+            background: linear-gradient(135deg, #FF195A 0%, #995DFF 100%);
+        }
+
+        .gradient-bg-2 {
+            background: linear-gradient(135deg, #995DFF 0%, #5DA7FB 100%);
+        }
+
+        .gradient-bg-3 {
+            background: linear-gradient(135deg, #5DA7FB 0%, #FF195A 100%);
+        }
+
+        .gradient-bg-4 {
+            background: linear-gradient(135deg, #FF195A 0%, #5DA7FB 100%);
+        }
+
+        .gradient-bg-5 {
+            background: linear-gradient(135deg, #995DFF 0%, #FF195A 100%);
+        }
+
+        .gradient-bg-6 {
+            background: linear-gradient(135deg, #5DA7FB 0%, #995DFF 100%);
+        }
+
+        .gradient-bg-7 {
+            background: linear-gradient(135deg, #FF195A 20%, #995DFF 80%);
+        }
+
+        .gradient-bg-8 {
+            background: linear-gradient(135deg, #995DFF 20%, #5DA7FB 80%);
+        }
+
         .card-hover {
             transition: all 0.3s ease;
         }
-        
+
         .card-hover:hover {
             transform: translateY(-5px);
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
         }
-        
+
         .pulse-animation {
             animation: pulse 2s infinite;
         }
-        
+
         @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
         }
-        
+
         .fade-in {
             animation: fadeIn 0.5s ease-in;
         }
-        
+
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
     </style>
 </head>
+
 <body class="h-full bg-gray-50">
     <div class="min-h-full">
         <!-- Header -->
@@ -54,7 +93,9 @@
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between items-center py-6">
                     <div class="flex items-center">
-                        <img src="https://www.westerndigital.com/content/dam/store/en-us/assets/legal/trademarks/western-digital-new-logo.png.thumb.1280.1280.png" alt="Western Digital Logo" class="h-14 w-auto mr-4 opacity-90" onerror="this.src=''; this.alt='Logo failed to load'; this.style.display='none';">
+                        <img src="report_assets/Images/images_logo.png" alt="Western Digital Logo"
+                            class="h-14 w-auto mr-4 opacity-90"
+                            onerror="this.src=''; this.alt='Logo failed to load'; this.style.display='none';">
                         <h1 class="text-3xl font-bold text-gray-900">Security Dashboard</h1>
                     </div>
                     <div class="flex items-center space-x-4">
@@ -72,28 +113,35 @@
                 <!-- Car Parking Section -->
                 <div>
                     <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center">
-                        <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center mr-3">
+                        <div
+                            class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center mr-3">
                             <span class="text-white text-lg">🚗</span>
                         </div>
                         ลานจอดรถยนต์
                     </h2>
-                    
+
                     <!-- Car Parking Overview -->
-                    <div class="relative overflow-hidden bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 rounded-2xl p-6 text-white card-hover mb-4 shadow-xl">
-                        <div class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16"></div>
-                        <div class="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-12 -translate-x-12"></div>
-                        
+                    <div
+                        class="relative overflow-hidden bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 rounded-2xl p-6 text-white card-hover mb-4 shadow-xl">
+                        <div
+                            class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16">
+                        </div>
+                        <div
+                            class="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-12 -translate-x-12">
+                        </div>
+
                         <div class="relative z-10">
                             <div class="flex items-center justify-between mb-4">
                                 <div>
                                     <h3 class="text-2xl font-bold mb-2">รถยนต์</h3>
                                     <p class="text-white/80 text-sm">จำนวนที่จอดได้ทั้งหมด</p>
                                 </div>
-                                <div class="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
+                                <div
+                                    class="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
                                     <span class="text-3xl">🚗</span>
                                 </div>
                             </div>
-                            
+
                             <div class="flex items-end justify-between mb-4">
                                 <div>
                                     <p class="text-4xl font-bold mb-1">892</p>
@@ -104,136 +152,179 @@
                                     <p class="text-white/70 text-sm">ทั้งหมด</p>
                                 </div>
                             </div>
-                            
+
                             <div class="space-y-2">
                                 <div class="flex justify-between text-sm">
                                     <span class="text-white/80">อัตราการใช้งาน</span>
                                     <span class="font-semibold">82%</span>
                                 </div>
                                 <div class="bg-white/20 rounded-full h-3 overflow-hidden">
-                                    <div class="bg-gradient-to-r from-yellow-400 to-orange-400 rounded-full h-3 transition-all duration-1000 ease-out" style="width: 82%"></div>
+                                    <div class="bg-gradient-to-r from-yellow-400 to-orange-400 rounded-full h-3 transition-all duration-1000 ease-out"
+                                        style="width: 82%"></div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Car Parking Details -->
                     <div class="grid grid-cols-2 gap-3">
-                        <div class="bg-white rounded-xl p-4 shadow-lg border border-gray-100 card-hover relative overflow-hidden">
-                            <div class="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-orange-100 to-red-100 rounded-full -translate-y-10 translate-x-10"></div>
+                        <div
+                            class="bg-white rounded-xl p-4 shadow-lg border border-gray-100 card-hover relative overflow-hidden">
+                            <div
+                                class="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-orange-100 to-red-100 rounded-full -translate-y-10 translate-x-10">
+                            </div>
                             <div class="relative z-10">
                                 <div class="flex items-center justify-between mb-3">
-                                    <div class="w-8 h-8 bg-gradient-to-br from-orange-400 to-red-500 rounded-lg flex items-center justify-center">
+                                    <div
+                                        class="w-8 h-8 bg-gradient-to-br from-orange-400 to-red-500 rounded-lg flex items-center justify-center">
                                         <span class="text-white text-xs font-bold">1</span>
                                     </div>
-                                    <span class="text-xs px-2 py-1 bg-orange-100 text-orange-700 rounded-full font-medium">75%</span>
+                                    <span
+                                        class="text-xs px-2 py-1 bg-orange-100 text-orange-700 rounded-full font-medium">75%</span>
                                 </div>
                                 <p class="text-sm font-semibold text-gray-700 mb-1">ลานจอด 1</p>
                                 <p class="text-lg font-bold text-gray-900 mb-2">97 / 130</p>
                                 <div class="bg-gray-100 rounded-full h-2 overflow-hidden">
-                                    <div class="bg-gradient-to-r from-orange-400 to-red-500 rounded-full h-2 transition-all duration-700" style="width: 75%"></div>
+                                    <div class="bg-gradient-to-r from-orange-400 to-red-500 rounded-full h-2 transition-all duration-700"
+                                        style="width: 75%"></div>
                                 </div>
                             </div>
                         </div>
-                        
-                        <div class="bg-white rounded-xl p-4 shadow-lg border border-gray-100 card-hover relative overflow-hidden">
-                            <div class="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-red-100 to-pink-100 rounded-full -translate-y-10 translate-x-10"></div>
+
+                        <div
+                            class="bg-white rounded-xl p-4 shadow-lg border border-gray-100 card-hover relative overflow-hidden">
+                            <div
+                                class="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-red-100 to-pink-100 rounded-full -translate-y-10 translate-x-10">
+                            </div>
                             <div class="relative z-10">
                                 <div class="flex items-center justify-between mb-3">
-                                    <div class="w-8 h-8 bg-gradient-to-br from-red-400 to-pink-500 rounded-lg flex items-center justify-center">
+                                    <div
+                                        class="w-8 h-8 bg-gradient-to-br from-red-400 to-pink-500 rounded-lg flex items-center justify-center">
                                         <span class="text-white text-xs font-bold">2</span>
                                     </div>
-                                    <span class="text-xs px-2 py-1 bg-red-100 text-red-700 rounded-full font-medium">85%</span>
+                                    <span
+                                        class="text-xs px-2 py-1 bg-red-100 text-red-700 rounded-full font-medium">85%</span>
                                 </div>
                                 <p class="text-sm font-semibold text-gray-700 mb-1">ลานจอด 2</p>
                                 <p class="text-lg font-bold text-gray-900 mb-2">114 / 134</p>
                                 <div class="bg-gray-100 rounded-full h-2 overflow-hidden">
-                                    <div class="bg-gradient-to-r from-red-400 to-pink-500 rounded-full h-2 transition-all duration-700" style="width: 85%"></div>
+                                    <div class="bg-gradient-to-r from-red-400 to-pink-500 rounded-full h-2 transition-all duration-700"
+                                        style="width: 85%"></div>
                                 </div>
                             </div>
                         </div>
-                        
-                        <div class="bg-white rounded-xl p-4 shadow-lg border border-gray-100 card-hover relative overflow-hidden">
-                            <div class="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full -translate-y-10 translate-x-10"></div>
+
+                        <div
+                            class="bg-white rounded-xl p-4 shadow-lg border border-gray-100 card-hover relative overflow-hidden">
+                            <div
+                                class="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full -translate-y-10 translate-x-10">
+                            </div>
                             <div class="relative z-10">
                                 <div class="flex items-center justify-between mb-3">
-                                    <div class="w-8 h-8 bg-gradient-to-br from-green-400 to-emerald-500 rounded-lg flex items-center justify-center">
+                                    <div
+                                        class="w-8 h-8 bg-gradient-to-br from-green-400 to-emerald-500 rounded-lg flex items-center justify-center">
                                         <span class="text-white text-xs font-bold">3A</span>
                                     </div>
-                                    <span class="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full font-medium">63%</span>
+                                    <span
+                                        class="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full font-medium">63%</span>
                                 </div>
                                 <p class="text-sm font-semibold text-gray-700 mb-1">ลานจอด 3/1</p>
                                 <p class="text-lg font-bold text-gray-900 mb-2">63 / 100</p>
                                 <div class="bg-gray-100 rounded-full h-2 overflow-hidden">
-                                    <div class="bg-gradient-to-r from-green-400 to-emerald-500 rounded-full h-2 transition-all duration-700" style="width: 63%"></div>
+                                    <div class="bg-gradient-to-r from-green-400 to-emerald-500 rounded-full h-2 transition-all duration-700"
+                                        style="width: 63%"></div>
                                 </div>
                             </div>
                         </div>
-                        
-                        <div class="bg-white rounded-xl p-4 shadow-lg border border-gray-100 card-hover relative overflow-hidden">
-                            <div class="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-red-100 to-rose-100 rounded-full -translate-y-10 translate-x-10"></div>
+
+                        <div
+                            class="bg-white rounded-xl p-4 shadow-lg border border-gray-100 card-hover relative overflow-hidden">
+                            <div
+                                class="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-red-100 to-rose-100 rounded-full -translate-y-10 translate-x-10">
+                            </div>
                             <div class="relative z-10">
                                 <div class="flex items-center justify-between mb-3">
-                                    <div class="w-8 h-8 bg-gradient-to-br from-red-500 to-rose-600 rounded-lg flex items-center justify-center">
+                                    <div
+                                        class="w-8 h-8 bg-gradient-to-br from-red-500 to-rose-600 rounded-lg flex items-center justify-center">
                                         <span class="text-white text-xs font-bold">3B</span>
                                     </div>
-                                    <span class="text-xs px-2 py-1 bg-red-100 text-red-700 rounded-full font-medium">90%</span>
+                                    <span
+                                        class="text-xs px-2 py-1 bg-red-100 text-red-700 rounded-full font-medium">90%</span>
                                 </div>
                                 <p class="text-sm font-semibold text-gray-700 mb-1">ลานจอด 3/2</p>
                                 <p class="text-lg font-bold text-gray-900 mb-2">238 / 264</p>
                                 <div class="bg-gray-100 rounded-full h-2 overflow-hidden">
-                                    <div class="bg-gradient-to-r from-red-500 to-rose-600 rounded-full h-2 transition-all duration-700" style="width: 90%"></div>
+                                    <div class="bg-gradient-to-r from-red-500 to-rose-600 rounded-full h-2 transition-all duration-700"
+                                        style="width: 90%"></div>
                                 </div>
                             </div>
                         </div>
-                        
-                        <div class="bg-white rounded-xl p-4 shadow-lg border border-gray-100 card-hover relative overflow-hidden">
-                            <div class="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-red-100 to-pink-100 rounded-full -translate-y-10 translate-x-10"></div>
+
+                        <div
+                            class="bg-white rounded-xl p-4 shadow-lg border border-gray-100 card-hover relative overflow-hidden">
+                            <div
+                                class="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-red-100 to-pink-100 rounded-full -translate-y-10 translate-x-10">
+                            </div>
                             <div class="relative z-10">
                                 <div class="flex items-center justify-between mb-3">
-                                    <div class="w-8 h-8 bg-gradient-to-br from-red-600 to-pink-600 rounded-lg flex items-center justify-center">
+                                    <div
+                                        class="w-8 h-8 bg-gradient-to-br from-red-600 to-pink-600 rounded-lg flex items-center justify-center">
                                         <span class="text-white text-xs font-bold">4</span>
                                     </div>
-                                    <span class="text-xs px-2 py-1 bg-red-100 text-red-700 rounded-full font-medium">95%</span>
+                                    <span
+                                        class="text-xs px-2 py-1 bg-red-100 text-red-700 rounded-full font-medium">95%</span>
                                 </div>
                                 <p class="text-sm font-semibold text-gray-700 mb-1">ลานจอด 4</p>
                                 <p class="text-lg font-bold text-gray-900 mb-2">394 / 415</p>
                                 <div class="bg-gray-100 rounded-full h-2 overflow-hidden">
-                                    <div class="bg-gradient-to-r from-red-600 to-pink-600 rounded-full h-2 transition-all duration-700" style="width: 95%"></div>
+                                    <div class="bg-gradient-to-r from-red-600 to-pink-600 rounded-full h-2 transition-all duration-700"
+                                        style="width: 95%"></div>
                                 </div>
                             </div>
                         </div>
-                        
-                        <div class="bg-white rounded-xl p-4 shadow-lg border border-gray-100 card-hover relative overflow-hidden">
-                            <div class="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-blue-100 to-cyan-100 rounded-full -translate-y-10 translate-x-10"></div>
+
+                        <div
+                            class="bg-white rounded-xl p-4 shadow-lg border border-gray-100 card-hover relative overflow-hidden">
+                            <div
+                                class="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-blue-100 to-cyan-100 rounded-full -translate-y-10 translate-x-10">
+                            </div>
                             <div class="relative z-10">
                                 <div class="flex items-center justify-between mb-3">
-                                    <div class="w-8 h-8 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-lg flex items-center justify-center">
+                                    <div
+                                        class="w-8 h-8 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-lg flex items-center justify-center">
                                         <span class="text-white text-xs font-bold">5</span>
                                     </div>
-                                    <span class="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full font-medium">60%</span>
+                                    <span
+                                        class="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full font-medium">60%</span>
                                 </div>
                                 <p class="text-sm font-semibold text-gray-700 mb-1">ลานจอด 5</p>
                                 <p class="text-lg font-bold text-gray-900 mb-2">32 / 53</p>
                                 <div class="bg-gray-100 rounded-full h-2 overflow-hidden">
-                                    <div class="bg-gradient-to-r from-blue-400 to-cyan-500 rounded-full h-2 transition-all duration-700" style="width: 60%"></div>
+                                    <div class="bg-gradient-to-r from-blue-400 to-cyan-500 rounded-full h-2 transition-all duration-700"
+                                        style="width: 60%"></div>
                                 </div>
                             </div>
                         </div>
-                        
-                        <div class="bg-white rounded-xl p-4 shadow-lg border border-gray-100 card-hover relative overflow-hidden">
-                            <div class="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-full -translate-y-10 translate-x-10"></div>
+
+                        <div
+                            class="bg-white rounded-xl p-4 shadow-lg border border-gray-100 card-hover relative overflow-hidden">
+                            <div
+                                class="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-full -translate-y-10 translate-x-10">
+                            </div>
                             <div class="relative z-10">
                                 <div class="flex items-center justify-between mb-3">
-                                    <div class="w-8 h-8 bg-gradient-to-br from-purple-400 to-indigo-500 rounded-lg flex items-center justify-center">
+                                    <div
+                                        class="w-8 h-8 bg-gradient-to-br from-purple-400 to-indigo-500 rounded-lg flex items-center justify-center">
                                         <span class="text-white text-xs font-bold">B8</span>
                                     </div>
-                                    <span class="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded-full font-medium">50%</span>
+                                    <span
+                                        class="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded-full font-medium">50%</span>
                                 </div>
                                 <p class="text-sm font-semibold text-gray-700 mb-1">ลานจอด B8</p>
                                 <p class="text-lg font-bold text-gray-900 mb-2">22 / 44</p>
                                 <div class="bg-gray-100 rounded-full h-2 overflow-hidden">
-                                    <div class="bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full h-2 transition-all duration-700" style="width: 50%"></div>
+                                    <div class="bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full h-2 transition-all duration-700"
+                                        style="width: 50%"></div>
                                 </div>
                             </div>
                         </div>
@@ -243,28 +334,35 @@
                 <!-- Motorcycle Parking Section -->
                 <div>
                     <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center">
-                        <div class="w-8 h-8 bg-gradient-to-br from-orange-500 to-red-600 rounded-lg flex items-center justify-center mr-3">
+                        <div
+                            class="w-8 h-8 bg-gradient-to-br from-orange-500 to-red-600 rounded-lg flex items-center justify-center mr-3">
                             <span class="text-white text-lg">🏍️</span>
                         </div>
                         ลานจอดจักรยานยนต์
                     </h2>
-                    
+
                     <!-- Motorcycle Parking Overview -->
-                    <div class="relative overflow-hidden bg-gradient-to-br from-orange-500 via-red-500 to-pink-600 rounded-2xl p-6 text-white card-hover mb-4 shadow-xl">
-                        <div class="absolute top-0 right-0 w-28 h-28 bg-white/10 rounded-full -translate-y-14 translate-x-14"></div>
-                        <div class="absolute bottom-0 left-0 w-20 h-20 bg-white/5 rounded-full translate-y-10 -translate-x-10"></div>
-                        
+                    <div
+                        class="relative overflow-hidden bg-gradient-to-br from-orange-500 via-red-500 to-pink-600 rounded-2xl p-6 text-white card-hover mb-4 shadow-xl">
+                        <div
+                            class="absolute top-0 right-0 w-28 h-28 bg-white/10 rounded-full -translate-y-14 translate-x-14">
+                        </div>
+                        <div
+                            class="absolute bottom-0 left-0 w-20 h-20 bg-white/5 rounded-full translate-y-10 -translate-x-10">
+                        </div>
+
                         <div class="relative z-10">
                             <div class="flex items-center justify-between mb-4">
                                 <div>
                                     <h3 class="text-2xl font-bold mb-2">จักรยานยนต์</h3>
                                     <p class="text-white/80 text-sm">จำนวนที่จอดได้ทั้งหมด</p>
                                 </div>
-                                <div class="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
+                                <div
+                                    class="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
                                     <span class="text-3xl">🏍️</span>
                                 </div>
                             </div>
-                            
+
                             <div class="flex items-end justify-between mb-4">
                                 <div>
                                     <p class="text-4xl font-bold mb-1">568</p>
@@ -275,27 +373,32 @@
                                     <p class="text-white/70 text-sm">ทั้งหมด</p>
                                 </div>
                             </div>
-                            
+
                             <div class="space-y-2">
                                 <div class="flex justify-between text-sm">
                                     <span class="text-white/80">อัตราการใช้งาน</span>
                                     <span class="font-semibold">75%</span>
                                 </div>
                                 <div class="bg-white/20 rounded-full h-3 overflow-hidden">
-                                    <div class="bg-gradient-to-r from-yellow-300 to-orange-400 rounded-full h-3 transition-all duration-1000 ease-out" style="width: 75%"></div>
+                                    <div class="bg-gradient-to-r from-yellow-300 to-orange-400 rounded-full h-3 transition-all duration-1000 ease-out"
+                                        style="width: 75%"></div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Motorcycle Parking Details -->
                     <div class="space-y-3">
-                        <div class="bg-white rounded-xl p-4 shadow-lg border border-gray-100 card-hover relative overflow-hidden">
-                            <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-orange-100 to-red-100 rounded-full -translate-y-12 translate-x-12"></div>
+                        <div
+                            class="bg-white rounded-xl p-4 shadow-lg border border-gray-100 card-hover relative overflow-hidden">
+                            <div
+                                class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-orange-100 to-red-100 rounded-full -translate-y-12 translate-x-12">
+                            </div>
                             <div class="relative z-10">
                                 <div class="flex items-center justify-between mb-3">
                                     <div class="flex items-center space-x-3">
-                                        <div class="w-10 h-10 bg-gradient-to-br from-orange-400 to-red-500 rounded-xl flex items-center justify-center">
+                                        <div
+                                            class="w-10 h-10 bg-gradient-to-br from-orange-400 to-red-500 rounded-xl flex items-center justify-center">
                                             <span class="text-white text-sm font-bold">M1</span>
                                         </div>
                                         <div>
@@ -304,22 +407,28 @@
                                         </div>
                                     </div>
                                     <div class="text-right">
-                                        <span class="text-xs px-3 py-1 bg-orange-100 text-orange-700 rounded-full font-medium">80%</span>
+                                        <span
+                                            class="text-xs px-3 py-1 bg-orange-100 text-orange-700 rounded-full font-medium">80%</span>
                                         <p class="text-lg font-bold text-gray-900 mt-1">237 / 296</p>
                                     </div>
                                 </div>
                                 <div class="bg-gray-100 rounded-full h-2 overflow-hidden">
-                                    <div class="bg-gradient-to-r from-orange-400 to-red-500 rounded-full h-2 transition-all duration-700" style="width: 80%"></div>
+                                    <div class="bg-gradient-to-r from-orange-400 to-red-500 rounded-full h-2 transition-all duration-700"
+                                        style="width: 80%"></div>
                                 </div>
                             </div>
                         </div>
-                        
-                        <div class="bg-white rounded-xl p-4 shadow-lg border border-gray-100 card-hover relative overflow-hidden">
-                            <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full -translate-y-12 translate-x-12"></div>
+
+                        <div
+                            class="bg-white rounded-xl p-4 shadow-lg border border-gray-100 card-hover relative overflow-hidden">
+                            <div
+                                class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full -translate-y-12 translate-x-12">
+                            </div>
                             <div class="relative z-10">
                                 <div class="flex items-center justify-between mb-3">
                                     <div class="flex items-center space-x-3">
-                                        <div class="w-10 h-10 bg-gradient-to-br from-green-400 to-emerald-500 rounded-xl flex items-center justify-center">
+                                        <div
+                                            class="w-10 h-10 bg-gradient-to-br from-green-400 to-emerald-500 rounded-xl flex items-center justify-center">
                                             <span class="text-white text-sm font-bold">M2</span>
                                         </div>
                                         <div>
@@ -328,22 +437,28 @@
                                         </div>
                                     </div>
                                     <div class="text-right">
-                                        <span class="text-xs px-3 py-1 bg-green-100 text-green-700 rounded-full font-medium">70%</span>
+                                        <span
+                                            class="text-xs px-3 py-1 bg-green-100 text-green-700 rounded-full font-medium">70%</span>
                                         <p class="text-lg font-bold text-gray-900 mt-1">147 / 210</p>
                                     </div>
                                 </div>
                                 <div class="bg-gray-100 rounded-full h-2 overflow-hidden">
-                                    <div class="bg-gradient-to-r from-green-400 to-emerald-500 rounded-full h-2 transition-all duration-700" style="width: 70%"></div>
+                                    <div class="bg-gradient-to-r from-green-400 to-emerald-500 rounded-full h-2 transition-all duration-700"
+                                        style="width: 70%"></div>
                                 </div>
                             </div>
                         </div>
-                        
-                        <div class="bg-white rounded-xl p-4 shadow-lg border border-gray-100 card-hover relative overflow-hidden">
-                            <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-orange-100 to-yellow-100 rounded-full -translate-y-12 translate-x-12"></div>
+
+                        <div
+                            class="bg-white rounded-xl p-4 shadow-lg border border-gray-100 card-hover relative overflow-hidden">
+                            <div
+                                class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-orange-100 to-yellow-100 rounded-full -translate-y-12 translate-x-12">
+                            </div>
                             <div class="relative z-10">
                                 <div class="flex items-center justify-between mb-3">
                                     <div class="flex items-center space-x-3">
-                                        <div class="w-10 h-10 bg-gradient-to-br from-orange-500 to-yellow-500 rounded-xl flex items-center justify-center">
+                                        <div
+                                            class="w-10 h-10 bg-gradient-to-br from-orange-500 to-yellow-500 rounded-xl flex items-center justify-center">
                                             <span class="text-white text-sm font-bold">M3</span>
                                         </div>
                                         <div>
@@ -352,21 +467,24 @@
                                         </div>
                                     </div>
                                     <div class="text-right">
-                                        <span class="text-xs px-3 py-1 bg-orange-100 text-orange-700 rounded-full font-medium">73%</span>
+                                        <span
+                                            class="text-xs px-3 py-1 bg-orange-100 text-orange-700 rounded-full font-medium">73%</span>
                                         <p class="text-lg font-bold text-gray-900 mt-1">184 / 251</p>
                                     </div>
                                 </div>
                                 <div class="bg-gray-100 rounded-full h-2 overflow-hidden">
-                                    <div class="bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full h-2 transition-all duration-700" style="width: 73%"></div>
+                                    <div class="bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full h-2 transition-all duration-700"
+                                        style="width: 73%"></div>
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Summary Card -->
                         <div class="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-4 border border-blue-100">
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center space-x-3">
-                                    <div class="w-10 h-10 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-xl flex items-center justify-center">
+                                    <div
+                                        class="w-10 h-10 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-xl flex items-center justify-center">
                                         <span class="text-white text-lg">📊</span>
                                     </div>
                                     <div>
@@ -396,9 +514,11 @@
                                 อุปกรณ์หลัก
                             </h3>
                             <div class="grid grid-cols-1 gap-3">
-                                <div class="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-100">
+                                <div
+                                    class="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-100">
                                     <div class="flex items-center space-x-3">
-                                        <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                                        <div
+                                            class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
                                             <span class="text-lg">📻</span>
                                         </div>
                                         <div>
@@ -411,10 +531,12 @@
                                         <span class="text-green-600 font-semibold text-sm">ออนไลน์</span>
                                     </div>
                                 </div>
-                                
-                                <div class="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-100">
+
+                                <div
+                                    class="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-100">
                                     <div class="flex items-center space-x-3">
-                                        <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                                        <div
+                                            class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
                                             <span class="text-lg">📝</span>
                                         </div>
                                         <div>
@@ -427,8 +549,9 @@
                                         <span class="text-green-600 font-semibold text-sm">พร้อมใช้</span>
                                     </div>
                                 </div>
-                                
-                                <div class="flex items-center justify-between p-3 bg-gradient-to-r from-red-50 to-rose-50 rounded-lg border border-red-100">
+
+                                <div
+                                    class="flex items-center justify-between p-3 bg-gradient-to-r from-red-50 to-rose-50 rounded-lg border border-red-100">
                                     <div class="flex items-center space-x-3">
                                         <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
                                             <span class="text-lg">🖥️</span>
@@ -443,10 +566,12 @@
                                         <span class="text-red-600 font-semibold text-sm">ออฟไลน์</span>
                                     </div>
                                 </div>
-                                
-                                <div class="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-100">
+
+                                <div
+                                    class="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-100">
                                     <div class="flex items-center space-x-3">
-                                        <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                                        <div
+                                            class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
                                             <span class="text-lg">🔑</span>
                                         </div>
                                         <div>
@@ -459,10 +584,12 @@
                                         <span class="text-green-600 font-semibold text-sm">พร้อมใช้</span>
                                     </div>
                                 </div>
-                                
-                                <div class="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-100">
+
+                                <div
+                                    class="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-100">
                                     <div class="flex items-center space-x-3">
-                                        <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                                        <div
+                                            class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
                                             <span class="text-lg">🚪</span>
                                         </div>
                                         <div>
@@ -475,10 +602,12 @@
                                         <span class="text-green-600 font-semibold text-sm">ออนไลน์</span>
                                     </div>
                                 </div>
-                                
-                                <div class="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-100">
+
+                                <div
+                                    class="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-100">
                                     <div class="flex items-center space-x-3">
-                                        <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                                        <div
+                                            class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
                                             <span class="text-lg">📹</span>
                                         </div>
                                         <div>
@@ -500,7 +629,8 @@
                             <div class="gradient-bg-7 rounded-xl p-4 text-white card-hover shadow-lg">
                                 <div class="flex items-center justify-between mb-3">
                                     <div class="flex items-center space-x-3">
-                                        <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                                        <div
+                                            class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
                                             <span class="text-2xl">🔍</span>
                                         </div>
                                         <div>
@@ -528,7 +658,8 @@
                             <div class="bg-white rounded-xl p-4 shadow-lg border border-gray-100 card-hover">
                                 <div class="flex items-center justify-between mb-4">
                                     <div class="flex items-center space-x-3">
-                                        <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                                        <div
+                                            class="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
                                             <span class="text-2xl text-white">🚶‍♂️</span>
                                         </div>
                                         <div>
@@ -541,12 +672,14 @@
                                         <div class="text-xs text-gray-500">ออนไลน์</div>
                                     </div>
                                 </div>
-                                
+
                                 <div class="grid grid-cols-2 gap-3">
-                                    <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-3 border border-green-100">
+                                    <div
+                                        class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-3 border border-green-100">
                                         <div class="flex items-center justify-between">
                                             <div class="flex items-center space-x-2">
-                                                <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                                <div
+                                                    class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
                                                     <span class="text-xs font-bold text-green-700">1</span>
                                                 </div>
                                                 <div>
@@ -557,11 +690,13 @@
                                             <div class="w-2 h-2 bg-green-400 rounded-full pulse-animation"></div>
                                         </div>
                                     </div>
-                                    
-                                    <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-3 border border-green-100">
+
+                                    <div
+                                        class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-3 border border-green-100">
                                         <div class="flex items-center justify-between">
                                             <div class="flex items-center space-x-2">
-                                                <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                                <div
+                                                    class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
                                                     <span class="text-xs font-bold text-green-700">2</span>
                                                 </div>
                                                 <div>
@@ -572,11 +707,13 @@
                                             <div class="w-2 h-2 bg-green-400 rounded-full pulse-animation"></div>
                                         </div>
                                     </div>
-                                    
-                                    <div class="bg-gradient-to-r from-red-50 to-rose-50 rounded-lg p-3 border border-red-100">
+
+                                    <div
+                                        class="bg-gradient-to-r from-red-50 to-rose-50 rounded-lg p-3 border border-red-100">
                                         <div class="flex items-center justify-between">
                                             <div class="flex items-center space-x-2">
-                                                <div class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                                                <div
+                                                    class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
                                                     <span class="text-xs font-bold text-red-700">3</span>
                                                 </div>
                                                 <div>
@@ -587,11 +724,13 @@
                                             <div class="w-2 h-2 bg-red-400 rounded-full"></div>
                                         </div>
                                     </div>
-                                    
-                                    <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-3 border border-green-100">
+
+                                    <div
+                                        class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-3 border border-green-100">
                                         <div class="flex items-center justify-between">
                                             <div class="flex items-center space-x-2">
-                                                <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                                <div
+                                                    class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
                                                     <span class="text-xs font-bold text-green-700">4</span>
                                                 </div>
                                                 <div>
@@ -602,26 +741,31 @@
                                             <div class="w-2 h-2 bg-green-400 rounded-full pulse-animation"></div>
                                         </div>
                                     </div>
-                                    
-                                    <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-3 border border-green-100">
+
+                                    <div
+                                        class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-3 border border-green-100">
                                         <div class="flex items-center justify-between">
                                             <div class="flex items-center space-x-2">
-                                                <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                                <div
+                                                    class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
                                                     <span class="text-xs font-bold text-green-700">5</span>
                                                 </div>
                                                 <div>
-                                                    <span class="text-sm font-semibold text-gray-800">ประตูฉุกเฉิน</span>
+                                                    <span
+                                                        class="text-sm font-semibold text-gray-800">ประตูฉุกเฉิน</span>
                                                     <p class="text-xs text-gray-600">อาคาร C</p>
                                                 </div>
                                             </div>
                                             <div class="w-2 h-2 bg-green-400 rounded-full pulse-animation"></div>
                                         </div>
                                     </div>
-                                    
-                                    <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-3 border border-green-100">
+
+                                    <div
+                                        class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-3 border border-green-100">
                                         <div class="flex items-center justify-between">
                                             <div class="flex items-center space-x-2">
-                                                <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                                <div
+                                                    class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
                                                     <span class="text-xs font-bold text-green-700">6</span>
                                                 </div>
                                                 <div>
@@ -633,7 +777,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 <div class="mt-4 p-3 bg-gray-50 rounded-lg">
                                     <div class="flex items-center justify-between text-sm">
                                         <span class="text-gray-600">สถานะรวม:</span>
@@ -666,40 +810,58 @@
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">วันที่</th>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ชื่อ-นามสกุล</th>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">กะ</th>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">อาคาร</th>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">จุดรักษาการณ์</th>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">เวลารายงาน</th>
+                                    <th
+                                        class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        วันที่</th>
+                                    <th
+                                        class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        ชื่อ-นามสกุล</th>
+                                    <th
+                                        class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        กะ</th>
+                                    <th
+                                        class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        อาคาร</th>
+                                    <th
+                                        class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        จุดรักษาการณ์</th>
+                                    <th
+                                        class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        เวลารายงาน</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200" id="incidentTable">
-                                <tr class="hover:bg-gray-50 cursor-pointer incident-row" onclick="showIncidentDetail(1)">
+                                <tr class="hover:bg-gray-50 cursor-pointer incident-row"
+                                    onclick="showIncidentDetail(1)">
                                     <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">15 ธ.ค. 2567</td>
                                     <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">นายสมชาย ใจดี</td>
                                     <td class="px-3 py-2 whitespace-nowrap">
-                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">เช้า</span>
+                                        <span
+                                            class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">เช้า</span>
                                     </td>
                                     <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">อาคาร A</td>
                                     <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">ประตูหน้า</td>
                                     <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">08:30</td>
                                 </tr>
-                                <tr class="hover:bg-gray-50 cursor-pointer incident-row" onclick="showIncidentDetail(2)">
+                                <tr class="hover:bg-gray-50 cursor-pointer incident-row"
+                                    onclick="showIncidentDetail(2)">
                                     <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">15 ธ.ค. 2567</td>
                                     <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">นางสาวมาลี สวยงาม</td>
                                     <td class="px-3 py-2 whitespace-nowrap">
-                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">ดึก</span>
+                                        <span
+                                            class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">ดึก</span>
                                     </td>
                                     <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">อาคาร B</td>
                                     <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">ลานจอดรถ</td>
                                     <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">22:15</td>
                                 </tr>
-                                <tr class="hover:bg-gray-50 cursor-pointer incident-row" onclick="showIncidentDetail(3)">
+                                <tr class="hover:bg-gray-50 cursor-pointer incident-row"
+                                    onclick="showIncidentDetail(3)">
                                     <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">14 ธ.ค. 2567</td>
                                     <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">นายวิชัย รักษาดี</td>
                                     <td class="px-3 py-2 whitespace-nowrap">
-                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">เช้า</span>
+                                        <span
+                                            class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">เช้า</span>
                                     </td>
                                     <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">อาคาร C</td>
                                     <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">ห้องควบคุม</td>
@@ -717,7 +879,9 @@
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                 <div class="flex items-center justify-center space-x-3">
                     <span class="text-sm text-gray-500">Powered by</span>
-                    <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTo4vOQhk1smNjyAFg897Ej18JZz-t1TRKMrw&s" alt="PCS Logo" class="h-8 w-auto opacity-80" onerror="this.src=''; this.alt='PCS Logo failed to load'; this.style.display='none';">
+                    <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTo4vOQhk1smNjyAFg897Ej18JZz-t1TRKMrw&s"
+                        alt="PCS Logo" class="h-8 w-auto opacity-80"
+                        onerror="this.src=''; this.alt='PCS Logo failed to load'; this.style.display='none';">
                 </div>
             </div>
         </footer>
@@ -734,7 +898,7 @@
                             <span class="text-2xl">×</span>
                         </button>
                     </div>
-                    
+
                     <div id="incidentDetails" class="space-y-4">
                         <!-- Content will be populated by JavaScript -->
                     </div>
@@ -747,11 +911,11 @@
         // Update timestamp
         function updateTimestamp() {
             const now = new Date();
-            const options = { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric', 
-                hour: '2-digit', 
+            const options = {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
                 minute: '2-digit',
                 timeZone: 'Asia/Bangkok'
             };
@@ -854,7 +1018,7 @@
         }
 
         // Close modal when clicking outside
-        document.getElementById('incidentModal').addEventListener('click', function(e) {
+        document.getElementById('incidentModal').addEventListener('click', function (e) {
             if (e.target === this) {
                 closeIncidentModal();
             }
@@ -864,5 +1028,7 @@
         updateTimestamp();
         setInterval(updateTimestamp, 60000); // Update every minute
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'990f4557774445b1',t:'MTc2MDg2NjM3NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+    <script>(function () { function c() { var b = a.contentDocument || a.contentWindow.document; if (b) { var d = b.createElement('script'); d.innerHTML = "window.__CF$cv$params={r:'990f4557774445b1',t:'MTc2MDg2NjM3NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);"; b.getElementsByTagName('head')[0].appendChild(d) } } if (document.body) { var a = document.createElement('iframe'); a.height = 1; a.width = 1; a.style.position = 'absolute'; a.style.top = 0; a.style.left = 0; a.style.border = 'none'; a.style.visibility = 'hidden'; document.body.appendChild(a); if ('loading' !== document.readyState) c(); else if (window.addEventListener) document.addEventListener('DOMContentLoaded', c); else { var e = document.onreadystatechange || function () { }; document.onreadystatechange = function (b) { e(b); 'loading' !== document.readyState && (document.onreadystatechange = e, c()) } } } })();</script>
+</body>
+
 </html>

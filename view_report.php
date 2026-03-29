@@ -217,6 +217,3 @@ if ($report_id) {
 <?php
 $conn->close();
 ?>
-<?php
-$conn->close();
-?>
