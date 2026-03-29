@@ -50,3 +50,7 @@ test_*.php
 query
 report_assets/Images/images_logo.png
 
+# Archive directory
+/unuse/
+
+
