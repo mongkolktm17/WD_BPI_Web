@@ -89,65 +89,149 @@ while ($row = $res_security->fetch_assoc()) {
     $security_data[$row['group_date']] = $row;
 }
 
-// 2. Parking Lot Counts
-$sql_parking = "
-    SELECT 
-        group_date,
-        AVG(vehicle_count_car) as avg_car,
-        AVG(vehicle_count_moto) as avg_moto
-    FROM (
-        SELECT 
-            DATE_FORMAT(r.created_at, '$group_format') as group_date,
-            CASE WHEN c.lot_name LIKE 'ลานรถยนต์%' THEN c.vehicle_count ELSE NULL END as vehicle_count_car,
-            CASE WHEN c.lot_name LIKE 'ลานจอด%' THEN c.vehicle_count ELSE NULL END as vehicle_count_moto,
-            ROW_NUMBER() OVER (
-                PARTITION BY c.lot_name, DATE_FORMAT(r.created_at, '$group_format') 
-                ORDER BY r.created_at DESC
-            ) as rn
-        FROM car_parking_reports r
-        JOIN parking_lot_counts c ON r.id = c.report_id
-        WHERE r.is_deleted = 0 AND $where_range_parking
-    ) t
-    WHERE rn = 1
-    GROUP BY group_date
-    ORDER BY group_date ASC
+// 2. Parking Lot Counts (Site-wide Snapshot Logic)
+// First, find all lot names to track
+$lot_names_res = $conn->query("SELECT DISTINCT lot_name FROM parking_lot_counts");
+$all_lots = [];
+while ($l = $lot_names_res->fetch_row()) $all_lots[] = $l[0];
+
+// Get initial state (last known counts before $start_date)
+$parking_state = [];
+foreach ($all_lots as $lot) $parking_state[$lot] = ['car' => 0, 'moto' => 0];
+
+$sql_init_parking = "
+    SELECT c.lot_name, c.vehicle_count, r.created_at
+    FROM car_parking_reports r
+    JOIN parking_lot_counts c ON r.id = c.report_id
+    WHERE r.is_deleted = 0 AND r.created_at < '$start_date 00:00:00'
+    AND r.id = (
+        SELECT MAX(r2.id) 
+        FROM car_parking_reports r2 
+        JOIN parking_lot_counts c2 ON r2.id = c2.report_id 
+        WHERE c2.lot_name = c.lot_name AND r2.is_deleted = 0 AND r2.created_at < '$start_date 00:00:00'
+    )
 ";
-$res_parking = $conn->query($sql_parking);
-$parking_data = [];
-if ($res_parking) {
-    while ($row = $res_parking->fetch_assoc()) {
-        $parking_data[$row['group_date']] = $row;
+$res_init_p = $conn->query($sql_init_parking);
+if ($res_init_p) {
+    while ($row = $res_init_p->fetch_assoc()) {
+        $type = (strpos($row['lot_name'], 'ลานรถยนต์') !== false) ? 'car' : 'moto';
+        $parking_state[$row['lot_name']][$type] = (int)$row['vehicle_count'];
     }
 }
 
-// 3. CCTV Online Status (%)
-$sql_cctv = "
+// Get all activity during the range
+$sql_parking_activity = "
     SELECT 
-        group_date,
-        SUM(online_channels) * 100.0 / NULLIF(SUM(total_channels), 0) as avg_online
-    FROM (
-        SELECT 
-            DATE_FORMAT(r.report_time, '$group_format') as group_date,
-            d.online_channels,
-            d.total_channels,
-            ROW_NUMBER() OVER (
-                PARTITION BY r.building, d.nvr_name, DATE_FORMAT(r.report_time, '$group_format') 
-                ORDER BY r.report_time DESC
-            ) as rn
-        FROM cctv_reports r
-        JOIN cctv_report_details d ON r.id = d.report_id
-        WHERE r.is_deleted = 0 AND $where_range_cctv
-    ) t
-    WHERE rn = 1
-    GROUP BY group_date
-    ORDER BY group_date ASC
+        DATE_FORMAT(r.created_at, '$group_format') as group_date,
+        c.lot_name,
+        c.vehicle_count
+    FROM car_parking_reports r
+    JOIN parking_lot_counts c ON r.id = c.report_id
+    WHERE r.is_deleted = 0 AND $where_range_parking
+    ORDER BY r.created_at ASC
 ";
-$res_cctv = $conn->query($sql_cctv);
-$cctv_data = [];
-if ($res_cctv) {
-    while ($row = $res_cctv->fetch_assoc()) {
-        $cctv_data[$row['group_date']] = $row;
+$res_p_activity = $conn->query($sql_parking_activity);
+$parking_activity = [];
+while ($row = $res_p_activity->fetch_assoc()) {
+    $parking_activity[$row['group_date']][] = $row;
+}
+
+$parking_data = [];
+foreach ($dates as $d) {
+    if (isset($parking_activity[$d])) {
+        foreach ($parking_activity[$d] as $act) {
+            $type = (strpos($act['lot_name'], 'ลานรถยนต์') !== false) ? 'car' : 'moto';
+            $parking_state[$act['lot_name']][$type] = (int)$act['vehicle_count'];
+        }
     }
+    
+    $total_car = 0;
+    $total_moto = 0;
+    foreach ($parking_state as $lot => $vals) {
+        $total_car += $vals['car'];
+        $total_moto += $vals['moto'];
+    }
+    
+    $parking_data[$d] = [
+        'group_date' => $d,
+        'avg_car' => $total_car, // Now actually SUM, but variable name kept for frontend compatibility
+        'avg_moto' => $total_moto
+    ];
+}
+
+// 3. CCTV Online Status (%) - Site-wide Snapshot Logic
+$nvr_names_res = $conn->query("SELECT DISTINCT nvr_name FROM cctv_report_details");
+$all_nvrs = [];
+while ($n = $nvr_names_res->fetch_row()) $all_nvrs[] = $n[0];
+
+$cctv_state = [];
+foreach ($all_nvrs as $nvr) $cctv_state[$nvr] = ['online' => 0, 'total' => 0];
+
+// Get initial state
+$sql_init_cctv = "
+    SELECT d.nvr_name, d.online_channels, d.total_channels
+    FROM cctv_reports r
+    JOIN cctv_report_details d ON r.id = d.report_id
+    WHERE r.is_deleted = 0 AND r.report_time < '$start_date 00:00:00'
+    AND d.id = (
+        SELECT MAX(d2.id)
+        FROM cctv_reports r2
+        JOIN cctv_report_details d2 ON r2.id = d2.report_id
+        WHERE d2.nvr_name = d.nvr_name AND r2.is_deleted = 0 AND r2.report_time < '$start_date 00:00:00'
+    )
+";
+$res_init_c = $conn->query($sql_init_cctv);
+if ($res_init_c) {
+    while ($row = $res_init_c->fetch_assoc()) {
+        $cctv_state[$row['nvr_name']] = [
+            'online' => (int)$row['online_channels'],
+            'total' => (int)$row['total_channels']
+        ];
+    }
+}
+
+// Get all activity
+$sql_cctv_activity = "
+    SELECT 
+        DATE_FORMAT(r.report_time, '$group_format') as group_date,
+        d.nvr_name,
+        d.online_channels,
+        d.total_channels
+    FROM cctv_reports r
+    JOIN cctv_report_details d ON r.id = d.report_id
+    WHERE r.is_deleted = 0 AND $where_range_cctv
+    ORDER BY r.report_time ASC
+";
+$res_c_activity = $conn->query($sql_cctv_activity);
+$cctv_activity = [];
+while ($row = $res_c_activity->fetch_assoc()) {
+    $cctv_activity[$row['group_date']][] = $row;
+}
+
+$cctv_data = [];
+foreach ($dates as $d) {
+    if (isset($cctv_activity[$d])) {
+        foreach ($cctv_activity[$d] as $act) {
+            $cctv_state[$act['nvr_name']] = [
+                'online' => (int)$act['online_channels'],
+                'total' => (int)$act['total_channels']
+            ];
+        }
+    }
+    
+    $total_online = 0;
+    $total_channels = 0;
+    foreach ($cctv_state as $nvr => $vals) {
+        $total_online += $vals['online'];
+        $total_channels += $vals['total'];
+    }
+    
+    $avg_online = ($total_channels > 0) ? ($total_online * 100.0 / $total_channels) : 0;
+    
+    $cctv_data[$d] = [
+        'group_date' => $d,
+        'avg_online' => $avg_online
+    ];
 }
 
 // 4. Hand Held Metal Detector (Pass Rate)

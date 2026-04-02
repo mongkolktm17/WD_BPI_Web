@@ -169,7 +169,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
                     </div>
                     <div>
                         <h3 class="font-bold text-slate-700 text-sm">Parking Occupancy</h3>
-                        <p class="text-[11px] text-slate-400">จำนวนรถเฉลี่ยในลานจอด</p>
+                        <p class="text-[11px] text-slate-400">จำนวนรถรวมทุกลานจอด</p>
                     </div>
                 </div>
                 <div class="relative h-[260px]">
