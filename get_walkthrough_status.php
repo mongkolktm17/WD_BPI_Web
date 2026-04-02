@@ -13,7 +13,7 @@ $response = [
 ];
 
 // Get the latest report (existing behavior)
-$sql = "SELECT zone1_status, zone2_status, zone3_status, zone4_status, zone5_status, zone6_status, created_at FROM metal_detector_checks ORDER BY inspection_date DESC, created_at DESC LIMIT 1";
+$sql = "SELECT zone1_status, zone2_status, zone3_status, zone4_status, zone5_status, zone6_status, created_at FROM metal_detector_checks WHERE is_deleted = 0 ORDER BY inspection_date DESC, created_at DESC LIMIT 1";
 $result = $conn->query($sql);
 
 if ($result && $result->num_rows > 0) {
@@ -54,7 +54,7 @@ for ($i = 1; $i <= 6; $i++) {
 
 $sql_summary .= " FROM (
     SELECT * FROM metal_detector_checks m1 
-    WHERE id = (SELECT MAX(id) FROM metal_detector_checks m2 WHERE m2.guard_post = m1.guard_post)
+    WHERE is_deleted = 0 AND id = (SELECT MAX(id) FROM metal_detector_checks m2 WHERE m2.guard_post = m1.guard_post AND m2.is_deleted = 0)
 ) as latest_checks";
 
 $result_summary = $conn->query($sql_summary);

@@ -14,6 +14,7 @@ $response = [
 // Get the latest report_id for each building
 $latest_report_ids_sql = "SELECT building, MAX(report_time) as latest_created_at
                           FROM cctv_reports
+                          WHERE is_deleted = 0
                           GROUP BY building";
 $latest_report_ids_result = $conn->query($latest_report_ids_sql);
 
@@ -26,7 +27,7 @@ if ($latest_report_ids_result && $latest_report_ids_result->num_rows > 0) {
         $latest_created_at = $row['latest_created_at'];
         
         // Find the actual report_id for this latest timestamp and building
-        $report_id_sql = "SELECT id FROM cctv_reports WHERE building = ? AND report_time = ? LIMIT 1";
+        $report_id_sql = "SELECT id FROM cctv_reports WHERE building = ? AND report_time = ? AND is_deleted = 0 LIMIT 1";
         $stmt_report_id = $conn->prepare($report_id_sql);
         $stmt_report_id->bind_param("ss", $building, $latest_created_at);
         $stmt_report_id->execute();

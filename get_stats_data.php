@@ -64,11 +64,22 @@ $where_range_wt = "created_at BETWEEN '$start_date 00:00:00' AND '$end_date 23:5
 // 1. Security Guard Counts
 $sql_security = "
     SELECT 
-        DATE_FORMAT(created_at, '$group_format') as group_date,
+        group_date,
         AVG(morning_shift) as avg_morning,
         AVG(evening_shift) as avg_evening
-    FROM security_guard_counts
-    WHERE $where_range_security
+    FROM (
+        SELECT 
+            DATE_FORMAT(created_at, '$group_format') as group_date,
+            morning_shift,
+            evening_shift,
+            ROW_NUMBER() OVER (
+                PARTITION BY DATE_FORMAT(created_at, '$group_format') 
+                ORDER BY created_at DESC
+            ) as rn
+        FROM security_guard_counts
+        WHERE is_deleted = 0 AND $where_range_security
+    ) t
+    WHERE rn = 1
     GROUP BY group_date
     ORDER BY group_date ASC
 ";
@@ -81,12 +92,23 @@ while ($row = $res_security->fetch_assoc()) {
 // 2. Parking Lot Counts
 $sql_parking = "
     SELECT 
-        DATE_FORMAT(r.created_at, '$group_format') as group_date,
-        AVG(CASE WHEN c.lot_name LIKE 'ลานรถยนต์%' THEN c.vehicle_count ELSE NULL END) as avg_car,
-        AVG(CASE WHEN c.lot_name LIKE 'ลานจอด%' THEN c.vehicle_count ELSE NULL END) as avg_moto
-    FROM car_parking_reports r
-    JOIN parking_lot_counts c ON r.id = c.report_id
-    WHERE $where_range_parking
+        group_date,
+        AVG(vehicle_count_car) as avg_car,
+        AVG(vehicle_count_moto) as avg_moto
+    FROM (
+        SELECT 
+            DATE_FORMAT(r.created_at, '$group_format') as group_date,
+            CASE WHEN c.lot_name LIKE 'ลานรถยนต์%' THEN c.vehicle_count ELSE NULL END as vehicle_count_car,
+            CASE WHEN c.lot_name LIKE 'ลานจอด%' THEN c.vehicle_count ELSE NULL END as vehicle_count_moto,
+            ROW_NUMBER() OVER (
+                PARTITION BY c.lot_name, DATE_FORMAT(r.created_at, '$group_format') 
+                ORDER BY r.created_at DESC
+            ) as rn
+        FROM car_parking_reports r
+        JOIN parking_lot_counts c ON r.id = c.report_id
+        WHERE r.is_deleted = 0 AND $where_range_parking
+    ) t
+    WHERE rn = 1
     GROUP BY group_date
     ORDER BY group_date ASC
 ";
@@ -101,11 +123,22 @@ if ($res_parking) {
 // 3. CCTV Online Status (%)
 $sql_cctv = "
     SELECT 
-        DATE_FORMAT(r.report_time, '$group_format') as group_date,
-        SUM(d.online_channels) * 100.0 / NULLIF(SUM(d.total_channels), 0) as avg_online
-    FROM cctv_reports r
-    JOIN cctv_report_details d ON r.id = d.report_id
-    WHERE $where_range_cctv
+        group_date,
+        SUM(online_channels) * 100.0 / NULLIF(SUM(total_channels), 0) as avg_online
+    FROM (
+        SELECT 
+            DATE_FORMAT(r.report_time, '$group_format') as group_date,
+            d.online_channels,
+            d.total_channels,
+            ROW_NUMBER() OVER (
+                PARTITION BY r.building, d.nvr_name, DATE_FORMAT(r.report_time, '$group_format') 
+                ORDER BY r.report_time DESC
+            ) as rn
+        FROM cctv_reports r
+        JOIN cctv_report_details d ON r.id = d.report_id
+        WHERE r.is_deleted = 0 AND $where_range_cctv
+    ) t
+    WHERE rn = 1
     GROUP BY group_date
     ORDER BY group_date ASC
 ";
@@ -121,16 +154,26 @@ if ($res_cctv) {
 // NOTE: battery_status uses 'พร้อมใช้งาน', but led_status, detection_test_status, alarm_status use 'ผ่านการทดสอบ'
 $sql_hh = "
     SELECT 
-        DATE_FORMAT(created_at, '$group_format') as group_date,
-        SUM(CASE WHEN 
-            battery_status = 'พร้อมใช้งาน' AND 
-            led_status = 'ผ่านการทดสอบ' AND 
-            detection_test_status = 'ผ่านการทดสอบ' AND 
-            alarm_status = 'ผ่านการทดสอบ' 
-        THEN 1 ELSE 0 END) as pass_count,
+        group_date,
+        SUM(is_pass) as pass_count,
         COUNT(*) as total_count
-    FROM hand_held_checks
-    WHERE $where_range_hh
+    FROM (
+        SELECT 
+            DATE_FORMAT(created_at, '$group_format') as group_date,
+            CASE WHEN 
+                battery_status = 'พร้อมใช้งาน' AND 
+                led_status = 'ผ่านการทดสอบ' AND 
+                detection_test_status = 'ผ่านการทดสอบ' AND 
+                alarm_status = 'ผ่านการทดสอบ' 
+            THEN 1 ELSE 0 END as is_pass,
+            ROW_NUMBER() OVER (
+                PARTITION BY building, guard_post, shift, DATE_FORMAT(created_at, '$group_format') 
+                ORDER BY created_at DESC
+            ) as rn
+        FROM hand_held_checks
+        WHERE is_deleted = 0 AND $where_range_hh
+    ) t
+    WHERE rn = 1
     GROUP BY group_date
     ORDER BY group_date ASC
 ";
@@ -143,18 +186,28 @@ while ($row = $res_hh->fetch_assoc()) {
 // 5. Walkthrough Metal Detector (Pass Rate)
 $sql_wt = "
     SELECT 
-        DATE_FORMAT(created_at, '$group_format') as group_date,
-        SUM(CASE WHEN 
-            zone1_status = 'พร้อมใช้งาน' AND 
-            zone2_status = 'พร้อมใช้งาน' AND 
-            zone3_status = 'พร้อมใช้งาน' AND 
-            zone4_status = 'พร้อมใช้งาน' AND 
-            zone5_status = 'พร้อมใช้งาน' AND 
-            zone6_status = 'พร้อมใช้งาน' 
-        THEN 1 ELSE 0 END) as pass_count,
+        group_date,
+        SUM(is_pass) as pass_count,
         COUNT(*) as total_count
-    FROM metal_detector_checks
-    WHERE $where_range_wt
+    FROM (
+        SELECT 
+            DATE_FORMAT(created_at, '$group_format') as group_date,
+            CASE WHEN 
+                zone1_status = 'พร้อมใช้งาน' AND 
+                zone2_status = 'พร้อมใช้งาน' AND 
+                zone3_status = 'พร้อมใช้งาน' AND 
+                zone4_status = 'พร้อมใช้งาน' AND 
+                zone5_status = 'พร้อมใช้งาน' AND 
+                zone6_status = 'พร้อมใช้งาน' 
+            THEN 1 ELSE 0 END as is_pass,
+            ROW_NUMBER() OVER (
+                PARTITION BY building, guard_post, shift, DATE_FORMAT(created_at, '$group_format') 
+                ORDER BY created_at DESC
+            ) as rn
+        FROM metal_detector_checks
+        WHERE is_deleted = 0 AND $where_range_wt
+    ) t
+    WHERE rn = 1
     GROUP BY group_date
     ORDER BY group_date ASC
 ";

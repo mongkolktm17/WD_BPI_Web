@@ -18,7 +18,7 @@ $response = [
 ];
 
 // Get the latest report (existing behavior)
-$sql = "SELECT battery_status, led_status, detection_test_status, alarm_status, created_at FROM hand_held_checks ORDER BY inspection_date DESC, created_at DESC LIMIT 1";
+$sql = "SELECT battery_status, led_status, detection_test_status, alarm_status, created_at FROM hand_held_checks WHERE is_deleted = 0 ORDER BY inspection_date DESC, created_at DESC LIMIT 1";
 $result = $conn->query($sql);
 
 if ($result && $result->num_rows > 0) {
@@ -43,7 +43,7 @@ $sql_summary = "SELECT
     SUM(CASE WHEN alarm_status != 'ผ่านการทดสอบ' THEN 1 ELSE 0 END) as alarm_fail
 FROM (
     SELECT * FROM hand_held_checks h1 
-    WHERE id = (SELECT MAX(id) FROM hand_held_checks h2 WHERE h2.guard_post = h1.guard_post)
+    WHERE is_deleted = 0 AND id = (SELECT MAX(id) FROM hand_held_checks h2 WHERE h2.guard_post = h1.guard_post AND h2.is_deleted = 0)
 ) as latest_checks";
 
 

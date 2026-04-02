@@ -211,7 +211,6 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
                 <div class="relative h-[260px]">
                     <canvas id="chart-detectors"></canvas>
                 </div>
-                </div>
             </div>
 
         </div>
@@ -249,6 +248,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 
             // Apply gradients to line charts
             datasets.forEach(ds => {
+                ds.clip = false; // Prevent clipping of points at the edges
                 if (ds._gradient && type === 'line') {
                     ds.backgroundColor = createGradient(ctx, ds._gradient);
                     ds.fill = true;
@@ -307,6 +307,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
                         y: {
                             beginAtZero: true,
                             max: options.isPercentage ? 100 : undefined,
+                            grace: options.isPercentage ? '5%' : undefined,
                             grid: { color: 'rgba(226, 232, 240, 0.6)', drawBorder: false },
                             ticks: {
                                 font: { size: 10, family: 'Inter' },

@@ -10,7 +10,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 // Function to get security personnel status with contract data
 function get_security_personnel_status($conn)
 {
-    $sql = "SELECT morning_shift, morning_shift_contract, evening_shift, evening_shift_contract FROM security_guard_counts ORDER BY record_date DESC, created_at DESC LIMIT 1";
+    $sql = "SELECT morning_shift, morning_shift_contract, evening_shift, evening_shift_contract FROM security_guard_counts WHERE is_deleted = 0 ORDER BY record_date DESC, created_at DESC LIMIT 1";
     $result = $conn->query($sql);
     if ($result && $result->num_rows > 0) {
         return $result->fetch_assoc();
@@ -51,6 +51,7 @@ $sql_latest_nvr_data = "
     JOIN
         nvr_recording_details crd ON cr.id = crd.report_id
     WHERE
+        cr.is_deleted = 0 AND
         (cr.building, crd.nvr_name, cr.report_time) IN (
             SELECT
                 cr_inner.building,
@@ -60,6 +61,7 @@ $sql_latest_nvr_data = "
                 nvr_recording_reports cr_inner
             JOIN
                 nvr_recording_details crd_inner ON cr_inner.id = crd_inner.report_id
+            WHERE cr_inner.is_deleted = 0
             GROUP BY
                 cr_inner.building,
                 crd_inner.nvr_name
@@ -101,7 +103,7 @@ foreach ($buildings_list as $building) {
         SELECT cr.*, u.username 
         FROM cctv_reports cr
         LEFT JOIN users u ON cr.submitted_by_id = u.id
-        WHERE cr.building = ?
+        WHERE cr.building = ? AND cr.is_deleted = 0
         ORDER BY cr.report_time DESC
         LIMIT 1
     ";

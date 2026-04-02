@@ -30,29 +30,32 @@ $response = [
     'last_update' => null
 ];
 
-// Get latest parking report
-$sql_report = "SELECT id, created_at FROM car_parking_reports ORDER BY inspection_date DESC, created_at DESC LIMIT 1";
-$result_report = $conn->query($sql_report);
+// Get aggregate pass/fail/other counts across ONLY THE LATEST report for each lot_name
+$sql_counts = "
+    SELECT lot_name, vehicle_count, created_at
+    FROM (
+        SELECT c.lot_name, c.vehicle_count, r.created_at,
+               ROW_NUMBER() OVER (PARTITION BY c.lot_name ORDER BY r.inspection_date DESC, r.created_at DESC) as rn
+        FROM car_parking_reports r
+        JOIN parking_lot_counts c ON r.id = c.report_id
+        WHERE r.is_deleted = 0
+    ) t
+    WHERE rn = 1
+";
 
+$result_counts = $conn->query($sql_counts);
 $counts_map = [];
+$latest_ts = null;
 
-if ($result_report && $result_report->num_rows > 0) {
-    $report = $result_report->fetch_assoc();
-    $report_id = $report['id'];
-    $response['last_update'] = $report['created_at'];
-
-    // Get counts for this report
-    $sql_counts = "SELECT lot_name, vehicle_count FROM parking_lot_counts WHERE report_id = ?";
-    $stmt = $conn->prepare($sql_counts);
-    $stmt->bind_param("i", $report_id);
-    $stmt->execute();
-    $result_counts = $stmt->get_result();
-
+if ($result_counts && $result_counts->num_rows > 0) {
     while ($row = $result_counts->fetch_assoc()) {
         $counts_map[$row['lot_name']] = (int) $row['vehicle_count'];
+        if ($latest_ts === null || $row['created_at'] > $latest_ts) {
+            $latest_ts = $row['created_at'];
+        }
     }
-    $stmt->close();
 }
+$response['last_update'] = $latest_ts;
 
 // Build the response based on the mapping (ensures all lots are present even if count is 0)
 foreach ($lot_mapping as $thai_name => $info) {

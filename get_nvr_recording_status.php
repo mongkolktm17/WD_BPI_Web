@@ -36,6 +36,7 @@ $sql_latest_nvr_data = "
     JOIN
         nvr_recording_details crd ON cr.id = crd.report_id
     WHERE
+        cr.is_deleted = 0 AND
         (cr.building, crd.nvr_name, cr.report_time) IN (
             SELECT
                 cr_inner.building,
@@ -45,6 +46,7 @@ $sql_latest_nvr_data = "
                 nvr_recording_reports cr_inner
             JOIN
                 nvr_recording_details crd_inner ON cr_inner.id = crd_inner.report_id
+            WHERE cr_inner.is_deleted = 0
             GROUP BY
                 cr_inner.building,
                 crd_inner.nvr_name

@@ -13,7 +13,7 @@ $response = [
 ];
 
 
-$sql = "SELECT morning_shift, morning_shift_contract, evening_shift, evening_shift_contract, created_at FROM security_guard_counts ORDER BY record_date DESC, created_at DESC LIMIT 1";
+$sql = "SELECT morning_shift, morning_shift_contract, evening_shift, evening_shift_contract, created_at FROM security_guard_counts WHERE is_deleted = 0 ORDER BY record_date DESC, created_at DESC LIMIT 1";
 $result = $conn->query($sql);
 
 if ($result && $result->num_rows > 0) {
