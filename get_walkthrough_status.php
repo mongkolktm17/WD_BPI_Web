@@ -2,6 +2,23 @@
 header('Content-Type: application/json');
 require_once 'config.php';
 
+// --- Caching Logic ---
+$cache_dir = __DIR__ . '/cache';
+$cache_ttl = 60; // 1 minute for dashboard
+$cache_key = "dashboard_walkthrough_status";
+$cache_file = "$cache_dir/$cache_key.json";
+
+if (!is_dir($cache_dir)) {
+    mkdir($cache_dir, 0755, true);
+}
+
+if (file_exists($cache_file) && (time() - filemtime($cache_file) < $cache_ttl)) {
+    echo file_get_contents($cache_file);
+    exit;
+}
+
+ob_start(); // Start capturing output for cache
+
 $response = [
     'zones' => [],
     'online_count' => 0,
@@ -12,8 +29,12 @@ $response = [
     'summary' => []
 ];
 
-// Get the latest report (existing behavior)
-$sql = "SELECT zone1_status, zone2_status, zone3_status, zone4_status, zone5_status, zone6_status, created_at FROM metal_detector_checks WHERE is_deleted = 0 ORDER BY inspection_date DESC, created_at DESC LIMIT 1";
+// 1. Get the absolute latest report for status indicators
+$sql = "SELECT zone1_status, zone2_status, zone3_status, zone4_status, zone5_status, zone6_status, created_at 
+        FROM metal_detector_checks 
+        WHERE is_deleted = 0 
+        ORDER BY inspection_date DESC, created_at DESC 
+        LIMIT 1";
 $result = $conn->query($sql);
 
 if ($result && $result->num_rows > 0) {
@@ -22,7 +43,6 @@ if ($result && $result->num_rows > 0) {
 
     for ($i = 1; $i <= 6; $i++) {
         $status = $row["zone{$i}_status"];
-
         $type = 'offline';
         if (stripos($status, 'Normal') !== false || stripos($status, 'Pass') !== false || stripos($status, 'Online') !== false || $status === 'พร้อมใช้งาน') {
             $type = 'online';
@@ -33,15 +53,11 @@ if ($result && $result->num_rows > 0) {
         } else {
             $response['offline_count']++;
         }
-
-        $response['zones'][$i] = [
-            'status' => $status,
-            'type' => $type
-        ];
+        $response['zones'][$i] = ['status' => $status, 'type' => $type];
     }
 }
 
-// Get aggregate pass/fail/other counts across ONLY THE LATEST report for each guard_post
+// 2. Optimized Summary Query using JOIN instead of correlated subquery
 $sql_summary = "SELECT 
     COUNT(*) as total_reports";
 
@@ -53,8 +69,13 @@ for ($i = 1; $i <= 6; $i++) {
 }
 
 $sql_summary .= " FROM (
-    SELECT * FROM metal_detector_checks m1 
-    WHERE is_deleted = 0 AND id = (SELECT MAX(id) FROM metal_detector_checks m2 WHERE m2.guard_post = m1.guard_post AND m2.is_deleted = 0)
+    SELECT m1.* FROM metal_detector_checks m1
+    JOIN (
+        SELECT guard_post, MAX(id) as max_id
+        FROM metal_detector_checks
+        WHERE is_deleted = 0
+        GROUP BY guard_post
+    ) m2 ON m1.id = m2.max_id
 ) as latest_checks";
 
 $result_summary = $conn->query($sql_summary);
@@ -72,7 +93,12 @@ if ($result_summary && $result_summary->num_rows > 0) {
     }
 }
 
+$output = json_encode($response);
+echo $output;
 
-echo json_encode($response);
+// Save to cache
+file_put_contents($cache_file, $output);
+
 $conn->close();
+ob_end_flush();
 ?>

@@ -13,6 +13,21 @@ $range = isset($_GET['range']) ? $_GET['range'] : 'week';
 $sel_month = isset($_GET['month']) ? (int)$_GET['month'] : null;
 $sel_year = isset($_GET['year']) ? (int)$_GET['year'] : null;
 
+// --- Cache Logic ---
+$cache_dir = __DIR__ . '/cache';
+if (!is_dir($cache_dir)) {
+    mkdir($cache_dir, 0777, true);
+}
+
+$cache_key = "stats_{$range}_" . ($sel_month ?? '0') . "_" . ($sel_year ?? '0');
+$cache_file = "$cache_dir/$cache_key.json";
+$cache_ttl = 300; // 5 minutes
+
+if (file_exists($cache_file) && (time() - filemtime($cache_file)) < $cache_ttl) {
+    echo file_get_contents($cache_file);
+    exit;
+}
+
 // Determine start and end dates based on range
 $dates = [];
 $group_format = "%Y-%m-%d";
@@ -85,31 +100,34 @@ $sql_security = "
 ";
 $res_security = $conn->query($sql_security);
 $security_data = [];
-while ($row = $res_security->fetch_assoc()) {
-    $security_data[$row['group_date']] = $row;
+if ($res_security) {
+    while ($row = $res_security->fetch_assoc()) {
+        $security_data[$row['group_date']] = $row;
+    }
 }
 
 // 2. Parking Lot Counts (Site-wide Snapshot Logic)
-// First, find all lot names to track
 $lot_names_res = $conn->query("SELECT DISTINCT lot_name FROM parking_lot_counts");
 $all_lots = [];
-while ($l = $lot_names_res->fetch_row()) $all_lots[] = $l[0];
+if ($lot_names_res) {
+    while ($l = $lot_names_res->fetch_row()) $all_lots[] = $l[0];
+}
 
-// Get initial state (last known counts before $start_date)
 $parking_state = [];
 foreach ($all_lots as $lot) $parking_state[$lot] = ['car' => 0, 'moto' => 0];
 
+// Get initial state (latest counts before $start_date) - Optimized with Join
 $sql_init_parking = "
-    SELECT c.lot_name, c.vehicle_count, r.created_at
+    SELECT c.lot_name, c.vehicle_count
     FROM car_parking_reports r
     JOIN parking_lot_counts c ON r.id = c.report_id
-    WHERE r.is_deleted = 0 AND r.created_at < '$start_date 00:00:00'
-    AND r.id = (
-        SELECT MAX(r2.id) 
-        FROM car_parking_reports r2 
-        JOIN parking_lot_counts c2 ON r2.id = c2.report_id 
-        WHERE c2.lot_name = c.lot_name AND r2.is_deleted = 0 AND r2.created_at < '$start_date 00:00:00'
-    )
+    JOIN (
+        SELECT c2.lot_name, MAX(r2.id) as max_id
+        FROM car_parking_reports r2
+        JOIN parking_lot_counts c2 ON r2.id = c2.report_id
+        WHERE r2.is_deleted = 0 AND r2.created_at < '$start_date 00:00:00'
+        GROUP BY c2.lot_name
+    ) m ON c.lot_name = m.lot_name AND r.id = m.max_id
 ";
 $res_init_p = $conn->query($sql_init_parking);
 if ($res_init_p) {
@@ -132,8 +150,10 @@ $sql_parking_activity = "
 ";
 $res_p_activity = $conn->query($sql_parking_activity);
 $parking_activity = [];
-while ($row = $res_p_activity->fetch_assoc()) {
-    $parking_activity[$row['group_date']][] = $row;
+if ($res_p_activity) {
+    while ($row = $res_p_activity->fetch_assoc()) {
+        $parking_activity[$row['group_date']][] = $row;
+    }
 }
 
 $parking_data = [];
@@ -154,7 +174,7 @@ foreach ($dates as $d) {
     
     $parking_data[$d] = [
         'group_date' => $d,
-        'avg_car' => $total_car, // Now actually SUM, but variable name kept for frontend compatibility
+        'avg_car' => $total_car,
         'avg_moto' => $total_moto
     ];
 }
@@ -162,23 +182,25 @@ foreach ($dates as $d) {
 // 3. CCTV Online Status (%) - Site-wide Snapshot Logic
 $nvr_names_res = $conn->query("SELECT DISTINCT nvr_name FROM cctv_report_details");
 $all_nvrs = [];
-while ($n = $nvr_names_res->fetch_row()) $all_nvrs[] = $n[0];
+if ($nvr_names_res) {
+    while ($n = $nvr_names_res->fetch_row()) $all_nvrs[] = $n[0];
+}
 
 $cctv_state = [];
 foreach ($all_nvrs as $nvr) $cctv_state[$nvr] = ['online' => 0, 'total' => 0];
 
-// Get initial state
+// Get initial state - Optimized with Join
 $sql_init_cctv = "
     SELECT d.nvr_name, d.online_channels, d.total_channels
     FROM cctv_reports r
     JOIN cctv_report_details d ON r.id = d.report_id
-    WHERE r.is_deleted = 0 AND r.report_time < '$start_date 00:00:00'
-    AND d.id = (
-        SELECT MAX(d2.id)
+    JOIN (
+        SELECT d2.nvr_name, MAX(d2.id) as max_id
         FROM cctv_reports r2
         JOIN cctv_report_details d2 ON r2.id = d2.report_id
-        WHERE d2.nvr_name = d.nvr_name AND r2.is_deleted = 0 AND r2.report_time < '$start_date 00:00:00'
-    )
+        WHERE r2.is_deleted = 0 AND r2.report_time < '$start_date 00:00:00'
+        GROUP BY d2.nvr_name
+    ) m ON d.nvr_name = m.nvr_name AND d.id = m.max_id
 ";
 $res_init_c = $conn->query($sql_init_cctv);
 if ($res_init_c) {
@@ -204,8 +226,10 @@ $sql_cctv_activity = "
 ";
 $res_c_activity = $conn->query($sql_cctv_activity);
 $cctv_activity = [];
-while ($row = $res_c_activity->fetch_assoc()) {
-    $cctv_activity[$row['group_date']][] = $row;
+if ($res_c_activity) {
+    while ($row = $res_c_activity->fetch_assoc()) {
+        $cctv_activity[$row['group_date']][] = $row;
+    }
 }
 
 $cctv_data = [];
@@ -227,28 +251,16 @@ foreach ($dates as $d) {
     }
     
     $avg_online = ($total_channels > 0) ? ($total_online * 100.0 / $total_channels) : 0;
-    
-    $cctv_data[$d] = [
-        'group_date' => $d,
-        'avg_online' => $avg_online
-    ];
+    $cctv_data[$d] = ['group_date' => $d, 'avg_online' => $avg_online];
 }
 
 // 4. Hand Held Metal Detector (Pass Rate)
-// NOTE: battery_status uses 'พร้อมใช้งาน', but led_status, detection_test_status, alarm_status use 'ผ่านการทดสอบ'
 $sql_hh = "
-    SELECT 
-        group_date,
-        SUM(is_pass) as pass_count,
-        COUNT(*) as total_count
+    SELECT group_date, SUM(is_pass) as pass_count, COUNT(*) as total_count
     FROM (
-        SELECT 
-            DATE_FORMAT(created_at, '$group_format') as group_date,
-            CASE WHEN 
-                battery_status = 'พร้อมใช้งาน' AND 
-                led_status = 'ผ่านการทดสอบ' AND 
-                detection_test_status = 'ผ่านการทดสอบ' AND 
-                alarm_status = 'ผ่านการทดสอบ' 
+        SELECT DATE_FORMAT(created_at, '$group_format') as group_date,
+            CASE WHEN battery_status = 'พร้อมใช้งาน' AND led_status = 'ผ่านการทดสอบ' AND 
+                detection_test_status = 'ผ่านการทดสอบ' AND alarm_status = 'ผ่านการทดสอบ' 
             THEN 1 ELSE 0 END as is_pass,
             ROW_NUMBER() OVER (
                 PARTITION BY building, guard_post, shift, DATE_FORMAT(created_at, '$group_format') 
@@ -256,33 +268,24 @@ $sql_hh = "
             ) as rn
         FROM hand_held_checks
         WHERE is_deleted = 0 AND $where_range_hh
-    ) t
-    WHERE rn = 1
-    GROUP BY group_date
-    ORDER BY group_date ASC
+    ) t WHERE rn = 1 GROUP BY group_date ORDER BY group_date ASC
 ";
 $res_hh = $conn->query($sql_hh);
 $hh_data = [];
-while ($row = $res_hh->fetch_assoc()) {
-    $hh_data[$row['group_date']] = $row;
+if ($res_hh) {
+    while ($row = $res_hh->fetch_assoc()) {
+        $hh_data[$row['group_date']] = $row;
+    }
 }
 
 // 5. Walkthrough Metal Detector (Pass Rate)
 $sql_wt = "
-    SELECT 
-        group_date,
-        SUM(is_pass) as pass_count,
-        COUNT(*) as total_count
+    SELECT group_date, SUM(is_pass) as pass_count, COUNT(*) as total_count
     FROM (
-        SELECT 
-            DATE_FORMAT(created_at, '$group_format') as group_date,
-            CASE WHEN 
-                zone1_status = 'พร้อมใช้งาน' AND 
-                zone2_status = 'พร้อมใช้งาน' AND 
-                zone3_status = 'พร้อมใช้งาน' AND 
-                zone4_status = 'พร้อมใช้งาน' AND 
-                zone5_status = 'พร้อมใช้งาน' AND 
-                zone6_status = 'พร้อมใช้งาน' 
+        SELECT DATE_FORMAT(created_at, '$group_format') as group_date,
+            CASE WHEN zone1_status = 'พร้อมใช้งาน' AND zone2_status = 'พร้อมใช้งาน' AND 
+                zone3_status = 'พร้อมใช้งาน' AND zone4_status = 'พร้อมใช้งาน' AND 
+                zone5_status = 'พร้อมใช้งาน' AND zone6_status = 'พร้อมใช้งาน' 
             THEN 1 ELSE 0 END as is_pass,
             ROW_NUMBER() OVER (
                 PARTITION BY building, guard_post, shift, DATE_FORMAT(created_at, '$group_format') 
@@ -290,58 +293,42 @@ $sql_wt = "
             ) as rn
         FROM metal_detector_checks
         WHERE is_deleted = 0 AND $where_range_wt
-    ) t
-    WHERE rn = 1
-    GROUP BY group_date
-    ORDER BY group_date ASC
+    ) t WHERE rn = 1 GROUP BY group_date ORDER BY group_date ASC
 ";
 $res_wt = $conn->query($sql_wt);
 $wt_data = [];
-while ($row = $res_wt->fetch_assoc()) {
-    $wt_data[$row['group_date']] = $row;
+if ($res_wt) {
+    while ($row = $res_wt->fetch_assoc()) {
+        $wt_data[$row['group_date']] = $row;
+    }
 }
 
-// Populate datasets for EVERY date in the sequence
+// Populate datasets
 $labels = [];
 $datasets = [
-    'security_morning' => [],
-    'security_evening' => [],
-    'security_total' => [],
-    'parking_car' => [],
-    'parking_moto' => [],
-    'cctv_online' => [],
-    'hh_pass_rate' => [],
-    'wt_pass_rate' => []
+    'security_morning' => [], 'security_evening' => [], 'security_total' => [],
+    'parking_car' => [], 'parking_moto' => [], 'cctv_online' => [],
+    'hh_pass_rate' => [], 'wt_pass_rate' => []
 ];
 
 foreach ($dates as $date) {
-    // Format label for display
     $labels[] = date($display_format, strtotime($date . ($range === 'year' ? '-01' : '')));
     
-    // Security
     $morning = isset($security_data[$date]) ? round($security_data[$date]['avg_morning'], 1) : null;
     $evening = isset($security_data[$date]) ? round($security_data[$date]['avg_evening'], 1) : null;
     $datasets['security_morning'][] = $morning;
     $datasets['security_evening'][] = $evening;
-    $datasets['security_total'][] = ($morning !== null || $evening !== null) 
-        ? round(($morning ?? 0) + ($evening ?? 0), 1) : null;
+    $datasets['security_total'][] = ($morning !== null || $evening !== null) ? round(($morning ?? 0) + ($evening ?? 0), 1) : null;
     
-    // Parking
     $datasets['parking_car'][] = isset($parking_data[$date]) ? round($parking_data[$date]['avg_car'], 1) : null;
     $datasets['parking_moto'][] = isset($parking_data[$date]) ? round($parking_data[$date]['avg_moto'], 1) : null;
-    
-    // CCTV
     $datasets['cctv_online'][] = (isset($cctv_data[$date]) && $cctv_data[$date]['avg_online'] !== null) ? round($cctv_data[$date]['avg_online'], 1) : null;
     
-    // Metal Detectors
-    $datasets['hh_pass_rate'][] = (isset($hh_data[$date]) && $hh_data[$date]['total_count'] > 0) 
-        ? round(($hh_data[$date]['pass_count'] / $hh_data[$date]['total_count']) * 100, 1) : null;
-        
-    $datasets['wt_pass_rate'][] = (isset($wt_data[$date]) && $wt_data[$date]['total_count'] > 0) 
-        ? round(($wt_data[$date]['pass_count'] / $wt_data[$date]['total_count']) * 100, 1) : null;
+    $datasets['hh_pass_rate'][] = (isset($hh_data[$date]) && $hh_data[$date]['total_count'] > 0) ? round(($hh_data[$date]['pass_count'] / $hh_data[$date]['total_count']) * 100, 1) : null;
+    $datasets['wt_pass_rate'][] = (isset($wt_data[$date]) && $wt_data[$date]['total_count'] > 0) ? round(($wt_data[$date]['pass_count'] / $wt_data[$date]['total_count']) * 100, 1) : null;
 }
 
-echo json_encode([
-    'labels' => $labels,
-    'datasets' => $datasets
-]);
+$response = json_encode(['labels' => $labels, 'datasets' => $datasets]);
+file_put_contents($cache_file, $response);
+echo $response;
+

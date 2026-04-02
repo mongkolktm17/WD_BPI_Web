@@ -54,3 +54,6 @@ report_assets/Images/images_logo.png
 /unuse/
 
 
+  
+# Local cache files  
+cache/ 

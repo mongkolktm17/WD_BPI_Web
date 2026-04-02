@@ -2,6 +2,23 @@
 header('Content-Type: application/json');
 require_once 'config.php';
 
+// --- Caching Logic ---
+$cache_dir = __DIR__ . '/cache';
+$cache_ttl = 60; // 1 minute for dashboard
+$cache_key = "dashboard_handheld_status";
+$cache_file = "$cache_dir/$cache_key.json";
+
+if (!is_dir($cache_dir)) {
+    mkdir($cache_dir, 0755, true);
+}
+
+if (file_exists($cache_file) && (time() - filemtime($cache_file) < $cache_ttl)) {
+    echo file_get_contents($cache_file);
+    exit;
+}
+
+ob_start(); // Start capturing output for cache
+
 $response = [
     'battery_status' => 'Unknown',
     'led_status' => 'Unknown',
@@ -17,8 +34,12 @@ $response = [
     ]
 ];
 
-// Get the latest report (existing behavior)
-$sql = "SELECT battery_status, led_status, detection_test_status, alarm_status, created_at FROM hand_held_checks WHERE is_deleted = 0 ORDER BY inspection_date DESC, created_at DESC LIMIT 1";
+// 1. Get the latest report for status indicators
+$sql = "SELECT battery_status, led_status, detection_test_status, alarm_status, created_at 
+        FROM hand_held_checks 
+        WHERE is_deleted = 0 
+        ORDER BY inspection_date DESC, created_at DESC 
+        LIMIT 1";
 $result = $conn->query($sql);
 
 if ($result && $result->num_rows > 0) {
@@ -30,7 +51,7 @@ if ($result && $result->num_rows > 0) {
     $response['last_update'] = $row['created_at'];
 }
 
-// Get aggregate pass/fail counts across ONLY THE LATEST report for each guard_post
+// 2. Optimized Summary Query using JOIN instead of correlated subquery
 $sql_summary = "SELECT 
     COUNT(*) as total_reports,
     SUM(CASE WHEN battery_status = 'พร้อมใช้งาน' THEN 1 ELSE 0 END) as battery_pass,
@@ -42,10 +63,14 @@ $sql_summary = "SELECT
     SUM(CASE WHEN alarm_status = 'ผ่านการทดสอบ' THEN 1 ELSE 0 END) as alarm_pass,
     SUM(CASE WHEN alarm_status != 'ผ่านการทดสอบ' THEN 1 ELSE 0 END) as alarm_fail
 FROM (
-    SELECT * FROM hand_held_checks h1 
-    WHERE is_deleted = 0 AND id = (SELECT MAX(id) FROM hand_held_checks h2 WHERE h2.guard_post = h1.guard_post AND h2.is_deleted = 0)
+    SELECT h1.* FROM hand_held_checks h1
+    JOIN (
+        SELECT guard_post, MAX(id) as max_id
+        FROM hand_held_checks
+        WHERE is_deleted = 0
+        GROUP BY guard_post
+    ) h2 ON h1.id = h2.max_id
 ) as latest_checks";
-
 
 $result_summary = $conn->query($sql_summary);
 
@@ -72,6 +97,12 @@ if ($result_summary && $result_summary->num_rows > 0) {
     ];
 }
 
-echo json_encode($response);
+$output = json_encode($response);
+echo $output;
+
+// Save to cache
+file_put_contents($cache_file, $output);
+
 $conn->close();
+ob_end_flush();
 ?>

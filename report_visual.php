@@ -373,6 +373,13 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
             }
 
             try {
+                // Show loading state
+                document.querySelectorAll('.chart-card').forEach(card => {
+                    const canvas = card.querySelector('canvas');
+                    if (canvas) canvas.style.opacity = '0.3';
+                    card.classList.add('loading-shimmer');
+                });
+
                 let url = `get_stats_data.php?range=${range}`;
                 if (range === 'month' && monthPicker.value) {
                     const [year, month] = monthPicker.value.split('-');
@@ -381,6 +388,13 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 
                 const response = await fetch(url);
                 const data = await response.json();
+
+                // Remove loading state
+                document.querySelectorAll('.chart-card').forEach(card => {
+                    const canvas = card.querySelector('canvas');
+                    if (canvas) canvas.style.opacity = '1';
+                    card.classList.remove('loading-shimmer');
+                });
 
                 if (data.error) {
                     console.error(data.error);
