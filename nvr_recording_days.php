@@ -132,7 +132,8 @@ if ($result_latest && $result_latest->num_rows > 0) {
 
 
 // --- Data Fetching for History ---
-$history_data = [];
+$history_submissions = [];
+$submission_ids = [];
 $filter_date = $_GET['filter_date'] ?? null;
 
 $sql_history = "SELECT 
@@ -163,9 +164,45 @@ $result_history = $stmt_history->get_result();
 
 if ($result_history && $result_history->num_rows > 0) {
     while ($row = $result_history->fetch_assoc()) {
-        $history_data[] = $row;
+        $history_submissions[] = $row;
+        $submission_ids[] = $row['submission_id'];
     }
 }
+
+// Gather all NVRs in the DB for the table columns
+$all_nvrs = [];
+$nvr_list_sql = "SELECT building, nvr_name FROM cctv_devices ORDER BY building, nvr_name";
+$nvr_list_res = $conn->query($nvr_list_sql);
+if ($nvr_list_res) {
+    while ($row = $nvr_list_res->fetch_assoc()) {
+        $all_nvrs[] = $row;
+    }
+}
+
+// Fetch all details for these submission IDs
+$submission_details = [];
+if (!empty($submission_ids)) {
+    $escaped_ids = array_map(function($id) use ($conn) { return "'" . $conn->real_escape_string($id) . "'"; }, $submission_ids);
+    $ids_str = implode(",", $escaped_ids);
+    $details_sql = "SELECT r.submission_id, r.building, d.nvr_name, d.recording_days 
+                    FROM nvr_recording_reports r 
+                    JOIN nvr_recording_details d ON r.id = d.report_id 
+                    WHERE r.submission_id IN ($ids_str)";
+    $details_res = $conn->query($details_sql);
+    if ($details_res) {
+        while ($drow = $details_res->fetch_assoc()) {
+            $key = $drow['building'] . '_' . $drow['nvr_name'];
+            $submission_details[$drow['submission_id']][$key] = $drow['recording_days'];
+        }
+    }
+}
+
+function getShortNvrLabel($building, $nvr_name) {
+    $num = preg_replace('/[^0-9]/', '', $nvr_name);
+    $num = ltrim($num, '0');
+    return $building . '-N' . $num;
+}
+
 
 // --- NVR Status Counts for 62-day criteria ---
 // Initialize with counts from cctv_devices
@@ -300,20 +337,97 @@ $conn->close();
                 </div>
             </form>
 
-            <div id="historySection" class="glass-card rounded-3xl shadow-xl p-8 mt-12 border border-sky-100">
-                <h2 class="text-2xl font-bold section-title mb-6">ประวัติการรายงาน</h2>
+            <div id="historySection" class="glass-card rounded-3xl shadow-xl p-6 mt-12 border border-sky-100">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                    <h2 class="text-2xl font-bold section-title flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                            stroke="currentColor" class="w-8 h-8 mr-3 text-sky-600">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        ประวัติการรายงาน
+                    </h2>
+                    <button onclick="exportTableToCSV('nvr_recording_days_history.csv')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-5 rounded-xl transition-colors shadow-md flex items-center gap-2 text-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                        </svg>
+                        ส่งออกเป็น CSV
+                    </button>
+                </div>
 
                 <div class="flex flex-wrap items-center gap-4 mb-6">
                     <label for="filterDate" class="font-medium text-slate-700">กรองตามวันที่:</label>
                     <input type="date" id="filterDate"
-                        class="input-modern px-4 py-3 rounded-2xl font-medium text-gray-700">
+                        class="input-modern px-4 py-2 rounded-2xl font-medium text-gray-700">
                     <button id="applyFilterBtn"
-                        class="submit-btn-modern text-white font-semibold py-3 px-6 rounded-xl">ค้นหา</button>
+                        class="submit-btn-modern text-white font-semibold py-2 px-6 rounded-xl text-sm">ค้นหา</button>
                     <button id="clearFilterBtn"
-                        class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold py-3 px-6 rounded-xl">ล้างตัวกรอง</button>
+                        class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold py-2 px-6 rounded-xl text-sm">ล้างตัวกรอง</button>
                 </div>
 
-                <div id="historyContainer" class="space-y-4"></div>
+                <div class="overflow-x-auto rounded-xl border border-gray-200">
+                    <table class="w-full text-left border-collapse bg-white table-layout-fixed">
+                        <thead class="bg-gray-50 text-gray-700 uppercase text-xs leading-normal">
+                            <tr>
+                                <th class="py-3 px-2 font-bold text-center whitespace-nowrap" title="วันที่ส่ง">วันที่</th>
+                                <th class="py-3 px-2 font-bold text-center whitespace-nowrap" title="เวลาที่บันทึก">เวลา</th>
+                                <th class="py-3 px-2 font-bold whitespace-nowrap" title="ผู้รายงาน">ผู้รายงาน</th>
+                                <?php foreach ($all_nvrs as $nvr): 
+                                    $label = getShortNvrLabel($nvr['building'], $nvr['nvr_name']);
+                                    ?>
+                                    <th class="py-3 px-1.5 font-bold text-center whitespace-nowrap text-[10px] cursor-help" title="Building <?php echo htmlspecialchars($nvr['building'] . ' - ' . $nvr['nvr_name']); ?>"><?php echo htmlspecialchars($label); ?></th>
+                                <?php endforeach; ?>
+                                <th class="py-3 px-2 font-bold text-center whitespace-nowrap">การกระทำ</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-gray-600 text-xs font-light">
+                            <?php if (!empty($history_submissions)): ?>
+                                <?php foreach ($history_submissions as $row):
+                                    $submission_time = new DateTime($row['submission_time']);
+                                    $canEdit = $is_admin || $current_user_id == (int)$row['submitted_by_id'];
+                                    $canDelete = $is_admin;
+                                    ?>
+                                    <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                                        <td class="py-3 px-2 text-center whitespace-nowrap">
+                                            <div class="font-medium text-gray-800"><?php echo $submission_time->format('d/m/Y'); ?></div>
+                                        </td>
+                                        <td class="py-3 px-2 text-center whitespace-nowrap">
+                                            <?php echo $submission_time->format('H:i'); ?>
+                                        </td>
+                                        <td class="py-3 px-2 whitespace-nowrap font-medium text-gray-700">
+                                            <?php echo htmlspecialchars($row['submitted_by']); ?>
+                                        </td>
+                                        <?php foreach ($all_nvrs as $nvr): 
+                                            $nvr_key = $nvr['building'] . '_' . $nvr['nvr_name'];
+                                            $days = $submission_details[$row['submission_id']][$nvr_key] ?? '-';
+                                            $color = ($days !== '-' && (int)$days < 62) ? 'text-red-600 font-bold' : 'text-gray-700';
+                                            ?>
+                                            <td class="py-3 px-1.5 text-center font-semibold text-xs <?php echo $color; ?>">
+                                                <?php echo htmlspecialchars($days); ?>
+                                            </td>
+                                        <?php endforeach; ?>
+                                        <td class="py-3 px-2 text-center whitespace-nowrap font-medium">
+                                            <div class="flex items-center justify-center gap-2">
+                                                <?php if ($canEdit): ?>
+                                                    <a href="edit_nvr_report.php?submission_id=<?php echo htmlspecialchars($row['submission_id']); ?>" class="text-blue-600 hover:text-blue-800 font-bold">แก้ไข</a>
+                                                <?php endif; ?>
+                                                <?php if ($canDelete): ?>
+                                                    <button onclick="handleDelete('<?php echo htmlspecialchars($row['submission_id']); ?>')" class="text-red-600 hover:text-red-800 font-bold">ลบ</button>
+                                                <?php endif; ?>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="<?php echo (4 + count($all_nvrs)); ?>" class="py-8 px-6 text-center text-gray-400 bg-gray-50">
+                                        ไม่พบข้อมูลประวัติการรายงาน
+                                    </td>
+                                </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </main>
@@ -321,7 +435,6 @@ $conn->close();
     <script>
         const nvrData = <?php echo json_encode($nvr_data_from_db); ?>;
         const latestRecordingDays = <?php echo json_encode($latest_recording_days); ?>;
-        let historyData = <?php echo json_encode($history_data); ?>;
         const isAdmin = <?php echo json_encode($is_admin); ?>;
         const currentUserId = <?php echo json_encode($current_user_id); ?>;
         let currentBuilding = null;
@@ -350,33 +463,6 @@ $conn->close();
                     alert('เกิดข้อผิดพลาดในการสื่อสารกับเซิร์ฟเวอร์');
                     console.error('Error:', error);
                 });
-        }
-
-        function renderHistory() {
-            const container = document.getElementById('historyContainer');
-            if (historyData.length === 0) {
-                container.innerHTML = '<p class="text-center text-slate-500 py-8">ยังไม่มีประวัติการรายงาน</p>';
-                return;
-            }
-            container.innerHTML = historyData.map((report, index) => {
-                const canEdit = isAdmin || currentUserId === parseInt(report.submitted_by_id, 10);
-                const canDelete = isAdmin;
-                const editButton = canEdit ? `<a href="edit_nvr_report.php?submission_id=${report.submission_id}" class="text-sm font-semibold text-blue-600 hover:text-blue-800">แก้ไข</a>` : '';
-                const deleteButton = canDelete ? `<button onclick="handleDelete('${report.submission_id}')" class="text-sm font-semibold text-red-600 hover:text-red-800">ลบ</button>` : '';
-
-                return `
-                <div class="bg-white/50 border border-slate-200/50 rounded-lg p-4 flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                        <p class="font-bold text-slate-800">รายงาน #${historyData.length - index}</p>
-                        <p class="text-sm text-slate-500">โดย: ${report.submitted_by} | เวลา: ${new Date(report.submission_time).toLocaleString('th-TH')} | จำนวน: ${report.nvr_count} เครื่อง</p>
-                    </div>
-                    <div class="flex items-center gap-4">
-                        ${editButton}
-                        ${deleteButton}
-                    </div>
-                </div>
-            `;
-            }).join('');
         }
 
         function renderBuildingTabs() {
@@ -470,7 +556,6 @@ $conn->close();
             renderBuildingTabs();
             renderDailyReportForm();
             setupInputListeners();
-            renderHistory();
 
             const filterDateInput = document.getElementById('filterDate');
             const urlParams = new URLSearchParams(window.location.search);
@@ -490,6 +575,40 @@ $conn->close();
                 window.location.href = 'nvr_recording_days.php';
             });
         });
+
+        function exportTableToCSV(filename) {
+            const csv = [];
+            const rows = document.querySelectorAll("table tr");
+            
+            for (let i = 0; i < rows.length; i++) {
+                const row = [], cols = rows[i].querySelectorAll("td, th");
+                
+                if (cols.length === 1 && cols[0].getAttribute("colspan")) {
+                    continue;
+                }
+                
+                for (let j = 0; j < cols.length; j++) {
+                    let text = cols[j].getAttribute("title") || cols[j].innerText.trim();
+                    text = text.replace(/"/g, '""');
+                    row.push('"' + text + '"');
+                }
+                
+                csv.push(row.join(","));
+            }
+
+            const csvContent = "\uFEFF" + csv.join("\n");
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            if (link.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                link.setAttribute("download", filename);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
     </script>
 </body>
 

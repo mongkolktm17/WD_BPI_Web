@@ -76,7 +76,7 @@ $report_history_result = $conn->query("
     FROM cctv_reports cr
     LEFT JOIN users u ON cr.submitted_by_id = u.id
     ORDER BY cr.report_time DESC 
-    LIMIT 10
+    LIMIT 20
 ");
 $report_history = [];
 while ($row = $report_history_result->fetch_assoc()) {
@@ -93,6 +93,24 @@ while ($row = $report_history_result->fetch_assoc()) {
     }
     $row['details'] = $details;
     $report_history[] = $row;
+}
+
+// Gather all NVRs in the DB for the table columns
+$all_nvrs = [];
+$nvr_list_sql = "SELECT building, nvr_name FROM cctv_devices ORDER BY building, nvr_name";
+$nvr_list_res = $conn->query($nvr_list_sql);
+if ($nvr_list_res) {
+    while ($row = $nvr_list_res->fetch_assoc()) {
+        $all_nvrs[] = $row;
+    }
+}
+
+if (!function_exists('getShortNvrLabel')) {
+    function getShortNvrLabel($building, $nvr_name) {
+        $num = preg_replace('/[^0-9]/', '', $nvr_name);
+        $num = ltrim($num, '0');
+        return $building . '-N' . $num;
+    }
 }
 
 $conn->close();
@@ -233,27 +251,89 @@ $conn->close();
                 </button>
             </div>
             <div class="mt-12 glass-card rounded-3xl shadow-xl p-6">
-                <div class="flex items-center justify-between mb-6">
-                    <h2 id="history-title" class="text-2xl font-bold section-title flex items-center"><span
-                            class="text-3xl mr-3">📋</span> ประวัติการบันทึกข้อมูล</h2>
-                    <div class="text-sm text-gray-600">
-                        รายการล่าสุด <span id="history-count">0</span> รายการ
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                    <h2 id="history-title" class="text-2xl font-bold section-title flex items-center">
+                        <span class="text-3xl mr-3">📋</span> ประวัติการบันทึกข้อมูล
+                    </h2>
+                    <div class="flex items-center gap-4">
+                        <button onclick="exportTableToCSV('cctv_report_history.csv')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-xl transition-colors shadow-md flex items-center gap-2 text-xs">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                            </svg>
+                            ส่งออกเป็น CSV
+                        </button>
+                        <div class="text-sm text-gray-600">
+                            รายการล่าสุด <span id="history-count"><?php echo count($report_history); ?></span> รายการ
+                        </div>
                     </div>
                 </div>
-                <div id="loading-history" class="text-center py-8 text-gray-500 hidden">
-                    <div
-                        class="animate-spin inline-block w-8 h-8 border-4 border-current border-t-transparent text-blue-600 rounded-full mb-4">
-                    </div>
-                    <p>กำลังโหลดข้อมูล...</p>
-                </div>
-                <div id="no-history" class="text-center py-12 text-gray-500">
-                    <div class="text-6xl mb-4">
-                        📊
-                    </div>
-                    <p class="text-lg">ยังไม่มีประวัติการบันทึกข้อมูล</p>
-                    <p class="text-sm mt-2">กดปุ่ม "ส่งรายงานสถานะ" เพื่อบันทึกข้อมูลครั้งแรก</p>
-                </div>
-                <div id="history-list" class="space-y-4 hidden">
+
+                <div class="overflow-x-auto rounded-xl border border-gray-200">
+                    <table class="w-full text-left border-collapse bg-white table-layout-fixed">
+                        <thead class="bg-gray-50 text-gray-700 uppercase text-[10px] leading-normal">
+                            <tr>
+                                <th class="py-3 px-2 font-bold text-center whitespace-nowrap" title="วันที่ตรวจ">วันที่</th>
+                                <th class="py-3 px-2 font-bold text-center whitespace-nowrap" title="เวลาที่บันทึก">เวลา</th>
+                                <th class="py-3 px-2 font-bold text-center whitespace-nowrap" title="อาคาร">อาคาร</th>
+                                <th class="py-3 px-2 font-bold whitespace-nowrap" title="ผู้รายงาน">ผู้รายงาน</th>
+                                <th class="py-3 px-2 font-bold text-center whitespace-nowrap" title="ออนไลน์/ทั้งหมด">ออนไลน์/ทั้งหมด</th>
+                                <th class="py-3 px-2 font-bold text-center whitespace-nowrap" title="เปอร์เซ็นต์">เปอร์เซ็นต์</th>
+                                <?php foreach ($all_nvrs as $nvr): 
+                                    $label = getShortNvrLabel($nvr['building'], $nvr['nvr_name']);
+                                    ?>
+                                    <th class="py-3 px-1.5 font-bold text-center whitespace-nowrap text-[9px] cursor-help text-slate-500" title="Building <?php echo htmlspecialchars($nvr['building'] . ' - ' . $nvr['nvr_name']); ?>"><?php echo htmlspecialchars($label); ?></th>
+                                <?php endforeach; ?>
+                            </tr>
+                        </thead>
+                        <tbody class="text-gray-600 text-xs font-light">
+                            <?php if (!empty($report_history)): ?>
+                                <?php foreach ($report_history as $row):
+                                    $submission_time = new DateTime($row['report_time']);
+                                    ?>
+                                    <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                                        <td class="py-3 px-2 text-center whitespace-nowrap">
+                                            <div class="font-medium text-gray-800"><?php echo $submission_time->format('d/m/Y'); ?></div>
+                                        </td>
+                                        <td class="py-3 px-2 text-center whitespace-nowrap">
+                                            <?php echo $submission_time->format('H:i'); ?>
+                                        </td>
+                                        <td class="py-3 px-2 text-center whitespace-nowrap font-semibold">
+                                            <?php echo htmlspecialchars($row['building']); ?>
+                                        </td>
+                                        <td class="py-3 px-2 whitespace-nowrap font-medium text-gray-700">
+                                            <?php echo htmlspecialchars($row['username'] ?? 'N/A'); ?>
+                                        </td>
+                                        <td class="py-3 px-2 text-center whitespace-nowrap font-bold text-gray-700">
+                                            <?php echo htmlspecialchars($row['online_channels'] . '/' . $row['total_channels']); ?>
+                                        </td>
+                                        <td class="py-3 px-2 text-center whitespace-nowrap font-bold text-blue-600">
+                                            <?php echo htmlspecialchars($row['online_percentage'] . '%'); ?>
+                                        </td>
+                                        <?php foreach ($all_nvrs as $nvr): 
+                                            // Only display details for this NVR if it belongs to the report's building
+                                            $val = '-';
+                                            $color = 'text-gray-400';
+                                            if ($nvr['building'] === $row['building'] && isset($row['details'][$nvr['nvr_name']])) {
+                                                $nvr_detail = $row['details'][$nvr['nvr_name']];
+                                                $val = $nvr_detail['online_channels'] . '/' . $nvr_detail['total_channels'];
+                                                $color = ($nvr_detail['online_channels'] < $nvr_detail['total_channels']) ? 'text-red-600 font-bold' : 'text-green-600 font-bold';
+                                            }
+                                            ?>
+                                            <td class="py-3 px-1.5 text-center font-semibold text-[10px] <?php echo $color; ?>">
+                                                <?php echo htmlspecialchars($val); ?>
+                                            </td>
+                                        <?php endforeach; ?>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="<?php echo (6 + count($all_nvrs)); ?>" class="py-8 px-6 text-center text-gray-400 bg-gray-50">
+                                        ไม่พบข้อมูลประวัติการรายงาน
+                                    </td>
+                                </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
                 </div>
             </div>
     </main>
@@ -616,71 +696,38 @@ $conn->close();
             }, 3000);
         }
 
-        function renderHistoryList() {
-            const historyList = document.getElementById('history-list');
-            const noHistory = document.getElementById('no-history');
-            const historyCount = document.getElementById('history-count');
-
-            historyCount.textContent = reportHistory.length;
-
-            if (reportHistory.length === 0) {
-                historyList.classList.add('hidden');
-                noHistory.classList.remove('hidden');
-                return;
+        function exportTableToCSV(filename) {
+            const csv = [];
+            const rows = document.querySelectorAll("table tr");
+            
+            for (let i = 0; i < rows.length; i++) {
+                const row = [], cols = rows[i].querySelectorAll("td, th");
+                
+                if (cols.length === 1 && cols[0].getAttribute("colspan")) {
+                    continue;
+                }
+                
+                for (let j = 0; j < cols.length; j++) {
+                    let text = cols[j].getAttribute("title") || cols[j].innerText.trim();
+                    text = text.replace(/"/g, '""');
+                    row.push('"' + text + '"');
+                }
+                
+                csv.push(row.join(","));
             }
 
-            noHistory.classList.add('hidden');
-            historyList.classList.remove('hidden');
-
-            historyList.innerHTML = '';
-
-            reportHistory.forEach((report, index) => {
-                const reportDate = new Date(report.report_time);
-                const formattedDate = reportDate.toLocaleDateString('th-TH', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-
-                const statusColor = report.online_percentage >= 90 ? 'text-green-600' :
-                    report.online_percentage >= 70 ? 'text-yellow-600' : 'text-red-600';
-
-                const historyItem = document.createElement('div');
-                historyItem.className = 'bg-gray-50 rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow duration-200';
-
-                let nvrStatusHtml = '';
-                for (const [nvr_name, details] of Object.entries(report.details)) {
-                    nvrStatusHtml += `<span class="bg-blue-100 text-blue-800 px-2 py-1 rounded">${nvr_name}: ${details.online_channels}/${details.total_channels}</span>`;
-                }
-
-                historyItem.innerHTML = `
-                    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-                        <div class="flex-1">
-                            <div class="flex items-center mb-2">
-                                <span class="text-2xl mr-3">📊</span>
-                                <div>
-                                    <h3 class="font-semibold text-gray-800">รายงานสถานะ ${report.building} #${report.id}</h3>
-                                    <p class="text-sm text-gray-600">${formattedDate} (โดย: ${report.username || 'N/A'})</p>
-                                </div>
-                            </div>
-                            <div class="ml-11">
-                                <p class="text-sm text-gray-700 mb-2">${report.online_channels}/${report.total_channels} ช่องออนไลน์ (${report.online_percentage}%)</p>
-                                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-xs">
-                                    ${nvrStatusHtml}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mt-3 lg:mt-0 lg:ml-6 text-right">
-                            <div class="text-2xl font-bold ${statusColor}">${report.online_percentage}%</div>
-                            <div class="text-xs text-gray-500">ออนไลน์</div>
-                        </div>
-                    </div>
-                `;
-
-                historyList.appendChild(historyItem);
-            });
+            const csvContent = "\uFEFF" + csv.join("\n");
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            if (link.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                link.setAttribute("download", filename);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
@@ -698,8 +745,6 @@ $conn->close();
             document.getElementById('select-b9').addEventListener('click', () => { switchBuilding('B9'); localStorage.setItem('selectedBuilding', 'B9'); });
             document.getElementById('refresh-btn').addEventListener('click', refreshStatus);
             document.getElementById('report-btn').addEventListener('click', sendStatusReport);
-
-            renderHistoryList();
         });
     </script>
 </body>

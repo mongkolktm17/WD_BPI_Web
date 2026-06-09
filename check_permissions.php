@@ -15,6 +15,7 @@
 // Include config (which starts session and database connection)
 require_once 'config.php';
 
+
 // --- Authentication Check ---
 // Check if user is logged in
 if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {

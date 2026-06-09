@@ -430,7 +430,15 @@ if (empty($select_subqueries)) {
 
         <!-- Reports Table -->
         <div class="glass-card rounded-3xl shadow-xl p-6 mt-8">
-            <h2 class="text-2xl font-bold section-title mb-4">รายงานเหตุการณ์ล่าสุด</h2>
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                <h2 class="text-2xl font-bold section-title">รายงานเหตุการณ์ล่าสุด</h2>
+                <button onclick="exportTableToCSV('recent_incident_reports.csv')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-5 rounded-xl transition-colors shadow-md flex items-center gap-2 text-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                    </svg>
+                    ส่งออกเป็น CSV
+                </button>
+            </div>
             
             <!-- Filter Bar -->
             <form method="GET" class="flex flex-wrap gap-3 items-end mb-6 bg-slate-50/50 p-4 rounded-2xl border border-slate-200/50">
@@ -643,14 +651,53 @@ if (empty($select_subqueries)) {
                     .then(data => {
                         submitterList.innerHTML = '';
                         data.forEach(name => {
-                            const option = document.createElement('option');
-                            option.value = name;
-                            submitterList.appendChild(option);
+                             const option = document.createElement('option');
+                             option.value = name;
+                             submitterList.appendChild(option);
                         });
                     })
                     .catch(err => console.error('Error fetching suggestions:', err));
             }, 300);
         });
+    }
+
+    function exportTableToCSV(filename) {
+        const csv = [];
+        const rows = document.querySelectorAll("table tr");
+        
+        for (let i = 0; i < rows.length; i++) {
+            const row = [], cols = rows[i].querySelectorAll("td, th");
+            
+            // Skip rows containing pagination or empty messages
+            if (cols.length === 1 && cols[0].getAttribute("colspan")) {
+                continue;
+            }
+            
+            // For report_page.php, we only export the first 4 columns, skipping the 'Action' column
+            const colsToExport = Math.min(cols.length, 4);
+            for (let j = 0; j < colsToExport; j++) {
+                let text = cols[j].getAttribute("title") || cols[j].innerText.trim();
+                text = text.replace(/"/g, '""');
+                row.push('"' + text + '"');
+            }
+            
+            if (row.length > 0) {
+                csv.push(row.join(","));
+            }
+        }
+
+        const csvContent = "\uFEFF" + csv.join("\n");
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        if (link.download !== undefined) {
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
     }
     </script>
 </body>

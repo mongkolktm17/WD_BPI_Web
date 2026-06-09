@@ -29,6 +29,19 @@ if (empty($_SESSION['csrf_token'])) {
 $csrf_token = $_SESSION['csrf_token'];
 
 // --- Function Definitions ---
+function getShortLotLabel($fullName)
+{
+    if (strpos($fullName, 'ลานรถยนต์') !== false) {
+        $parts = explode(' (', $fullName);
+        return str_replace('ลานรถยนต์ ', 'C', $parts[0]);
+    }
+    if (strpos($fullName, 'ลานจอด') !== false) {
+        $parts = explode(' (', $fullName);
+        return str_replace('ลานจอด ', 'M', $parts[0]);
+    }
+    return $fullName;
+}
+
 function submitCarParkingReport($conn, $data)
 {
     $conn->begin_transaction();
@@ -120,8 +133,28 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 }
 
 // --- Fetch History Data ---
+$history_reports = [];
+$report_ids = [];
 $history_sql = "SELECT * FROM car_parking_reports ORDER BY inspection_date DESC, created_at DESC LIMIT 20";
 $history_result = $conn->query($history_sql);
+if ($history_result && $history_result->num_rows > 0) {
+    while ($row = $history_result->fetch_assoc()) {
+        $history_reports[] = $row;
+        $report_ids[] = $row['id'];
+    }
+}
+
+$history_counts = [];
+if (!empty($report_ids)) {
+    $ids_str = implode(",", array_map('intval', $report_ids));
+    $counts_sql = "SELECT report_id, lot_name, vehicle_count FROM parking_lot_counts WHERE report_id IN ($ids_str)";
+    $counts_result = $conn->query($counts_sql);
+    if ($counts_result) {
+        while ($crow = $counts_result->fetch_assoc()) {
+            $history_counts[$crow['report_id']][$crow['lot_name']] = $crow['vehicle_count'];
+        }
+    }
+}
 
 // --- Fetch Latest Data for Pre-fill (Sections 5-8) ---
 $latest_report = null;
@@ -335,8 +368,8 @@ $conn->close();
 
         <!-- History Section -->
         <div class="max-w-7xl mx-auto mt-12 mb-12">
-            <div class="glass-card rounded-3xl shadow-xl p-8 border border-sky-100">
-                <div class="flex items-center justify-between mb-6">
+            <div class="glass-card rounded-3xl shadow-xl p-6 border border-sky-100">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                     <h2 class="text-2xl font-bold section-title flex items-center">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
                             stroke="currentColor" class="w-8 h-8 mr-3 text-sky-600">
@@ -345,63 +378,85 @@ $conn->close();
                         </svg>
                         ประวัติการรายงาน (20 รายการล่าสุด)
                     </h2>
+                    <button onclick="exportTableToCSV('car_parking_report_history.csv')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-5 rounded-xl transition-colors shadow-md flex items-center gap-2 text-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                        </svg>
+                        ส่งออกเป็น CSV
+                    </button>
                 </div>
 
                 <div class="overflow-x-auto rounded-xl border border-gray-200">
-                    <table class="w-full text-left border-collapse bg-white">
-                        <thead class="bg-gray-50 text-gray-700 uppercase text-sm leading-normal">
+                    <table class="w-full text-left border-collapse bg-white table-layout-fixed">
+                        <thead class="bg-gray-50 text-gray-700 uppercase text-xs leading-normal">
                             <tr>
-                                <th class="py-4 px-6 font-bold text-center">วันที่ตรวจ</th>
-                                <th class="py-4 px-6 font-bold text-center">เวลาที่บันทึก</th>
-                                <th class="py-4 px-6 font-bold text-center">กะ</th>
-                                <th class="py-4 px-6 font-bold">ผู้ตรวจสอบ</th>
-                                <th class="py-4 px-6 font-bold text-center">ทะเบียนรถ (ยางอะไหล่)</th>
+                                <th class="py-3 px-2 font-bold text-center whitespace-nowrap" title="วันที่ตรวจ">วันที่</th>
+                                <th class="py-3 px-2 font-bold text-center whitespace-nowrap" title="เวลาที่บันทึก">เวลา</th>
+                                <th class="py-3 px-2 font-bold text-center whitespace-nowrap" title="กะ">กะ</th>
+                                <th class="py-3 px-2 font-bold text-center whitespace-nowrap" title="รหัสผู้ตรวจ">รหัส</th>
+                                <th class="py-3 px-2 font-bold whitespace-nowrap" title="ผู้ตรวจสอบ">ผู้ตรวจ</th>
+                                <?php foreach ($car_lots as $lot): ?>
+                                    <th class="py-3 px-1.5 font-bold text-center whitespace-nowrap text-[10px] cursor-help" title="<?php echo htmlspecialchars($lot); ?>"><?php echo htmlspecialchars(getShortLotLabel($lot)); ?></th>
+                                <?php endforeach; ?>
+                                <?php foreach ($motorcycle_lots as $lot): ?>
+                                    <th class="py-3 px-1.5 font-bold text-center whitespace-nowrap text-[10px] cursor-help" title="<?php echo htmlspecialchars($lot); ?>"><?php echo htmlspecialchars(getShortLotLabel($lot)); ?></th>
+                                <?php endforeach; ?>
+                                <th class="py-3 px-2 font-bold text-center whitespace-nowrap" title="สถานะยางอะไหล่">ยาง</th>
+                                <th class="py-3 px-2 font-bold whitespace-nowrap" title="ป้ายทะเบียนรถ">ทะเบียน</th>
                             </tr>
                         </thead>
-                        <tbody class="text-gray-600 text-sm font-light">
-                            <?php if ($history_result && $history_result->num_rows > 0): ?>
-                                <?php while ($row = $history_result->fetch_assoc()):
+                        <tbody class="text-gray-600 text-xs font-light">
+                            <?php if (!empty($history_reports)): ?>
+                                <?php foreach ($history_reports as $row):
                                     $date = new DateTime($row['inspection_date']);
                                     $created = new DateTime($row['created_at']);
                                     $shift_color = $row['shift'] == 'เช้า' ? 'bg-sky-100 text-sky-700' : 'bg-purple-100 text-purple-700';
                                     ?>
                                     <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                                        <td class="py-4 px-6 text-center whitespace-nowrap">
+                                        <td class="py-3 px-2 text-center whitespace-nowrap">
                                             <div class="font-medium text-gray-800"><?php echo $date->format('d/m/Y'); ?></div>
                                         </td>
-                                        <td class="py-4 px-6 text-center">
-                                            <?php echo $created->format('H:i'); ?> น.
+                                        <td class="py-3 px-2 text-center whitespace-nowrap">
+                                            <?php echo $created->format('H:i'); ?>
                                         </td>
-                                        <td class="py-4 px-6 text-center">
-                                            <span
-                                                class="<?php echo $shift_color; ?> py-1 px-3 rounded-full text-xs font-semibold">
+                                        <td class="py-3 px-2 text-center whitespace-nowrap">
+                                            <span class="<?php echo $shift_color; ?> py-0.5 px-2 rounded-full text-[10px] font-semibold">
                                                 <?php echo htmlspecialchars($row['shift']); ?>
                                             </span>
                                         </td>
-                                        <td class="py-4 px-6">
-                                            <div class="flex items-center">
-                                                <div
-                                                    class="mr-2 w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs">
-                                                    <?php echo mb_substr($row['inspector_name'], 0, 1, 'UTF-8'); ?>
-                                                </div>
-                                                <span
-                                                    class="font-medium"><?php echo htmlspecialchars($row['inspector_name']); ?></span>
-                                            </div>
-                                            <div class="text-xs text-gray-400 mt-1 ml-10">
-                                                <?php echo htmlspecialchars($row['inspector_code']); ?>
-                                            </div>
+                                        <td class="py-3 px-2 text-center whitespace-nowrap font-medium text-gray-600">
+                                            <?php echo htmlspecialchars($row['inspector_code']); ?>
                                         </td>
-                                        <td class="py-4 px-6 text-center">
-                                            <span
-                                                class="py-1 px-3 rounded-full text-xs font-semibold <?php echo $row['spare_tire_status'] == 'มี' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'; ?>">
+                                        <td class="py-3 px-2 whitespace-nowrap font-medium text-gray-700">
+                                            <?php echo htmlspecialchars($row['inspector_name']); ?>
+                                        </td>
+                                        <?php foreach ($car_lots as $lot): 
+                                            $count = $history_counts[$row['id']][$lot] ?? '-';
+                                            ?>
+                                            <td class="py-3 px-1.5 text-center font-bold text-gray-700 text-xs">
+                                                <?php echo htmlspecialchars($count); ?>
+                                            </td>
+                                        <?php endforeach; ?>
+                                        <?php foreach ($motorcycle_lots as $lot): 
+                                            $count = $history_counts[$row['id']][$lot] ?? '-';
+                                            ?>
+                                            <td class="py-3 px-1.5 text-center font-bold text-gray-700 text-xs">
+                                                <?php echo htmlspecialchars($count); ?>
+                                            </td>
+                                        <?php endforeach; ?>
+                                        <td class="py-3 px-2 text-center whitespace-nowrap">
+                                            <span class="py-0.5 px-2 rounded-full text-[10px] font-bold <?php echo $row['spare_tire_status'] == 'มี' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'; ?>">
                                                 <?php echo htmlspecialchars($row['spare_tire_status']); ?>
                                             </span>
                                         </td>
+                                        <td class="py-3 px-2 max-w-[120px] truncate font-medium text-gray-500" title="<?php echo htmlspecialchars($row['license_plates']); ?>">
+                                            <?php echo htmlspecialchars($row['license_plates'] ?: '-'); ?>
+                                        </td>
                                     </tr>
-                                <?php endwhile; ?>
+                                <?php endforeach; ?>
                             <?php else: ?>
                                 <tr>
-                                    <td colspan="5" class="py-8 px-6 text-center text-gray-400 bg-gray-50">
+                                    <td colspan="<?php echo (7 + count($car_lots) + count($motorcycle_lots)); ?>" class="py-8 px-6 text-center text-gray-400 bg-gray-50">
                                         ไม่พบข้อมูลประวัติการรายงาน
                                     </td>
                                 </tr>
@@ -517,6 +572,41 @@ $conn->close();
                 clickedButton.classList.remove('border-gray-200', 'text-gray-600');
                 clickedButton.classList.add(...activeClasses);
                 document.getElementById(fieldName).value = value;
+            }
+
+            function exportTableToCSV(filename) {
+                const csv = [];
+                const rows = document.querySelectorAll("table tr");
+                
+                for (let i = 0; i < rows.length; i++) {
+                    const row = [], cols = rows[i].querySelectorAll("td, th");
+                    
+                    if (cols.length === 1 && cols[0].getAttribute("colspan")) {
+                        continue;
+                    }
+                    
+                    for (let j = 0; j < cols.length; j++) {
+                        // Use title attribute if available (so CSV exports get full descriptive headers)
+                        let text = cols[j].getAttribute("title") || cols[j].innerText.trim();
+                        text = text.replace(/"/g, '""');
+                        row.push('"' + text + '"');
+                    }
+                    
+                    csv.push(row.join(","));
+                }
+
+                const csvContent = "\uFEFF" + csv.join("\n");
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement("a");
+                if (link.download !== undefined) {
+                    const url = URL.createObjectURL(blob);
+                    link.setAttribute("href", url);
+                    link.setAttribute("download", filename);
+                    link.style.visibility = 'hidden';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }
             }
         </script>
 

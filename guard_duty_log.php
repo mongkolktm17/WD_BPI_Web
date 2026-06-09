@@ -226,19 +226,72 @@ $conn->close();
                 </div>
             </div>
             <div class="bg-white rounded-2xl card-shadow p-8 fade-in">
-                <h2 class="text-2xl font-bold text-gray-800 mb-6">ประวัติการบันทึก</h2>
-                <div id="records-container">
-                    <div id="no-records" class="text-center py-8 text-gray-500">
-                        <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor"
-                            viewbox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
-                            </path>
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">ประวัติการบันทึก</h2>
+                    <button onclick="exportTableToCSV('guard_duty_log_history.csv')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-5 rounded-xl transition-colors shadow-md flex items-center gap-2 text-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                         </svg>
-                        <p class="text-lg">ยังไม่มีข้อมูลที่บันทึก</p>
-                        <p class="text-sm">เริ่มต้นด้วยการกรอกข้อมูลด้านบน</p>
+                        ส่งออกเป็น CSV
+                    </button>
+                </div>
+                <div id="records-container">
+                    <div class="overflow-x-auto rounded-xl border border-gray-200">
+                        <table class="w-full text-left border-collapse bg-white table-layout-fixed">
+                            <thead class="bg-gray-50 text-gray-700 uppercase text-xs leading-normal">
+                                <tr>
+                                    <th class="py-3 px-4 font-bold text-center whitespace-nowrap" title="วันที่">วันที่</th>
+                                    <th class="py-3 px-4 font-bold whitespace-nowrap" title="ผู้รายงาน">ผู้รายงาน</th>
+                                    <th class="py-3 px-4 font-bold text-center whitespace-nowrap" title="กะเช้า (Actual / Contract)">กะเช้า (Actual / Contract)</th>
+                                    <th class="py-3 px-4 font-bold text-center whitespace-nowrap" title="กะค่ำ (Actual / Contract)">กะค่ำ (Actual / Contract)</th>
+                                    <th class="py-3 px-4 font-bold text-center whitespace-nowrap" title="จำนวนรวม">จำนวนรวม</th>
+                                    <th class="py-3 px-4 font-bold text-center whitespace-nowrap">การกระทำ</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-gray-600 text-xs font-light" id="records-table-body">
+                                <?php if (!empty($records)): ?>
+                                    <?php foreach ($records as $row):
+                                        $date = new DateTime($row['date']);
+                                        ?>
+                                        <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors" id="record-row-<?php echo $row['id']; ?>">
+                                            <td class="py-3 px-4 text-center whitespace-nowrap">
+                                                <div class="font-medium text-gray-800"><?php echo $date->format('d/m/Y'); ?></div>
+                                            </td>
+                                            <td class="py-3 px-4 whitespace-nowrap font-medium text-gray-700">
+                                                <?php echo htmlspecialchars($row['submitted_by'] ?? 'N/A'); ?>
+                                            </td>
+                                            <td class="py-3 px-4 text-center whitespace-nowrap font-bold text-cyan-600 text-sm">
+                                                <?php echo htmlspecialchars($row['morning_shift']); ?>
+                                                <?php if (!empty($row['morning_shift_contract'])): ?>
+                                                    <span class="text-gray-400 font-normal"> / <?php echo htmlspecialchars($row['morning_shift_contract']); ?></span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td class="py-3 px-4 text-center whitespace-nowrap font-bold text-blue-600 text-sm">
+                                                <?php echo htmlspecialchars($row['evening_shift']); ?>
+                                                <?php if (!empty($row['evening_shift_contract'])): ?>
+                                                    <span class="text-gray-400 font-normal"> / <?php echo htmlspecialchars($row['evening_shift_contract']); ?></span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td class="py-3 px-4 text-center whitespace-nowrap font-bold text-green-600 text-sm">
+                                                <?php echo htmlspecialchars($row['total']); ?>
+                                            </td>
+                                            <td class="py-3 px-4 text-center whitespace-nowrap font-medium">
+                                                <button onclick="deleteRecord(<?php echo $row['id']; ?>)" class="text-red-500 hover:text-red-700 transition-colors duration-200">
+                                                    ลบ
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr id="no-records-row">
+                                        <td colspan="6" class="py-8 px-6 text-center text-gray-400 bg-gray-50">
+                                            ไม่พบข้อมูลประวัติการรายงาน
+                                        </td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
                     </div>
-                    <div id="records-list" class="space-y-4"></div>
                 </div>
             </div>
         </div>
@@ -318,54 +371,38 @@ $conn->close();
             });
         }
 
-        // Render records list
-        function renderRecords() {
-            if (currentRecords.length === 0) {
-                noRecords.classList.remove('hidden');
-                recordsList.innerHTML = '';
-                return;
+        function exportTableToCSV(filename) {
+            const csv = [];
+            const rows = document.querySelectorAll("table tr");
+            
+            for (let i = 0; i < rows.length; i++) {
+                const row = [], cols = rows[i].querySelectorAll("td, th");
+                
+                if (cols.length === 1 && cols[0].getAttribute("colspan")) {
+                    continue;
+                }
+                
+                for (let j = 0; j < cols.length; j++) {
+                    let text = cols[j].getAttribute("title") || cols[j].innerText.trim();
+                    text = text.replace(/"/g, '""');
+                    row.push('"' + text + '"');
+                }
+                
+                csv.push(row.join(","));
             }
 
-            noRecords.classList.add('hidden');
-
-            const sortedRecords = [...currentRecords].sort((a, b) => new Date(b.date) - new Date(a.date));
-
-            recordsList.innerHTML = sortedRecords.map(record => `
-                <div class="bg-gray-50 rounded-xl p-4 border border-gray-200 hover:shadow-md transition-shadow duration-300">
-                    <div class="flex justify-between items-start mb-3">
-                        <div>
-                            <h3 class="font-semibold text-gray-800">${formatDate(record.date)}</h3>
-                            <p class="text-sm text-gray-500">บันทึกโดย: ${record.submitted_by || 'N/A'}</p>
-                        </div>
-                        <button onclick="deleteRecord(${record.id})" 
-                                class="text-red-500 hover:text-red-700 transition-colors duration-200 p-1">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                            </svg>
-                        </button>
-                    </div>
-                    <div class="grid grid-cols-3 gap-4 text-sm">
-                        <div class="text-center">
-                            <div class="text-gray-600">กะเช้า</div>
-                            <div class="font-bold text-cyan-600 text-lg">
-                                ${record.morning_shift}${record.morning_shift_contract ? ' / ' + record.morning_shift_contract : ''}
-                            </div>
-                            ${record.morning_shift_contract ? '<div class="text-xs text-gray-500">Actual / Contract</div>' : ''}
-                        </div>
-                        <div class="text-center">
-                            <div class="text-gray-600">กะค่ำ</div>
-                            <div class="font-bold text-blue-600 text-lg">
-                                ${record.evening_shift}${record.evening_shift_contract ? ' / ' + record.evening_shift_contract : ''}
-                            </div>
-                            ${record.evening_shift_contract ? '<div class="text-xs text-gray-500">Actual / Contract</div>' : ''}
-                        </div>
-                        <div class="text-center">
-                            <div class="text-gray-600">รวม</div>
-                            <div class="font-bold text-green-600 text-lg">${record.total}</div>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
+            const csvContent = "\uFEFF" + csv.join("\n");
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            if (link.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                link.setAttribute("download", filename);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
         }
 
         // Delete record
@@ -388,9 +425,8 @@ $conn->close();
                 const result = await response.json();
 
                 if (result.status === 'success') {
-                    currentRecords = currentRecords.filter(r => r.id !== id);
-                    renderRecords();
                     showSuccess();
+                    location.reload();
                 } else {
                     showError(result.message || 'ไม่สามารถลบข้อมูลได้ กรุณาลองใหม่อีกครั้ง');
                 }
@@ -436,14 +472,8 @@ $conn->close();
                 const result = await response.json();
 
                 if (result.status === 'success') {
-                    recordData.id = result.id;
-                    recordData.submitted_by = currentUsername; // Add username for immediate display
-                    currentRecords.push(recordData);
-                    renderRecords();
                     showSuccess();
-                    form.reset();
-                    dateInput.value = new Date().toISOString().split('T')[0];
-                    updateTotal();
+                    location.reload();
                 } else {
                     showError(result.message || 'ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่อีกครั้ง');
                 }
@@ -453,9 +483,6 @@ $conn->close();
                 hideLoading();
             }
         });
-
-        // Initial render
-        renderRecords();
     </script>
 </body>
 
