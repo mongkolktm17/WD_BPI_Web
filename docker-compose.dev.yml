@@ -1,0 +1,84 @@
+name: wdbpi-dev
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+      target: development
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./apps/web:/app/apps/web
+      - /app/apps/web/node_modules
+      - /app/apps/web/.next
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:4000/api}
+      - API_INTERNAL_URL=http://api:4000
+      - TZ=Asia/Bangkok
+    depends_on:
+      - api
+    command: npm run dev
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+      target: development
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./apps/api:/app/apps/api
+      - /app/apps/api/node_modules
+    environment:
+      - NODE_ENV=development
+      - PORT=4000
+      - DATABASE_URL=postgresql://wdbpi_user:wdbpi_pass@postgres:5432/wdbpi_db?schema=public
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=dev-secret-key
+      - TZ=Asia/Bangkok
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: npm run dev
+
+  postgres:
+    image: postgres:18-alpine
+    container_name: wdbpi_postgres_dev
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: wdbpi_db
+      POSTGRES_USER: wdbpi_user
+      POSTGRES_PASSWORD: wdbpi_pass
+      TZ: Asia/Bangkok
+      PGTZ: Asia/Bangkok
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wdbpi_user -d wdbpi_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:8-alpine
+    container_name: wdbpi_redis_dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  postgres_dev_data:
+  redis_dev_data:
+

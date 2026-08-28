@@ -1,0 +1,442 @@
+
+================= TABLE: car_parking_reports =================
+CREATE TABLE `car_parking_reports` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `inspection_date` date NOT NULL,
+  `inspector_code` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `inspector_name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `shift` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `parking_lot` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `total_cars` int NOT NULL DEFAULT '0',
+  `spare_tire_status` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `license_plates` text COLLATE utf8mb4_general_ci,
+  `motorcycle_parking_lot` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `motorcycle_count_1` int DEFAULT NULL,
+  `motorcycle_count_2` int DEFAULT NULL,
+  `motorcycle_count_3` int DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `is_deleted` tinyint(1) DEFAULT '0',
+  `deleted_by` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `deleted_at` datetime DEFAULT NULL,
+  `updated_by` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `updated_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=648 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+Sample INSERT: INSERT INTO `car_parking_reports` VALUES (1,'2025-10-19','11223344','นิด มิตรแท้','เช้า','ลานรถยนต์ 1 (97 Slot)',87,'ไม่มี','','',22,46,28,'2025-10-19 08:47:40',0,NULL,NULL,NULL,NULL),(2,'2025-11-16','00000000','System Admin','เช้า','',0,'ไม่มี','',NULL,NULL,NULL,NULL,'2025-11-16 04:15:48',0,NULL,NU
+
+================= TABLE: cctv_angle_checks =================
+CREATE TABLE `cctv_angle_checks` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `building` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nvr_number` int NOT NULL,
+  `camera_number` int NOT NULL,
+  `angle_correct` tinyint(1) NOT NULL,
+  `notes` text COLLATE utf8mb4_unicode_ci,
+  `checked_by` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `checked_date` datetime NOT NULL,
+  `unique_id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_id` (`unique_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=829 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+Sample INSERT: INSERT INTO `cctv_angle_checks` VALUES (1,'B2',1,1,1,'ตรวจสอบแบบกลุ่ม - มุมถูกต้อง','System Admin','2025-11-05 16:44:58','B2-1-1-2025-11-05'),(2,'B2',1,2,1,'ตรวจสอบแบบกลุ่ม - มุมถูกต้อง','System Admin','2025-11-05 16:44:58','B2-1-2-2025-11-05'),(3,'B2',1,3,1,'ตรวจสอบแบบกลุ่ม - มุมถูกต้อง','System Ad
+
+================= TABLE: cctv_angle_reports =================
+CREATE TABLE `cctv_angle_reports` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `report_date` datetime NOT NULL,
+  `building` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nvr` int NOT NULL,
+  `total_cameras` int NOT NULL,
+  `correct_cameras` int NOT NULL,
+  `incorrect_cameras` int NOT NULL,
+  `checked_by` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `is_deleted` tinyint(1) DEFAULT '0',
+  `deleted_by` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `deleted_at` datetime DEFAULT NULL,
+  `updated_by` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `updated_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+Sample INSERT: INSERT INTO `cctv_angle_reports` VALUES (1,'2025-11-10 04:52:20','B2',1,32,0,0,'System Admin',0,NULL,NULL,NULL,NULL),(2,'2025-11-16 05:20:00','B2',1,32,32,0,'System Admin',0,NULL,NULL,NULL,NULL),(3,'2025-11-16 05:20:04','B2',2,32,32,0,'System Admin',0,NULL,NULL,NULL,NULL),(4,'2025-11-16 05:20:08','B
+
+================= TABLE: cctv_camera_names =================
+CREATE TABLE `cctv_camera_names` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `building` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nvr_name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `channel_number` int NOT NULL,
+  `camera_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_camera` (`building`,`nvr_name`,`channel_number`),
+  KEY `idx_building_nvr` (`building`,`nvr_name`)
+) ENGINE=InnoDB AUTO_INCREMENT=816 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+Sample INSERT: INSERT INTO `cctv_camera_names` VALUES (1,'B.2','NVR-1',1,'The pavilion','2026-01-21 00:24:43'),(2,'B.2','NVR-1',2,'The pavilion','2026-01-21 00:24:43'),(3,'B.2','NVR-1',3,'Walkway beside canteen','2026-01-21 00:24:43'),(4,'B.2','NVR-1',4,'Walkway beside canteen','2026-01-21 00:24:43'),(5,'B.2','NVR
+
+================= TABLE: cctv_devices =================
+CREATE TABLE `cctv_devices` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `building` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nvr_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `area` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `channels` int NOT NULL,
+  `drive_capacity` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `total_capacity_tb` decimal(10,3) DEFAULT NULL,
+  `target_days` int DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=20 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+Sample INSERT: INSERT INTO `cctv_devices` VALUES (1,'B2','NVR-1','Centen Canteen กลาง+Canteen B2L4',31,'8TB (2ลูก),4TB (4ลูก)',36.387,62),(2,'B2','NVR-2','Relialab lab room B2L3+ภายใน Lift',32,'8TB (4ลูก),4TB (4ลูก)',43.664,62),(3,'B2','NVR-3','แนวรั้วด้านนอกอาคาร 1-2-6',63,'10TB (6ลูก),8TB (2ลูก)',69.129,62),(4,'
+
+================= TABLE: cctv_inspections =================
+CREATE TABLE `cctv_inspections` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `inspection_date` date NOT NULL,
+  `shift` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `cctv_room` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `employee_id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `employee_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `radio_status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `report_books_status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nvr_screen_status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nvr_machine_status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `keys_status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `access_control_status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `incident_report_status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `submitted_by_id` int DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `is_deleted` tinyint(1) DEFAULT '0',
+  `deleted_by` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `deleted_at` datetime DEFAULT NULL,
+  `updated_by` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `updated_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `submitted_by_id` (`submitted_by_id`),
+  KEY `idx_cctv_inspection_room` (`cctv_room`),
+  CONSTRAINT `cctv_inspections_ibfk_1` FOREIGN KEY (`submitted_by_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=167 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+Sample INSERT: INSERT INTO `cctv_inspections` VALUES (1,'2025-11-16','เช้า','B2','00000000','System Admin','ปกติ','ปกติ','ปกติ','ปกติ','ปกติ','ปกติ','ปกติ',1,'2025-11-16 04:16:07',0,NULL,NULL,NULL,NULL),(2,'2026-01-01','เช้า','B4','10592117','ยุวดี อาษากิจ','ปกติ','ปกติ','ปกติ','ปกติ','ปกติ','ปกติ','ปกติ',257,'202
+
+================= TABLE: cctv_report_details =================
+CREATE TABLE `cctv_report_details` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `report_id` int NOT NULL,
+  `nvr_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `online_channels` int NOT NULL,
+  `total_channels` int NOT NULL DEFAULT '0',
+  `channel_statuses_json` text COLLATE utf8mb4_unicode_ci,
+  PRIMARY KEY (`id`),
+  KEY `report_id` (`report_id`),
+  CONSTRAINT `cctv_report_details_ibfk_1` FOREIGN KEY (`report_id`) REFERENCES `cctv_reports` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=160 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+Sample INSERT: INSERT INTO `cctv_report_details` VALUES (1,1,'NVR-1',31,31,'{\"1\":true,\"2\":true,\"3\":true,\"4\":true,\"5\":true,\"6\":true,\"7\":true,\"8\":true,\"9\":true,\"10\":true,\"11\":true,\"12\":true,\"13\":true,\"14\":true,\"15\":true,\"16\":true,\"17\":true,\"18\":true,\"19\":true,\"20\":true,\"21\":
+
+================= TABLE: cctv_reports =================
+CREATE TABLE `cctv_reports` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `building` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `report_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `total_channels` int NOT NULL,
+  `online_channels` int NOT NULL,
+  `offline_channels` int NOT NULL,
+  `online_percentage` float NOT NULL,
+  `submitted_by_id` int DEFAULT NULL,
+  `submission_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `is_deleted` tinyint(1) DEFAULT '0',
+  `deleted_by` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `deleted_at` datetime DEFAULT NULL,
+  `updated_by` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `updated_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_cctv_reports_building` (`building`),
+  KEY `idx_cctv_reports_report_time` (`report_time`),
+  KEY `idx_cctv_reports_submitted_by` (`submitted_by_id`),
+  KEY `idx_cctv_reports_building_time` (`building`,`report_time`),
+  CONSTRAINT `cctv_reports_ibfk_1` FOREIGN KEY (`submitted_by_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=29 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+Sample INSERT: INSERT INTO `cctv_reports` VALUES (1,'B2','2026-01-28 00:19:32',434,433,1,100,219,NULL,0,NULL,NULL,NULL,NULL),(2,'B3','2026-01-28 23:58:42',92,59,33,64,183,NULL,0,NULL,NULL,NULL,NULL),(3,'B4','2026-01-28 23:59:37',290,290,0,100,219,NULL,0,NULL,NULL,NULL,NULL),(4,'B3','2026-01-29 00:01:49',92,91,1,99
+
+================= TABLE: hand_held_checks =================
+CREATE TABLE `hand_held_checks` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `inspection_date` date NOT NULL,
+  `building` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `guard_post` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `inspector_code` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `inspector_name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `shift` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `battery_status` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `led_status` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `detection_test_status` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `alarm_status` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `remarks` text COLLATE utf8mb4_general_ci,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `is_deleted` tinyint(1) DEFAULT '0',
+  `deleted_by` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `deleted_at` datetime DEFAULT NULL,
+  `updated_by` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `updated_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1359 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+Sample INSERT: INSERT INTO `hand_held_checks` VALUES (1,'2025-11-16','B3','Worker','00000000','System Admin','กะเช้า','พร้อมใช้งาน','ผ่านการทดสอบ','ผ่านการทดสอบ','ผ่านการทดสอบ','','2025-11-16 04:16:26',0,NULL,NULL,NULL,NULL),(2,'2026-01-14','B4','Gate 5 B4','10502068','ศิริพร เดี่ยวอภิสิทธิ์','กะเช้า','พร้อมใช้งาน
+
+================= TABLE: metal_detector_checks =================
+CREATE TABLE `metal_detector_checks` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `inspection_date` date NOT NULL,
+  `shift` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `employee_id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `employee_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `building` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `guard_post` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `scanner_brand` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `zone1_status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `zone2_status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `zone3_status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `zone4_status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `zone5_status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `zone6_status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `submitted_by_id` int DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `is_deleted` tinyint(1) DEFAULT '0',
+  `deleted_by` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `deleted_at` datetime DEFAULT NULL,
+  `updated_by` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `updated_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `submitted_by_id` (`submitted_by_id`),
+  CONSTRAINT `metal_detector_checks_ibfk_1` FOREIGN KEY (`submitted_by_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=1366 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+Sample INSERT: INSERT INTO `metal_detector_checks` VALUES (1,'2025-11-16','เช้า','00000000','System Admin','B3','Post 1','GARRETT','พร้อมใช้งาน','พร้อมใช้งาน','พร้อมใช้งาน','พร้อมใช้งาน','พร้อมใช้งาน','พร้อมใช้งาน',1,'2025-11-16 04:17:22',0,NULL,NULL,NULL,NULL),(2,'2025-12-31','เช้า','10435393','สุชาดา ด้วงประดิษฐ
+
+================= TABLE: nvr_devices =================
+CREATE TABLE `nvr_devices` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `channels` int NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+Sample INSERT: INSERT INTO `nvr_devices` VALUES (1,'NVR 1',64),(2,'NVR 2',36),(3,'NVR 3',62),(4,'NVR 4',32),(5,'NVR 5',64),(6,'NVR 6',32);
+
+================= TABLE: nvr_recording_details =================
+CREATE TABLE `nvr_recording_details` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `report_id` int NOT NULL,
+  `nvr_name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `recording_days` int NOT NULL,
+  `target_days` int DEFAULT '62',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_report_id` (`report_id`),
+  KEY `idx_nvr_name` (`nvr_name`),
+  CONSTRAINT `nvr_recording_details_ibfk_1` FOREIGN KEY (`report_id`) REFERENCES `nvr_recording_reports` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=243 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Stores per-NVR recording days details';
+Sample INSERT: INSERT INTO `nvr_recording_details` VALUES (32,9,'NVR-1',64,62,'2025-12-06 21:39:11'),(33,9,'NVR-10',65,62,'2025-12-06 21:39:11'),(34,9,'NVR-2',67,62,'2025-12-06 21:39:11'),(35,9,'NVR-3',71,62,'2025-12-06 21:39:11'),(36,9,'NVR-4',73,62,'2025-12-06 21:39:11'),(37,9,'NVR-5',69,62,'2025-12-06 21:39:11'
+
+================= TABLE: nvr_recording_reports =================
+CREATE TABLE `nvr_recording_reports` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `building` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `submission_id` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `submitted_by_id` int NOT NULL,
+  `report_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_building` (`building`),
+  KEY `idx_submission_id` (`submission_id`),
+  KEY `idx_report_time` (`report_time`),
+  KEY `submitted_by_id` (`submitted_by_id`),
+  CONSTRAINT `nvr_recording_reports_ibfk_1` FOREIGN KEY (`submitted_by_id`) REFERENCES `users` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=57 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Stores NVR recording days reports';
+Sample INSERT: INSERT INTO `nvr_recording_reports` VALUES (9,'B2','sub_6934a27fb427e',1,'2025-12-06 21:39:11'),(10,'B3','sub_6934a27fb427e',1,'2025-12-06 21:39:11'),(11,'B4','sub_6934a27fb427e',1,'2025-12-06 21:39:11'),(12,'B9','sub_6934a27fb427e',1,'2025-12-06 21:39:11'),(13,'B2','sub_6934a29334f16',1,'2025-12-06
+
+================= TABLE: nvr_status_report_details =================
+CREATE TABLE `nvr_status_report_details` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `report_id` int NOT NULL,
+  `nvr_id` int NOT NULL,
+  `online_channels` int NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `report_id` (`report_id`),
+  KEY `nvr_id` (`nvr_id`),
+  CONSTRAINT `nvr_status_report_details_ibfk_1` FOREIGN KEY (`report_id`) REFERENCES `nvr_status_reports` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `nvr_status_report_details_ibfk_2` FOREIGN KEY (`nvr_id`) REFERENCES `nvr_devices` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+Sample INSERT: INSERT INTO `nvr_status_report_details` VALUES (1,1,1,43),(2,1,2,25),(3,1,3,47),(4,1,4,24),(5,1,5,48),(6,1,6,24);
+
+================= TABLE: nvr_status_reports =================
+CREATE TABLE `nvr_status_reports` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `report_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `total_channels` int NOT NULL,
+  `online_channels` int NOT NULL,
+  `offline_channels` int NOT NULL,
+  `online_percentage` float NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+Sample INSERT: INSERT INTO `nvr_status_reports` VALUES (1,'2025-10-29 05:28:50',290,211,79,73);
+
+================= TABLE: parking_lot_counts =================
+CREATE TABLE `parking_lot_counts` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `report_id` int NOT NULL,
+  `lot_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `vehicle_type` enum('car','motorcycle') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `vehicle_count` int DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `report_id` (`report_id`),
+  CONSTRAINT `parking_lot_counts_ibfk_1` FOREIGN KEY (`report_id`) REFERENCES `car_parking_reports` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=1851 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+Sample INSERT: INSERT INTO `parking_lot_counts` VALUES (1,2,'ลานรถยนต์ 1 (97 Slot)','car',97,'2025-11-16 04:15:48'),(2,2,'ลานรถยนต์ 2 (114 Slot)','car',87,'2025-11-16 04:15:48'),(3,2,'ลานรถยนต์ 3/1 (100 Slot)','car',65,'2025-11-16 04:15:48'),(4,2,'ลานรถยนต์ 3/2 (264 Slot)','car',157,'2025-11-16 04:15:48'),(5,2,'ลา
+
+================= TABLE: patrol_checks =================
+CREATE TABLE `patrol_checks` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `inspection_date` date NOT NULL,
+  `patrol_status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `shift` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `employee_id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `inspector_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `patrol_time` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `building` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `submitted_by_id` int DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `submitted_by_id` (`submitted_by_id`),
+  CONSTRAINT `patrol_checks_ibfk_1` FOREIGN KEY (`submitted_by_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+Sample INSERT: 
+
+================= TABLE: patrol_reports =================
+CREATE TABLE `patrol_reports` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `report_date` date NOT NULL,
+  `report_condition` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `shift` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `employee_id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `inspector_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `patrol_time` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `building` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `fence_lighting` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `fence_objects` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `no_gathering` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `no_flyers` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `fence_normal` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `no_suspicious_parking` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `no_suspicious_boxes` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `no_unauthorized_persons_area` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `door_system_normal` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `electrical_system_normal` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `no_room_abnormalities` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `no_unauthorized_persons_room` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `no_chemical_obstruction` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `no_container_leaks` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `no_unauthorized_persons_chemical` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `chemical_door_normal` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `no_unauthorized_persons_electrical` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `electrical_door_normal` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `no_electrical_abnormalities` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `equipment_normal` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `no_fire_door_obstruction` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `is_deleted` tinyint(1) DEFAULT '0',
+  `deleted_by` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `deleted_at` datetime DEFAULT NULL,
+  `updated_by` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `updated_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=306 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+Sample INSERT: INSERT INTO `patrol_reports` VALUES (1,'2025-11-16','ภาวะปกติ','เช้า','00000000','System Admin','11.00-12.00','อาคาร 2','เพียงพอ','ไม่มี','ไม่มี','ไม่มี','ไม่พบ','ไม่พบ','ไม่พบ','ไม่พบ','ปกติ','ปกติ','ไม่พบสิ่งผิดปกติ','ไม่พบบุคคลอยุ่ในพื้นที่','ไม่พบสิ่งของกีดขวางทาง','ไม่พบ','ไม่พบบุคคลไม่เกี่ยวข้
+
+================= TABLE: reports =================
+CREATE TABLE `reports` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `report_date` date NOT NULL,
+  `employee_id` varchar(8) COLLATE utf8mb4_general_ci NOT NULL,
+  `full_name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `shift` varchar(10) COLLATE utf8mb4_general_ci NOT NULL,
+  `building` varchar(10) COLLATE utf8mb4_general_ci NOT NULL,
+  `guard_post` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `report_time` time NOT NULL,
+  `incident_report` text COLLATE utf8mb4_general_ci NOT NULL,
+  `special_incident` text COLLATE utf8mb4_general_ci,
+  `emergency_incident` text COLLATE utf8mb4_general_ci,
+  `updated_by` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `updated_at` datetime DEFAULT NULL,
+  `deleted_by` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `deleted_at` datetime DEFAULT NULL,
+  `is_deleted` tinyint(1) DEFAULT '0',
+  `submission_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=25822 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+Sample INSERT: INSERT INTO `reports` VALUES (1,'2025-09-30','MMM','KKKK','ดึก','4','Patrol 1','15:00:00','ปกติ','ไม่มี','ไม่มี',NULL,NULL,NULL,NULL,0,'2025-09-30 06:58:11'),(2,'2025-09-30','MMM','KKKK','ดึก','4','Patrol 1','15:00:00','ปกติ','ไม่มี','ไม่มี',NULL,NULL,NULL,NULL,0,'2025-09-30 07:34:59'),(3,'2025-10-0
+
+================= TABLE: role_permissions =================
+CREATE TABLE `role_permissions` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `role_id` int NOT NULL,
+  `page_name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `role_id` (`role_id`),
+  CONSTRAINT `role_permissions_ibfk_1` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=223 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+Sample INSERT: INSERT INTO `role_permissions` VALUES (53,2,'car_parking.php'),(54,2,'cctv_inspection_form.php'),(55,2,'check_hand_held.php'),(56,2,'check_list_patrol.php'),(57,2,'dashboard.php'),(58,2,'report.php'),(59,2,'report_building.php'),(60,2,'reset_admin_password.php'),(61,2,'reset_officers.php'),(62,2,'vi
+
+================= TABLE: roles =================
+CREATE TABLE `roles` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `role_name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `role_name` (`role_name`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+Sample INSERT: INSERT INTO `roles` VALUES (1,'ผู้ดูแลระบบ'),(2,'หัวหน้าเจ้าหน้าที่รักษาความปลอดภัย'),(4,'เจ้าหน้าที่ตรวจตรา'),(3,'เจ้าหน้าที่รักษาความปลอดภัย');
+
+================= TABLE: security_guard_counts =================
+CREATE TABLE `security_guard_counts` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `record_date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `morning_contract` int NOT NULL DEFAULT '0',
+  `morning_shift` int NOT NULL,
+  `morning_shift_contract` int DEFAULT NULL,
+  `evening_contract` int NOT NULL DEFAULT '0',
+  `evening_shift` int NOT NULL,
+  `evening_shift_contract` int DEFAULT NULL,
+  `total` int NOT NULL,
+  `submitted_by_id` int DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `is_deleted` tinyint(1) DEFAULT '0',
+  `deleted_by` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `deleted_at` datetime DEFAULT NULL,
+  `updated_by` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `updated_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `submitted_by_id` (`submitted_by_id`),
+  KEY `idx_guard_count_date` (`record_date`),
+  KEY `idx_guard_count_created` (`created_at`),
+  CONSTRAINT `security_guard_counts_ibfk_1` FOREIGN KEY (`submitted_by_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=70 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+Sample INSERT: INSERT INTO `security_guard_counts` VALUES (2,'2025-11-14 17:00:00',0,64,NULL,0,45,NULL,109,1,'2025-11-15 06:53:17',0,NULL,NULL,NULL,NULL),(3,'2025-11-15 07:25:52',0,56,NULL,0,43,NULL,99,1,'2025-11-15 07:25:52',0,NULL,NULL,NULL,NULL),(4,'2025-11-16 04:21:14',0,56,NULL,0,44,NULL,100,1,'2025-11-16 04:
+
+================= TABLE: users =================
+CREATE TABLE `users` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `username` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `password` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `first_name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `last_name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `eng_first_name` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `eng_last_name` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `employee_id` varchar(8) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `phone_number` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `user_type` enum('admin','officer') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'officer',
+  `role_id` int DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `username` (`username`),
+  UNIQUE KEY `employee_id` (`employee_id`),
+  KEY `idx_users_username` (`username`),
+  KEY `idx_users_employee_id` (`employee_id`),
+  KEY `idx_users_role_id` (`role_id`),
+  KEY `idx_users_user_type` (`user_type`),
+  CONSTRAINT `users_ibfk_1` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=353 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+Sample INSERT: INSERT INTO `users` VALUES (1,'adminxx','$2y$10$5XWkqbXAe.6aMIFdhIdAW.5TycYgVU.3GOkJiBSP18wj22UCLArPq','System','Admin',NULL,NULL,'00000000','0000000000','admin',1,'2025-10-18 09:29:46'),(181,'kesornbo','$2y$10$PEftvQTwfCHfIHRENAkMYOCkuQQTXE3vDW4StSKxhtJKEOAtRkcz.','เกษร','บุตยา','KESORN','BOOTYA','

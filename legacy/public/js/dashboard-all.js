@@ -210,6 +210,16 @@ async function fetchSecurityStatus() {
             securityLastUpdateElement.textContent = formatRelativeTime(data.last_update);
         }
 
+        const dayLastUpdateElement = document.getElementById('day-shift-last-update');
+        if (dayLastUpdateElement) {
+            dayLastUpdateElement.textContent = data.morning_last_update ? `รายงาน: ${formatRelativeTime(data.morning_last_update)}` : '-';
+        }
+
+        const nightLastUpdateElement = document.getElementById('night-shift-last-update');
+        if (nightLastUpdateElement) {
+            nightLastUpdateElement.textContent = data.evening_last_update ? `รายงาน: ${formatRelativeTime(data.evening_last_update)}` : '-';
+        }
+
     } catch (error) {
         console.error('Error fetching security status:', error);
     }

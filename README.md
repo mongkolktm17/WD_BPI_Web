@@ -1,87 +1,122 @@
-# WD Security Dashboard - AWS EC2 Deployment Guide
+<div align="center">
 
-A web-based dashboard for real-time monitoring of NVR status, security personnel, parking occupancy, and metal detector health. Integrated with modern visual reporting.
+# 🛡️ WD BPI Security Management System
+### Next-Gen Security & Facility Operations Platform
 
----
+[![Version](https://img.shields.io/badge/version-2.1.0-blue.svg?style=for-the-badge&logo=semver)](CHANGELOG.md)
+[![Next.js](https://img.shields.io/badge/Next.js-16.2-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19.0-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
+[![NestJS](https://img.shields.io/badge/NestJS-11.0-E0234E?style=for-the-badge&logo=nestjs)](https://nestjs.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18.0-336791?style=for-the-badge&logo=postgresql)](https://www.postgresql.org/)
+[![PHP](https://img.shields.io/badge/PHP-8.2-777BB4?style=for-the-badge&logo=php&logoColor=white)](legacy/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker)](docker-compose.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
-## 🚀 Deployment on AWS EC2 (Ubuntu 22.04/24.04 LTS)
+<p align="center">
+  ระบบบริหารจัดการและติดตามความปลอดภัยแบบเรียลไทม์ (Real-Time Security & Facility Operations Management System)<br>
+  สำหรับ <strong>Western Digital Storage Technologies (Thailand) Ltd. - BPI Site</strong>
+</p>
 
-This guide provides a step-by-step process for setting up the WD BPI Web application on an AWS EC2 instance.
-
-### 1. Instance Preparation
-- **Instance Type**: Recommended `t3.small` or higher (depending on user load).
-- **OS**: Ubuntu Server 22.04 LTS or 24.04 LTS.
-- **Security Group Settings**:
-  - `Inbound`: Allow HTTP (Port 80), HTTPS (Port 443), and SSH (Port 22).
-  - Optional: Allow MySQL (Port 3306) only for specific IP ranges if remote access is required.
-
-### 2. Update and Install Dependencies
-Connect to your instance via SSH and run:
-```bash
-sudo apt update && sudo apt upgrade -y
-sudo apt install apache2 php libapache2-mod-php php-mysql php-curl php-gd php-mbstring php-xml php-zip mariadb-server git -y
-```
-
-### 3. Application Deployment
-Clone the repository into the `/var/www/html` directory:
-```bash
-cd /var/www/html
-sudo git clone https://github.com/PCS-IOT/WD_BPI_Web.git .
-```
-
-Set appropriate directory permissions:
-```bash
-sudo chown -R www-data:www-data /var/www/html
-sudo chmod -R 755 /var/www/html
-```
-
-### 4. Database Setup
-Secure the MariaDB installation and create the database:
-```bash
-sudo mysql_secure_installation
-# Follow the prompts to set the root password.
-
-sudo mysql -u root -p
-```
-Inside the MySQL shell:
-```sql
-CREATE DATABASE wd_security_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'wd_user'@'localhost' IDENTIFIED BY 'your_strong_password';
-GRANT ALL PRIVILEGES ON wd_security_db.* TO 'wd_user'@'localhost';
-FLUSH PRIVILEGES;
-EXIT;
-```
-Import the schema:
-```bash
-# Assuming schema.sql is provided or exported from XAMPP
-mysql -u wd_user -p wd_security_db < schema.sql
-```
-
-### 5. Configuration
-Copy the example config and edit it with your database credentials:
-```bash
-cp config.example.php config.php
-nano config.php
-```
-Update the `DB_SERVER`, `DB_USERNAME`, `DB_PASSWORD`, and `DB_NAME` values.
-
-### 6. Apache Configuration (Optional but Recommended)
-Enable `mod_rewrite` if you use `.htaccess` for clean URLs:
-```bash
-sudo a2enmod rewrite
-sudo systemctl restart apache2
-```
-Ensure `AllowOverride All` is set in your `/etc/apache2/sites-available/000-default.conf` for the `/var/www/html` directory.
+[✨ คุณสมบัติหลัก](#-คุณสมบัติหลัก-key-features) •
+[🏛️ สถาปัตยกรรมระบบ](#️-สถาปัตยกรรมระบบ-architecture) •
+[🚀 การติดตั้งและใช้งาน](#-การเริ่มต้นใช้งาน-getting-started) •
+[🐳 Docker](#-การรันด้วย-docker) •
+[📝 ประวัติการอัปเดต](#-ประวัติการอัปเดต-changelog)
 
 ---
 
-## 📊 Latest Features
-- **Visual Statistics Dashboard**: Interactive charts using Chart.js for security trends and metal detector health.
-- **NVR Tracking**: 62-day retention monitoring with building-wise progress bars.
-- **Responsive UI**: Optimized for both desktop and mobile views with modern aesthetic.
+</div>
 
-## 🤝 Contributing
-Contributions are welcome! Please submit a Pull Request to the `main` branch.
+## 🌟 คุณสมบัติหลัก (Key Features)
 
-## 📄 License
-This project is licensed under the MIT License.
+- 👮 **Smart Guard Duty Log (บันทึกเวร รปภ.)**:
+  - บันทึกแยกกะได้อย่างอิสระ: เลือกบันทึก **กะเช้า (07:00–19:00)** หรือ **กะดึก (19:00–07:00)** หรือ **ทั้งสองกะ**
+  - ระบบ Auto-Prefill ดึงค่ายอดล่าสุดมาเป็นค่าเริ่มต้น ช่วยให้กรอกข้อมูลได้อย่างรวดเร็ว
+  - ระบบ Carry-Forward คงค่าเดิมอัตโนมัติหากไม่ได้กรอก พร้อมระบุเวลาที่รายงานเข้ามาล่าสุดของแต่ละกะ
+- 🅿️ **Real-Time Parking Lot Monitoring**:
+  - ติดตามความหนาแน่นและที่จอดรถยนต์ (Car Lots) และรถจักรยานยนต์ (Motorcycle Lots) แยกตามอาคาร/โซน
+- 📹 **NVR 62-Day Compliance & CCTV Online Status**:
+  - ตรวจสอบความพร้อมของระบบบันทึกภาพย้อนหลัง 62 วันตามมาตรฐานความปลอดภัย และสถานะกล้องออนไลน์แบบเรียลไทม์
+- 🔍 **Metal Detector Health Checks**:
+  - บันทึกและวิเคราะห์ผลการทดสอบเครื่องตรวจจับโลหะแบบเดินผ่าน (Walkthrough) และแบบมือถือ (Handheld)
+- 📊 **Visual Analytics & Sparklines**:
+  - กราฟแนวโน้มย้อนหลัง 7 วัน พร้อมตัวบ่งชี้ทิศทางข้อมูล (Trends) และการส่งออกรายงานเป็น CSV รองรับภาษาไทย (UTF-8 BOM)
+
+---
+
+## 🏛️ สถาปัตยกรรมระบบ (Architecture)
+
+โครงการถูกออกแบบในรูปแบบ **Modern Monorepo** พร้อมระบบ **Legacy PHP Support** เพื่อการทำงานที่ต่อเนื่อง:
+
+```text
+wdbpi/
+├── apps/
+│   ├── web/               # Next.js 16 (App Router) + React 19 + Tailwind CSS
+│   └── api/               # NestJS 11 + Prisma ORM 7 + PostgreSQL + Redis
+├── legacy/                # PHP 8.2 + MySQL (Original Core System)
+│   ├── dashboard.php      # Legacy Dashboard View
+│   ├── guard_duty_log.php # Enhanced Shift Guard Duty Log
+│   └── get_security_status.php
+├── docker/                # Multi-stage Dockerfiles & Nginx Reverse Proxy Configs
+├── prisma/                # Prisma Schema & Database Migrations
+└── docker-compose.yml     # Unified Multi-container Orchestration
+```
+
+---
+
+## 🚀 การเริ่มต้นใช้งาน (Getting Started)
+
+### 1. ความต้องการของระบบ (Prerequisites)
+- **Node.js**: `>= 20.0.0`
+- **npm** หรือ **pnpm**
+- **PHP**: `>= 8.1` (สำหรับ Legacy System)
+- **PostgreSQL**: `>= 16`
+- **Docker & Docker Compose** (แนะนำสำหรับ Production/Containerized)
+
+### 2. การติดตั้งแบบ Monorepo (Next.js + NestJS)
+
+```bash
+# โคลนโปรเจกต์
+git clone https://github.com/PCS-IOT/WD_BPI_Web.git
+cd WD_BPI_Web
+
+# ติดตั้ง Dependencies ทั้งหมดผ่าน Turborepo
+npm install
+
+# กำหนดค่าตัวแปรสภาพแวดล้อม
+cp .env.example .env
+
+# รันโหมด Development (รันพร้อมกันทั้ง Web & API)
+npm run dev
+```
+
+- 🌐 **Web Frontend**: `http://localhost:3000`
+- ⚙️ **NestJS API**: `http://localhost:3001/api`
+- 📚 **Swagger Docs**: `http://localhost:3001/api/docs`
+
+---
+
+## 🐳 การรันด้วย Docker (Unified Stack)
+
+สามารถเปิดใช้งานทั้งระบบ (Next.js, NestJS, Legacy PHP, Nginx, PostgreSQL, Redis) ด้วยคำสั่งเดียว:
+
+```bash
+# สั่ง Build และรันคอนเทนเนอร์ทั้งหมด
+docker compose up -d --build
+```
+
+---
+
+## 📝 ประวัติการอัปเดต (Changelog)
+
+ดูรายละเอียดการอัปเดตและประวัติเวอร์ชันทั้งหมดได้ที่ [CHANGELOG.md](CHANGELOG.md)
+
+---
+
+## 📄 ใบอนุญาต (License)
+
+This project is licensed under the [MIT License](LICENSE).
+
+<div align="center">
+  <sub>Developed & Maintained for <strong>Western Digital BPI Site</strong></sub>
+</div>

@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WDBPI Migration Report — แผนการย้ายระบบ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Sarabun', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Sarabun', sans-serif; }
+        .print-break { page-break-before: always; }
+        @media print {
+            .no-print { display: none !important; }
+            body { font-size: 11pt; }
+        }
+        .gradient-header { background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 50%, #0ea5e9 100%); }
+        .card-shadow { box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06); }
+        .status-badge { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold; }
+        .timeline-line { position: relative; }
+        .timeline-line::before { content: ''; position: absolute; left: 1.25rem; top: 2rem; bottom: 0; width: 2px; background: #e5e7eb; }
+        .gantt-bar { height: 28px; border-radius: 6px; display: flex; align-items: center; padding: 0 8px; font-size: 11px; font-weight: 600; color: white; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+<!-- HEADER -->
+<div class="gradient-header text-white py-10 px-6 no-print">
+    <div class="max-w-6xl mx-auto">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-extrabold tracking-tight">WDBPI — Migration Report</h1>
+                <p class="text-blue-100 mt-1 text-sm">แผนการย้ายระบบจาก PHP+MySQL ไปยัง Next.js+NestJS+PostgreSQL</p>
+            </div>
+            <div class="text-right text-xs text-blue-200">
+                <div>วันที่: 15 สิงหาคม 2568</div>
+                <div>เวอร์ชัน: 1.0</div>
+                <div class="mt-1">
+                    <button onclick="window.print()" class="bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg transition">🖨️ พิมพ์รายงาน</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="max-w-6xl mx-auto px-6 py-8">
+
+    <!-- EXECUTIVE SUMMARY -->
+    <section class="mb-10">
+        <h2 class="text-xl font-bold text-blue-900 mb-4 flex items-center gap-2">
+            <span class="w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center text-sm">1</span>
+            สรุปภาพรวม (Executive Summary)
+        </h2>
+        <div class="bg-white rounded-2xl border border-gray-100 card-shadow p-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-blue-50 rounded-xl p-4 text-center">
+                    <div class="text-3xl font-black text-blue-600">20</div>
+                    <div class="text-xs text-blue-700 font-semibold mt-1">ฟีเจอร์หลัก</div>
+                </div>
+                <div class="bg-green-50 rounded-xl p-4 text-center">
+                    <div class="text-3xl font-black text-green-600">13</div>
+                    <div class="text-xs text-green-700 font-semibold mt-1">ทำเสร็จ 100%</div>
+                </div>
+                <div class="bg-amber-50 rounded-xl p-4 text-center">
+                    <div class="text-3xl font-black text-amber-600">4</div>
+                    <div class="text-xs text-amber-700 font-semibold mt-1">ทำเสร็จบางส่วน</div>
+                </div>
+                <div class="bg-red-50 rounded-xl p-4 text-center">
+                    <div class="text-3xl font-black text-red-600">3</div>
+                    <div class="text-xs text-red-700 font-semibold mt-1">ต้องแก้ไขก่อนย้าย</div>
+                </div>
+            </div>
+            <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                <h3 class="font-bold text-amber-800 text-sm mb-2">⚠️ ข้อสรุปสำคัญ</h3>
+                <ul class="text-sm text-amber-700 space-y-1">
+                    <li>• ระบบใหม่ทำฟีเจอร์ได้ <strong>65%</strong> เทียบกับระบบเดิม (13/20 ฟีเจอร์ครบ)</li>
+                    <li>• <strong>3 จุดวิกฤต</strong> ที่ต้องแก้ก่อนวันย้าย: Parking lot counts ไม่ถูกบันทึก, Edit reports ใช้ได้แค่ 1 ประเภท, ไม่มี soft delete</li>
+                    <li>• ไม่มีหน้า Profile/เปลี่ยนรหัสผ่าน — ต้องเพิ่มก่อนย้าย</li>
+                    <li>• UX/UI ระบบใหม่ <strong>ทันสมัยกว่า</strong> แต่ฟังก์ชันต้องครบ 100% ก่อนย้าย</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- FEATURE COMPARISON MATRIX -->
+    <section class="mb-10 print-break">
+        <h2 class="text-xl font-bold text-blue-900 mb-4 flex items-center gap-2">
+            <span class="w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center text-sm">2</span>
+            ตารางเปรียบเทียบฟีเจอร์ (Feature Matrix)
+        </h2>
+        <div class="bg-white rounded-2xl border border-gray-100 card-shadow overflow-hidden">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="bg-gray-50 border-b border-gray-200">
+                        <th class="text-left px-4 py-3 font-bold text-gray-600 w-8">#</th>
+                        <th class="text-left px-4 py-3 font-bold text-gray-600">ฟีเจอร์</th>
+                        <th class="text-center px-4 py-3 font-bold text-gray-600 w-28">สถานะ</th>
+                        <th class="text-left px-4 py-3 font-bold text-gray-600">รายละเอียด</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- LOGIN -->
+                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                        <td class="px-4 py-3 text-gray-400">1</td>
+                        <td class="px-4 py-3 font-semibold">หน้าเข้าสู่ระบบ</td>
+                        <td class="px-4 py-3 text-center"><span class="status-badge bg-green-100 text-green-700">✅ ครบ</span></td>
+                        <td class="px-4 py-3 text-gray-600">JWT แทน Session, Thai UI เหมือนเดิม, bcrypt เหมือนเดิม</td>
+                    </tr>
+                    <!-- DASHBOARD -->
+                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                        <td class="px-4 py-3 text-gray-400">2</td>
+                        <td class="px-4 py-3 font-semibold">แดชบอร์ด (6 การ์ด)</td>
+                        <td class="px-4 py-3 text-center"><span class="status-badge bg-green-100 text-green-700">✅ ครบ</span></td>
+                        <td class="px-4 py-3 text-gray-600">Enhanced: sparkline charts, ring progress, occupancy bars ดีกว่าเดิม</td>
+                    </tr>
+                    <!-- CAR PARKING -->
+                    <tr class="border-b border-gray-100 hover:bg-gray-50 bg-red-50/50">
+                        <td class="px-4 py-3 text-gray-400">3</td>
+                        <td class="px-4 py-3 font-semibold text-red-700">แบบฟอร์มตรวจลานจอดรถ</td>
+                        <td class="px-4 py-3 text-center"><span class="status-badge bg-red-100 text-red-700">❌ ไม่ครบ</span></td>
+                        <td class="px-4 py-3 text-red-600"><strong>วิกฤต:</strong> จำนวนรถต่อลาน (lot counts) ไม่ถูกส่งไป API ตอน submit — ข้อมูลหาย</td>
+                    </tr>
+                    <!-- CCTV INSPECTION -->
+                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                        <td class="px-4 py-3 text-gray-400">4</td>
+                        <td class="px-4 py-3 font-semibold">แบบฟอร์มตรวจ CCTV</td>
+                        <td class="px-4 py-3 text-center"><span class="status-badge bg-green-100 text-green-700">✅ ครบ</span></td>
+                        <td class="px-4 py-3 text-gray-600">7 รายการตรวจ, auto inspector, Thai labels เหมือนเดิม</td>
+                    </tr>
+                    <!-- CCTV REPORT -->
+                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                        <td class="px-4 py-3 text-gray-400">5</td>
+                        <td class="px-4 py-3 font-semibold">รายงาน CCTV (per NVR)</td>
+                        <td class="px-4 py-3 text-center"><span class="status-badge bg-green-100 text-green-700">✅ ครบ</span></td>
+                        <td class="px-4 py-3 text-gray-600">Enhanced: building tabs, expandable NVR, color-coded channels</td>
+                    </tr>
+                    <!-- NVR RECORDING -->
+                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                        <td class="px-4 py-3 text-gray-400">6</td>
+                        <td class="px-4 py-3 font-semibold">รายงานวันบันทึก NVR</td>
+                        <td class="px-4 py-3 text-center"><span class="status-badge bg-green-100 text-green-700">✅ ครบ</span></td>
+                        <td class="px-4 py-3 text-gray-600">Enhanced: batch save, CSV export, history, pass/fail badge</td>
+                    </tr>
+                    <!-- CCTV ANGLE -->
+                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                        <td class="px-4 py-3 text-gray-400">7</td>
+                        <td class="px-4 py-3 font-semibold">ตรวจสอบมุมกล้อง CCTV</td>
+                        <td class="px-4 py-3 text-center"><span class="status-badge bg-green-100 text-green-700">✅ ครบ</span></td>
+                        <td class="px-4 py-3 text-gray-600">Enhanced: VIEW mode, batch save, image thumbnails</td>
+                    </tr>
+                    <!-- HANDHELD -->
+                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                        <td class="px-4 py-3 text-gray-400">8</td>
+                        <td class="px-4 py-3 font-semibold">ตรวจเครื่องตรวจโลหะมือถือ</td>
+                        <td class="px-4 py-3 text-center"><span class="status-badge bg-green-100 text-green-700">✅ ครบ</span></td>
+                        <td class="px-4 py-3 text-gray-600">Speech-to-text, history, detail modal</td>
+                    </tr>
+                    <!-- WALKTHROUGH -->
+                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                        <td class="px-4 py-3 text-gray-400">9</td>
+                        <td class="px-4 py-3 font-semibold">ตรวจเครื่องตรวจโลหะเดินผ่าน</td>
+                        <td class="px-4 py-3 text-center"><span class="status-badge bg-green-100 text-green-700">✅ ครบ</span></td>
+                        <td class="px-4 py-3 text-gray-600">6 zones, history, detail modal</td>
+                    </tr>
+                    <!-- PATROL -->
+                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                        <td class="px-4 py-3 text-gray-400">10</td>
+                        <td class="px-4 py-3 font-semibold">รายการตรวจตรา (20 รายการ)</td>
+                        <td class="px-4 py-3 text-center"><span class="status-badge bg-green-100 text-green-700">✅ ครบ</span></td>
+                        <td class="px-4 py-3 text-gray-600">Unified หน้าเดียว, list mode, pagination</td>
+                    </tr>
+                    <!-- INCIDENT REPORT -->
+                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                        <td class="px-4 py-3 text-gray-400">11</td>
+                        <td class="px-4 py-3 font-semibold">รายงานเหตุการณ์ทั่วไป</td>
+                        <td class="px-4 py-3 text-center"><span class="status-badge bg-green-100 text-green-700">✅ ครบ</span></td>
+                        <td class="px-4 py-3 text-gray-600">Speech-to-text ทุกช่อง, building cards UI</td>
+                    </tr>
+                    <!-- BUILDING REPORT -->
+                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                        <td class="px-4 py-3 text-gray-400">12</td>
+                        <td class="px-4 py-3 font-semibold">รายงานอาคารเฉพาะ</td>
+                        <td class="px-4 py-3 text-center"><span class="status-badge bg-green-100 text-green-700">✅ ครบ</span></td>
+                        <td class="px-4 py-3 text-gray-600">5 อาคาร, guard post ตามอาคาร, same as legacy</td>
+                    </tr>
+                    <!-- REPORT VIEWER -->
+                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                        <td class="px-4 py-3 text-gray-400">13</td>
+                        <td class="px-4 py-3 font-semibold">ศูนย์รวมรายงาน (Report Hub)</td>
+                        <td class="px-4 py-3 text-center"><span class="status-badge bg-green-100 text-green-700">✅ ครบ</span></td>
+                        <td class="px-4 py-3 text-gray-600">9 ประเภท, autocomplete, CSV export, modal view</td>
+                    </tr>
+                    <!-- EDIT PAGES -->
+                    <tr class="border-b border-gray-100 hover:bg-gray-50 bg-amber-50/50">
+                        <td class="px-4 py-3 text-gray-400">14</td>
+                        <td class="px-4 py-3 font-semibold text-amber-700">หน้าแก้ไขรายงานทุกประเภท</td>
+                        <td class="px-4 py-3 text-center"><span class="status-badge bg-amber-100 text-amber-700">⚠️ บางส่วน</span></td>
+                        <td class="px-4 py-3 text-amber-600">แก้ได้เฉพาะ building reports — อีก 8 ประเภทแสดง "read-only" / Backend PUT มีแล้ว</td>
+                    </tr>
+                    <!-- SOFT DELETE -->
+                    <tr class="border-b border-gray-100 hover:bg-gray-50 bg-red-50/50">
+                        <td class="px-4 py-3 text-gray-400">15</td>
+                        <td class="px-4 py-3 font-semibold text-red-700">ลบรายงาน (Soft Delete)</td>
+                        <td class="px-4 py-3 text-center"><span class="status-badge bg-red-100 text-red-700">❌ ไม่ครบ</span></td>
+                        <td class="px-4 py-3 text-red-600"><strong>วิกฤต:</strong> ใช้ Hard delete — ข้อมูลหายถาวร ต้องแก้เป็น isDeleted flag</td>
+                    </tr>
+                    <!-- USER MANAGEMENT -->
+                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                        <td class="px-4 py-3 text-gray-400">16</td>
+                        <td class="px-4 py-3 font-semibold">จัดการผู้ใช้ (CRUD/CSV)</td>
+                        <td class="px-4 py-3 text-center"><span class="status-badge bg-green-100 text-green-700">✅ ครบ</span></td>
+                        <td class="px-4 py-3 text-gray-600">CRUD + CSV import (textarea), export endpoint</td>
+                    </tr>
+                    <!-- ROLE MANAGEMENT -->
+                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                        <td class="px-4 py-3 text-gray-400">17</td>
+                        <td class="px-4 py-3 font-semibold">จัดการ roles + permissions</td>
+                        <td class="px-4 py-3 text-center"><span class="status-badge bg-green-100 text-green-700">✅ ครบ</span></td>
+                        <td class="px-4 py-3 text-gray-600">12 pages, CRUD, PermissionGuard decorator</td>
+                    </tr>
+                    <!-- PROFILE -->
+                    <tr class="border-b border-gray-100 hover:bg-gray-50 bg-amber-50/50">
+                        <td class="px-4 py-3 text-gray-400">18</td>
+                        <td class="px-4 py-3 font-semibold text-amber-700">Profile + เปลี่ยนรหัสผ่าน</td>
+                        <td class="px-4 py-3 text-center"><span class="status-badge bg-amber-100 text-amber-700">⚠️ บางส่วน</span></td>
+                        <td class="px-4 py-3 text-amber-600">มีแค่ update fullName/department — <strong>ไม่มีเปลี่ยนรหัสผ่าน, ไม่มี email/phone, ไม่มีหน้า UI</strong></td>
+                    </tr>
+                    <!-- VISUAL CHARTS -->
+                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                        <td class="px-4 py-3 text-gray-400">19</td>
+                        <td class="px-4 py-3 font-semibold">กราฟสถิติ (4 แผนภูมิ)</td>
+                        <td class="px-4 py-3 text-center"><span class="status-badge bg-green-100 text-green-700">✅ ครบ</span></td>
+                        <td class="px-4 py-3 text-gray-600">เหมือนเดิม 4 แผนภูมิ + time range toggle</td>
+                    </tr>
+                    <!-- GUARD DUTY -->
+                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                        <td class="px-4 py-3 text-gray-400">20</td>
+                        <td class="px-4 py-3 font-semibold">บันทึกเวรรักษาความปลอดภัย</td>
+                        <td class="px-4 py-3 text-center"><span class="status-badge bg-green-100 text-green-700">✅ ครบ</span></td>
+                        <td class="px-4 py-3 text-gray-600">เช้า/เย็น + สัญญา, history, pagination</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- CRITICAL GAPS -->
+    <section class="mb-10 print-break">
+        <h2 class="text-xl font-bold text-blue-900 mb-4 flex items-center gap-2">
+            <span class="w-8 h-8 bg-red-600 text-white rounded-lg flex items-center justify-center text-sm">3</span>
+            จุดที่ต้องแก้ก่อนวันย้าย (Critical Gaps)
+        </h2>
+        <div class="space-y-4">
+            <!-- GAP 1 -->
+            <div class="bg-white rounded-2xl border-l-4 border-red-500 card-shadow p-5">
+                <div class="flex items-start gap-3">
+                    <div class="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <span class="text-red-600 font-bold text-lg">1</span>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="font-bold text-red-700 text-base">Parking Lot Counts ไม่ถูกบันทึก</h3>
+                        <p class="text-sm text-gray-600 mt-1">
+                            ในหน้า <code class="bg-gray-100 px-1 rounded">apps/web/app/car-parking/page.tsx</code> — ฟอร์มเก็บค่า <code>carLotCounts</code> และ <code>motoLotCounts</code> ไว้ใน state
+                            แต่ตอน <code>handleSubmit</code> ไม่ได้ส่งค่าเหล่านี้ไป API ทำให้ <strong>จำนวนรถต่อลานจอดไม่ถูกบันทึกเลย</strong>
+                        </p>
+                        <div class="mt-3 bg-red-50 rounded-lg p-3 text-sm">
+                            <div class="font-semibold text-red-700 mb-1">สิ่งที่ต้องแก้:</div>
+                            <ul class="text-red-600 space-y-1 list-disc list-inside">
+                                <li>เพิ่ม <code>carLotCounts</code> และ <code>motoLotCounts</code> ใน POST body</li>
+                                <li>Backend NestJS: บันทึกลง <code>ParkingLotCount</code> model ( Prisma schema มีแล้ว)</li>
+                                <li>ตรวจสอบว่า dashboard ดึงค่า lot counts ได้ถูกต้อง</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- GAP 2 -->
+            <div class="bg-white rounded-2xl border-l-4 border-red-500 card-shadow p-5">
+                <div class="flex items-start gap-3">
+                    <div class="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <span class="text-red-600 font-bold text-lg">2</span>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="font-bold text-red-700 text-base">Edit Reports ใช้ได้แค่ Building Reports</h3>
+                        <p class="text-sm text-gray-600 mt-1">
+                            ในหน้า <code class="bg-gray-100 px-1 rounded">apps/web/app/report-page/page.tsx</code> — ReportDetailModal แสดงข้อความ "ไม่สามารถแก้ไขรายละเอียดได้ในโหมดนี้"
+                            สำหรับ 8 ประเภทรายงาน (car_parking, cctv_inspection, hand_held, patrol, guard_count, cctv_report, cctv_angle, metal_detector)
+                        </p>
+                        <div class="mt-3 bg-red-50 rounded-lg p-3 text-sm">
+                            <div class="font-semibold text-red-700 mb-1">สิ่งที่ต้องแก้:</div>
+                            <ul class="text-red-600 space-y-1 list-disc list-inside">
+                                <li>สร้าง editable form ใน ReportDetailModal สำหรับทุกประเภท</li>
+                                <li>Backend PUT endpoints มีอยู่แล้วส่วนใหญ่ — เหลือแค่ frontend</li>
+                                <li>หรือสร้างหน้า edit แยกสำหรับแต่ละประเภท</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- GAP 3 -->
+            <div class="bg-white rounded-2xl border-l-4 border-red-500 card-shadow p-5">
+                <div class="flex items-start gap-3">
+                    <div class="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <span class="text-red-600 font-bold text-lg">3</span>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="font-bold text-red-700 text-base">Hard Delete แทน Soft Delete</h3>
+                        <p class="text-sm text-gray-600 mt-1">
+                            ระบบเดิมใช้ <code>is_deleted = 1</code> (soft delete) — ข้อมูลไม่หาย แต่ระบบใหม่ใช้ Prisma <code>delete()</code> ทำให้ <strong>ข้อมูลหายถาวร</strong>
+                        </p>
+                        <div class="mt-3 bg-red-50 rounded-lg p-3 text-sm">
+                            <div class="font-semibold text-red-700 mb-1">สิ่งที่ต้องแก้:</div>
+                            <ul class="text-red-600 space-y-1 list-disc list-inside">
+                                <li>เพิ่ม <code>isDeleted Boolean @default(false)</code> ในทุก Prisma model ที่เกี่ยวข้อง</li>
+                                <li>แก้ DELETE endpoints ทั้งหมดเป็น <code>update({ data: { isDeleted: true } })</code></li>
+                                <li>แก้ GET/findMany ทั้งหมดเพิ่ม <code>where: { isDeleted: false }</code></li>
+                                <li>ทำ Prisma migration ใหม่</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- GAP 4 -->
+            <div class="bg-white rounded-2xl border-l-4 border-amber-500 card-shadow p-5">
+                <div class="flex items-start gap-3">
+                    <div class="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <span class="text-amber-600 font-bold text-lg">4</span>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="font-bold text-amber-700 text-base">ไม่มีหน้า Profile + เปลี่ยนรหัสผ่าน</h3>
+                        <p class="text-sm text-gray-600 mt-1">
+                            ระบบเดิมมีหน้า <code>update_profile.php</code> ให้แก้ไขข้อมูลส่วนตัวและเปลี่ยนรหัสผ่าน
+                            ระบบใหม่ยังไม่มีหน้า UI สำหรับส่วนนี้ และ backend ยังไม่มี endpoint เปลี่ยนรหัสผ่าน
+                        </p>
+                        <div class="mt-3 bg-amber-50 rounded-lg p-3 text-sm">
+                            <div class="font-semibold text-amber-700 mb-1">สิ่งที่ต้องแก้:</div>
+                            <ul class="text-amber-600 space-y-1 list-disc list-inside">
+                                <li>สร้างหน้า Profile ใน frontend (แก้ไข name, phone, email)</li>
+                                <li>เพิ่ม PUT /api/auth/change-password (verify current password → set new)</li>
+                                <li>เพิ่ม PUT /api/users/profile (email, phone fields)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- DATABASE MIGRATION -->
+    <section class="mb-10 print-break">
+        <h2 class="text-xl font-bold text-blue-900 mb-4 flex items-center gap-2">
+            <span class="w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center text-sm">4</span>
+            แผนการย้ายฐานข้อมูล (Database Migration)
+        </h2>
+        <div class="bg-white rounded-2xl border border-gray-100 card-shadow p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="font-bold text-sm text-gray-700 mb-3">🔵 ระบบเดิม (MySQL)</h3>
+                    <div class="bg-blue-50 rounded-xl p-4 text-sm space-y-2">
+                        <div class="flex justify-between"><span>ฐานข้อมูล:</span><span class="font-semibold">wdbpi_legacy</span></div>
+                        <div class="flex justify-between"><span>ตารางทั้งหมด:</span><span class="font-semibold">16 ตาราง</span></div>
+                        <div class="flex justify-between"><span>ผู้ใช้:</span><span class="font-semibold">~354 คน</span></div>
+                        <div class="flex justify-between"><span>รายงาน:</span><span class="font-semibold">~37,000+ รายการ</span></div>
+                        <div class="flex justify-between"><span>ตารางหลัก:</span><span class="font-semibold text-right text-xs">users, roles, role_permissions,<br>reports, car_parking_reports,<br>parking_lot_counts, cctv_inspections,<br>cctv_reports, cctv_report_details,<br>cctv_angle_reports, cctv_angle_checks,<br>cctv_devices, cctv_camera_names,<br>hand_held_checks, metal_detector_checks,<br>security_guard_counts, patrol_reports,<br>patrol_checks</span></div>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="font-bold text-sm text-gray-700 mb-3">🟢 ระบบใหม่ (PostgreSQL)</h3>
+                    <div class="bg-green-50 rounded-xl p-4 text-sm space-y-2">
+                        <div class="flex justify-between"><span>ฐานข้อมูล:</span><span class="font-semibold">wdbpi_db</span></div>
+                        <div class="flex justify-between"><span>Prisma Models:</span><span class="font-semibold">28+ models</span></div>
+                        <div class="flex justify-between"><span>ORM:</span><span class="font-semibold">Prisma</span></div>
+                        <div class="flex justify-between"><span>Auth:</span><span class="font-semibold">JWT (bcrypt)</span></div>
+                        <div class="flex justify-between"><span>ตารางที่ต้องสร้างเพิ่ม:</span><span class="font-semibold text-amber-600">CctvDevice, CctvCameraName</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 bg-gray-50 rounded-xl p-4">
+                <h3 class="font-bold text-sm text-gray-700 mb-3">📋 ขั้นตอนการย้ายข้อมูล (Data Migration Steps)</h3>
+                <div class="space-y-3 text-sm">
+                    <div class="flex items-start gap-3">
+                        <span class="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">1</span>
+                        <div>
+                            <div class="font-semibold">สร้าง Prisma Schema ให้ครบ</div>
+                            <div class="text-gray-500">เพิ่ม CctvDevice, CctvCameraName models ที่ยังขาด + isDeleted field ทุก model</div>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <span class="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">2</span>
+                        <div>
+                            <div class="font-semibold">สคริปต์ ETL (Extract-Transform-Load)</div>
+                            <div class="text-gray-500">เขียน Node.js script เชื่อม MySQL → PostgreSQL: users, roles, reports, parking, cctv, detectors, patrol</div>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <span class="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">3</span>
+                        <div>
+                            <div class="font-semibold">Import ข้อมูลผู้ใช้ + Role mappings</div>
+                            <div class="text-gray-500">users → User, roles → Role, role_permissions → RolePermission (map page_name → moduleName + canRead/Write/Delete)</div>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <span class="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">4</span>
+                        <div>
+                            <div class="font-semibold">Import ข้อมูลรายงานทั้งหมด</div>
+                            <div class="text-gray-500">reports → BuildingReport, car_parking_reports → CarParking, cctv_inspections → CctvInspection, hand_held_checks → HandheldCheck, metal_detector_checks → WalkthroughCheck, patrol_reports → PatrolReport, security_guard_counts → GuardCount</div>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <span class="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">5</span>
+                        <div>
+                            <div class="font-semibold">Verify + Smoke Test</div>
+                            <div class="text-gray-500">ตรวจนับจำนวนรายการในแต่ละตาราง, ทดสอบ login ด้วย user เดิม, ตรวจสอบ dashboard data</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4 bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm">
+                <div class="font-semibold text-amber-800 mb-1">⚠️ สิ่งที่ต้องระวังในการย้ายข้อมูล</div>
+                <ul class="text-amber-700 space-y-1 list-disc list-inside">
+                    <li>Thai text encoding — ต้องใช้ UTF-8 ทั้ง MySQL และ PostgreSQL</li>
+                    <li>Bcrypt password hashes — ใช้ได้เหมือนเดิม (ไม่ต้อง rehash)</li>
+                    <li>Foreign key relationships — ต้อง import ในลำดับที่ถูกต้อง (roles → users → reports)</li>
+                    <li>Auto-increment IDs — ต้อง reset sequences ใน PostgreSQL หลัง import</li>
+                    <li>cctv_devices + cctv_camera_names — ตารางอุปกรณ์ ต้องสร้าง schema ใน Prisma ก่อน import</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- UX/UI COMPARISON -->
+    <section class="mb-10 print-break">
+        <h2 class="text-xl font-bold text-blue-900 mb-4 flex items-center gap-2">
+            <span class="w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center text-sm">5</span>
+            เปรียบเทียบ UX/UI
+        </h2>
+        <div class="bg-white rounded-2xl border border-gray-100 card-shadow overflow-hidden">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="bg-gray-50 border-b border-gray-200">
+                        <th class="text-left px-4 py-3 font-bold text-gray-600">องค์ประกอบ</th>
+                        <th class="text-left px-4 py-3 font-bold text-gray-600">ระบบเดิม (PHP)</th>
+                        <th class="text-left px-4 py-3 font-bold text-gray-600">ระบบใหม่ (Next.js)</th>
+                        <th class="text-center px-4 py-3 font-bold text-gray-600 w-24">ผลกระทบ</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    <tr><td class="px-4 py-3 font-medium">ภาษา</td><td class="px-4 py-3 text-gray-600">ไทย 100%</td><td class="px-4 py-3 text-gray-600">ไทย 100%</td><td class="px-4 py-3 text-center"><span class="text-green-600">✓ ไม่ต่าง</span></td></tr>
+                    <tr><td class="px-4 py-3 font-medium">Font</td><td class="px-4 py-3 text-gray-600">Sarabun (CDN)</td><td class="px-4 py-3 text-gray-600">Sarabun (Google Fonts)</td><td class="px-4 py-3 text-center"><span class="text-green-600">✓ ไม่ต่าง</span></td></tr>
+                    <tr><td class="px-4 py-3 font-medium">Layout</td><td class="px-4 py-3 text-gray-600">Sidebar + Content (server-rendered)</td><td class="px-4 py-3 text-gray-600">AppShell + SPA (client-side)</td><td class="px-4 py-3 text-center"><span class="text-green-600">✓ คล้ายกัน</span></td></tr>
+                    <tr><td class="px-4 py-3 font-medium">Color Scheme</td><td class="px-4 py-3 text-gray-600">Blue gradient cards</td><td class="px-4 py-3 text-gray-600">Blue gradient + modern glass</td><td class="px-4 py-3 text-center"><span class="text-green-600">✓ ดีขึ้น</span></td></tr>
+                    <tr><td class="px-4 py-3 font-medium">Dashboard</td><td class="px-4 py-3 text-gray-600">6 cards + Chart.js</td><td class="px-4 py-3 text-gray-600">Sparklines + Ring charts</td><td class="px-4 py-3 text-center"><span class="text-green-600">✓ ดีขึ้น</span></td></tr>
+                    <tr><td class="px-4 py-3 font-medium">Form UX</td><td class="px-4 py-3 text-gray-600">Native HTML selects</td><td class="px-4 py-3 text-gray-600">AnimatedDropdown + icons</td><td class="px-4 py-3 text-center"><span class="text-green-600">✓ ดีขึ้น</span></td></tr>
+                    <tr><td class="px-4 py-3 font-medium">Speech-to-Text</td><td class="px-4 py-3 text-gray-600">Web Speech API (report + building report)</td><td class="px-4 py-3 text-gray-600">MicButton component (same API)</td><td class="px-4 py-3 text-center"><span class="text-green-600">✓ ไม่ต่าง</span></td></tr>
+                    <tr><td class="px-4 py-3 font-medium">Auth</td><td class="px-4 py-3 text-gray-600">Session cookie</td><td class="px-4 py-3 text-gray-600">JWT localStorage</td><td class="px-4 py-3 text-center"><span class="text-amber-600">⚠ ต่างกันเล็กน้อย</span></td></tr>
+                    <tr><td class="px-4 py-3 font-medium">Page Load</td><td class="px-4 py-3 text-gray-600">Full page reload</td><td class="px-4 py-3 text-gray-600">SPA navigation</td><td class="px-4 py-3 text-center"><span class="text-green-600">✓ เร็วขึ้น</span></td></tr>
+                    <tr><td class="px-4 py-3 font-medium">Mobile</td><td class="px-4 py-3 text-gray-600">Responsive (basic)</td><td class="px-4 py-3 text-gray-600">Responsive (Tailwind breakpoints)</td><td class="px-4 py-3 text-center"><span class="text-green-600">✓ ดีขึ้น</span></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- MIGRATION TIMELINE -->
+    <section class="mb-10 print-break">
+        <h2 class="text-xl font-bold text-blue-900 mb-4 flex items-center gap-2">
+            <span class="w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center text-sm">6</span>
+            แผนงาน (Migration Timeline)
+        </h2>
+        <div class="bg-white rounded-2xl border border-gray-100 card-shadow p-6">
+            <!-- GANTT CHART -->
+            <div class="mb-6 overflow-x-auto">
+                <div class="min-w-[700px]">
+                    <!-- Header -->
+                    <div class="grid grid-cols-[200px_repeat(12,1fr)] gap-0 mb-2 text-xs text-gray-500 font-semibold">
+                        <div></div>
+                        <div class="text-center px-1">สัปดาห์ 1</div>
+                        <div class="text-center px-1">2</div>
+                        <div class="text-center px-1">3</div>
+                        <div class="text-center px-1">4</div>
+                        <div class="text-center px-1">5</div>
+                        <div class="text-center px-1">6</div>
+                        <div class="text-center px-1">7</div>
+                        <div class="text-center px-1">8</div>
+                        <div class="text-center px-1">9</div>
+                        <div class="text-center px-1">10</div>
+                        <div class="text-center px-1">11</div>
+                        <div class="text-center px-1">12</div>
+                    </div>
+                    <!-- Row 1: Fix Critical Gaps -->
+                    <div class="grid grid-cols-[200px_repeat(12,1fr)] gap-0 items-center mb-2">
+                        <div class="text-xs font-semibold pr-3 text-red-700">1. แก้ไขจุดวิกฤต</div>
+                        <div class="col-span-3">
+                            <div class="gantt-bar bg-red-500" style="width:100%">3 จุดวิกฤต</div>
+                        </div>
+                    </div>
+                    <!-- Row 2: Edit Pages -->
+                    <div class="grid grid-cols-[200px_repeat(12,1fr)] gap-0 items-center mb-2">
+                        <div class="text-xs font-semibold pr-3 text-amber-700">2. สร้าง Edit Forms</div>
+                        <div class="col-start-2 col-span-3">
+                            <div class="gantt-bar bg-amber-500" style="width:100%">8 report types</div>
+                        </div>
+                    </div>
+                    <!-- Row 3: Profile Page -->
+                    <div class="grid grid-cols-[200px_repeat(12,1fr)] gap-0 items-center mb-2">
+                        <div class="text-xs font-semibold pr-3 text-amber-700">3. Profile + Password</div>
+                        <div class="col-start-2 col-span-2">
+                            <div class="gantt-bar bg-amber-400" style="width:100%">1 สัปดาห์</div>
+                        </div>
+                    </div>
+                    <!-- Row 4: Soft Delete -->
+                    <div class="grid grid-cols-[200px_repeat(12,1fr)] gap-0 items-center mb-2">
+                        <div class="text-xs font-semibold pr-3 text-red-700">4. Soft Delete System</div>
+                        <div class="col-start-3 col-span-2">
+                            <div class="gantt-bar bg-red-400" style="width:100%">Prisma + API</div>
+                        </div>
+                    </div>
+                    <!-- Row 5: Data Migration Script -->
+                    <div class="grid grid-cols-[200px_repeat(12,1fr)] gap-0 items-center mb-2">
+                        <div class="text-xs font-semibold pr-3 text-blue-700">5. ETL Script</div>
+                        <div class="col-start-4 col-span-3">
+                            <div class="gantt-bar bg-blue-500" style="width:100%">MySQL → PostgreSQL</div>
+                        </div>
+                    </div>
+                    <!-- Row 6: Test -->
+                    <div class="grid grid-cols-[200px_repeat(12,1fr)] gap-0 items-center mb-2">
+                        <div class="text-xs font-semibold pr-3 text-green-700">6. Testing + UAT</div>
+                        <div class="col-start-7 col-span-3">
+                            <div class="gantt-bar bg-green-500" style="width:100%">User Acceptance Test</div>
+                        </div>
+                    </div>
+                    <!-- Row 7: Deploy -->
+                    <div class="grid grid-cols-[200px_repeat(12,1fr)] gap-0 items-center mb-2">
+                        <div class="text-xs font-semibold pr-3 text-purple-700">7. Deploy + Cutover</div>
+                        <div class="col-start-10 col-span-2">
+                            <div class="gantt-bar bg-purple-500" style="width:100%">Go Live</div>
+                        </div>
+                    </div>
+                    <!-- NOW marker -->
+                    <div class="grid grid-cols-[200px_repeat(12,1fr)] gap-0 items-center mt-3">
+                        <div></div>
+                        <div class="col-span-1 border-l-2 border-dashed border-red-400 pl-1">
+                            <span class="text-[10px] text-red-500 font-bold">▼ ปัจจุบัน</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PHASE DETAILS -->
+            <div class="space-y-4">
+                <div class="border border-red-200 bg-red-50 rounded-xl p-4">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs font-bold">1</span>
+                        <h3 class="font-bold text-red-700">Phase 1: แก้ไขจุดวิกฤต (สัปดาห์ที่ 1)</h3>
+                    </div>
+                    <ul class="text-sm text-red-600 space-y-1 ml-8">
+                        <li>• แก้ Parking form — ส่ง lot counts ไป API ให้ครบ</li>
+                        <li>• เพิ่ม isDeleted field ใน Prisma schema ทุก model</li>
+                        <li>• แก้ DELETE endpoints → soft delete</li>
+                        <li>• เพิ่ม isDeleted filter ใน GET endpoints ทั้งหมด</li>
+                    </ul>
+                </div>
+                <div class="border border-amber-200 bg-amber-50 rounded-xl p-4">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="w-6 h-6 bg-amber-500 text-white rounded-full flex items-center justify-center text-xs font-bold">2</span>
+                        <h3 class="font-bold text-amber-700">Phase 2: ฟีเจอร์ที่ขาด (สัปดาห์ที่ 2-4)</h3>
+                    </div>
+                    <ul class="text-sm text-amber-600 space-y-1 ml-8">
+                        <li>• สร้าง Edit form ใน ReportDetailModal สำหรับ 8 ประเภทรายงาน</li>
+                        <li>• สร้างหน้า Profile + เปลี่ยนรหัสผ่าน (frontend + backend)</li>
+                        <li>• เพิ่ม password change endpoint (verify current → set new)</li>
+                    </ul>
+                </div>
+                <div class="border border-blue-200 bg-blue-50 rounded-xl p-4">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>
+                        <h3 class="font-bold text-blue-700">Phase 3: Data Migration Script (สัปดาห์ที่ 4-6)</h3>
+                    </div>
+                    <ul class="text-sm text-blue-600 space-y-1 ml-8">
+                        <li>• เขียน ETL script (Node.js + mysql2 + @prisma/client)</li>
+                        <li>• Import: users → roles → reports → parking → cctv → detectors → patrol</li>
+                        <li>• Mapping: Thai role names → Role model, page permissions → RolePermission</li>
+                        <li>• Auto-increment sequence reset หลัง import</li>
+                    </ul>
+                </div>
+                <div class="border border-green-200 bg-green-50 rounded-xl p-4">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-xs font-bold">4</span>
+                        <h3 class="font-bold text-green-700">Phase 4: Testing + UAT (สัปดาห์ที่ 7-9)</h3>
+                    </div>
+                    <ul class="text-sm text-green-600 space-y-1 ml-8">
+                        <li>• Smoke test ทุกฟีเจอร์เทียบกับระบบเดิม</li>
+                        <li>• ทดสอบ login ด้วย user เดิมทุก role</li>
+                        <li>• ตรวจสอบ dashboard data ตรงกัน</li>
+                        <li>• ทดสอบ soft delete + audit trail</li>
+                        <li>• UAT กับผู้ใช้จริง 5-10 คน</li>
+                    </ul>
+                </div>
+                <div class="border border-purple-200 bg-purple-50 rounded-xl p-4">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="w-6 h-6 bg-purple-500 text-white rounded-full flex items-center justify-center text-xs font-bold">5</span>
+                        <h3 class="font-bold text-purple-700">Phase 5: Deploy + Cutover (สัปดาห์ที่ 10-12)</h3>
+                    </div>
+                    <ul class="text-sm text-purple-600 space-y-1 ml-8">
+                        <li>• Deploy ระบบใหม่ไป Production (Docker)</li>
+                        <li>• หยุดระบบเดิม (read-only mode)</li>
+                        <li>• Import ข้อมูลล่าสุด (delta sync)</li>
+                        <li>• สลับ DNS / Reverse Proxy ไประบบใหม่</li>
+                        <li>• Monitor 7 วันแรก 24/7</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- RISK ASSESSMENT -->
+    <section class="mb-10 print-break">
+        <h2 class="text-xl font-bold text-blue-900 mb-4 flex items-center gap-2">
+            <span class="w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center text-sm">7</span>
+            ความเสี่ยง (Risk Assessment)
+        </h2>
+        <div class="bg-white rounded-2xl border border-gray-100 card-shadow overflow-hidden">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="bg-gray-50 border-b border-gray-200">
+                        <th class="text-left px-4 py-3 font-bold text-gray-600">ความเสี่ยง</th>
+                        <th class="text-center px-4 py-3 font-bold text-gray-600 w-20">ระดับ</th>
+                        <th class="text-left px-4 py-3 font-bold text-gray-600">ผลกระทบ</th>
+                        <th class="text-left px-4 py-3 font-bold text-gray-600">แผนรับมือ</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    <tr>
+                        <td class="px-4 py-3 font-medium">Parking data หาย</td>
+                        <td class="px-4 py-3 text-center"><span class="status-badge bg-red-100 text-red-700">สูง</span></td>
+                        <td class="px-4 py-3 text-gray-600">รายงาน parking ไม่มีข้อมูลต่อลาน</td>
+                        <td class="px-4 py-3 text-gray-600">แก้ form + API ก่อนย้าย</td>
+                    </tr>
+                    <tr>
+                        <td class="px-4 py-3 font-medium">Hard delete ข้อมูล</td>
+                        <td class="px-4 py-3 text-center"><span class="status-badge bg-red-100 text-red-700">สูง</span></td>
+                        <td class="px-4 py-3 text-gray-600">ข้อมูลรายงานหายถาวร ไม่สามารถกู้คืนได้</td>
+                        <td class="px-4 py-3 text-gray-600">แก้เป็น soft delete ก่อนย้าย</td>
+                    </tr>
+                    <tr>
+                        <td class="px-4 py-3 font-medium">Thai encoding ผิด</td>
+                        <td class="px-4 py-3 text-center"><span class="status-badge bg-amber-100 text-amber-700">กลาง</span></td>
+                        <td class="px-4 py-3 text-gray-600">ข้อมูลภาษาไทยเพี้ยน</td>
+                        <td class="px-4 py-3 text-gray-600">ใช้ UTF-8 ทั้งหมด + ทดสอบ encoding</td>
+                    </tr>
+                    <tr>
+                        <td class="px-4 py-3 font-medium">Password hash ไม่เข้ากัน</td>
+                        <td class="px-4 py-3 text-center"><span class="status-badge bg-green-100 text-green-700">ต่ำ</span></td>
+                        <td class="px-4 py-3 text-gray-600">User เดิม login ไม่ได้</td>
+                        <td class="px-4 py-3 text-gray-600"> bcrypt ใช้ได้เหมือนกัน — ทดสอบก่อน</td>
+                    </tr>
+                    <tr>
+                        <td class="px-4 py-3 font-medium">Missing edit forms</td>
+                        <td class="px-4 py-3 text-center"><span class="status-badge bg-amber-100 text-amber-700">กลาง</span></td>
+                        <td class="px-4 py-3 text-gray-600">แก้ไขรายงานไม่ได้ ต้องลบแล้วสร้างใหม่</td>
+                        <td class="px-4 py-3 text-gray-600">สร้าง edit forms ให้ครบก่อนย้าย</td>
+                    </tr>
+                    <tr>
+                        <td class="px-4 py-3 font-medium">Downtime ระหว่างย้าย</td>
+                        <td class="px-4 py-3 text-center"><span class="status-badge bg-amber-100 text-amber-700">กลาง</span></td>
+                        <td class="px-4 py-3 text-gray-600">ผู้ใช้เข้าระบบไม่ได้ชั่วคราว</td>
+                        <td class="px-4 py-3 text-gray-600">ทำ delta sync ตอน off-hours, downtime &lt; 30 นาที</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- CONCLUSION -->
+    <section class="mb-10">
+        <h2 class="text-xl font-bold text-blue-900 mb-4 flex items-center gap-2">
+            <span class="w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center text-sm">8</span>
+            สรุปและข้อเสนอแนะ
+        </h2>
+        <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100 p-6">
+            <div class="space-y-4 text-sm">
+                <div>
+                    <h3 class="font-bold text-blue-800 mb-2">✅ ระบใหม่พร้อม 65% — ต้องแก้อีก 35% ก่อนย้าย</h3>
+                    <p class="text-blue-700">ฟีเจอร์หลัก 13 จาก 20 ทำเสร็จแล้ว ต้องแก้ไขอีก 4 จุด (3 วิกฤต + 1 สำคัญ) ก่อนวันย้าย</p>
+                </div>
+                <div>
+                    <h3 class="font-bold text-blue-800 mb-2">📊 ระยะเวลาที่เหมาะสม: 12 สัปดาห์</h3>
+                    <p class="text-blue-700">สัปดาห์ที่ 1-2 แก้ไขจุดวิกฤต → สัปดาห์ที่ 3-4 สร้าง edit forms → สัปดาห์ที่ 5-6 ETL script → สัปดาห์ที่ 7-9 Testing → สัปดาห์ที่ 10-12 Deploy</p>
+                </div>
+                <div>
+                    <h3 class="font-bold text-blue-800 mb-2">🎯 เกณฑ์สำเร็จ (Definition of Done)</h3>
+                    <ul class="text-blue-700 space-y-1 list-disc list-inside">
+                        <li>ฟีเจอร์ทุก 20 ข้อต้องมีเครื่องหมาย ✅ ครบ</li>
+                        <li>ข้อมูลจาก MySQL import ลง PostgreSQL ครบถ้วน (ตรวจนับจำนวน)</li>
+                        <li>User ทุก role login ได้ด้วยรหัสผ่านเดิม</li>
+                        <li>Dashboard แสดงข้อมูลตรงกับระบบเดิม</li>
+                        <li>Soft delete ทำงานถูกต้อง (ข้อมูลไม่หาย)</li>
+                        <li>UAT ผ่านกับผู้ใช้จริง 5-10 คน</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="text-center text-xs text-gray-400 py-6 border-t border-gray-200">
+        <p>WDBPI Migration Report v1.0 — สร้างเมื่อ 15 สิงหาคม 2568</p>
+        <p class="mt-1">PCS Engineering Solution — Western Digital BPI Security Management</p>
+    </footer>
+</div>
+
+</body>
+</html>

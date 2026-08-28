@@ -1,0 +1,406 @@
+'use client';
+
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  ShieldCheck, RefreshCw, CheckCircle2, XCircle, Clock,
+  ChevronDown, ChevronUp, Eye
+} from 'lucide-react';
+import { apiFetch } from '@/lib/api';
+import Pagination from '@/components/Pagination';
+import PageHeader from '@/components/PageHeader';
+
+interface PatrolRecord {
+  id: number;
+  patrolDate: string;
+  patrolRoute: string;
+  officerName: string;
+  status: string;
+  notes: string;
+  createdAt: string;
+}
+
+const CHECK_LABELS: Record<string, string> = {
+  shift: 'กะ', report_condition: 'สภาพทั่วไป', patrol_time: 'เวลาทำการเดินตรวจ',
+  fence_lighting: 'ไฟส่องรั้ว', fence_objects: 'สิ่งของริมรั้ว', no_gathering: 'ไม่มีการรวมกลุ่ม',
+  no_flyers: 'ไม่มีใบปลิว', fence_normal: 'รั้วปกติ', no_suspicious_parking: 'ไม่มีรถน่าสงสัย',
+  no_suspicious_boxes: 'ไม่มีกล่องน่าสงสัย', no_unauthorized_persons_area: 'ไม่มีบุคคลภายนอก',
+  door_system_normal: 'ระบบประตูปกติ', electrical_system_normal: 'ระบบไฟฟ้าปกติ',
+  no_room_abnormalities: 'ห้องปกติ', no_unauthorized_persons_room: 'ไม่มีบุคคลภายนอกในห้อง',
+  no_chemical_obstruction: 'ไม่มีสิ่งกีดขวางสารเคมี', no_container_leaks: 'ไม่มีถังรั่ว',
+  no_unauthorized_persons_chemical: 'ไม่มีบุคคลภายนอกสารเคมี', chemical_door_normal: 'ประตูสารเคมีปกติ',
+  no_unauthorized_persons_electrical: 'ไม่มีบุคคลภายนอกไฟฟ้า', electrical_door_normal: 'ประตูไฟฟ้าปกติ',
+  no_electrical_abnormalities: 'ไม่มีความผิดปกติไฟฟ้า', equipment_normal: 'อุปกรณ์ปกติ',
+  no_fire_door_obstruction: 'ไม่มีสิ่งกีดขวางประตูไฟ', buildings: 'อาคารที่ตรวจ',
+};
+
+const PASS_PHRASES = ['ปกติ', 'ภาวะปกติ', 'normal', 'pass', 'ok', 'ปลอดภัย', 'ไม่มี', 'ไม่พบ', 'เพียงพอ'];
+
+function isPassValue(val: string): boolean {
+  if (!val) return false;
+  const v = val.toLowerCase();
+  return PASS_PHRASES.some(p => v === p || v.startsWith(p));
+}
+
+function parseNotes(notesStr: string): { key: string; label: string; value: string; pass: boolean }[] {
+  try {
+    const notes = JSON.parse(notesStr);
+    return Object.entries(notes).map(([key, val]) => {
+      const strVal = String(val || '');
+      return { key, label: CHECK_LABELS[key] || key, value: strVal, pass: key === 'shift' ? true : isPassValue(strVal) };
+    });
+  } catch { return []; }
+}
+
+function formatDate(dateStr: string): string {
+  try { return new Date(dateStr).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' }); }
+  catch { return dateStr; }
+}
+
+const TIME_SLOTS = Array.from({ length: 24 }, (_, i) => {
+  const h = String(i).padStart(2, '0');
+  const h2 = String((i + 1) % 24).padStart(2, '0');
+  return `${h}.00-${h2}.00`;
+});
+
+const BUILDING_OPTIONS = ['อาคาร 1', 'อาคาร 2', 'อาคาร 3', 'อาคาร 4', 'อาคาร 6', 'อาคาร 9'];
+
+function ToggleGroup({ label, value, options, onChange }: { label: string; value: string; options: { val: string; label: string; color: string }[]; onChange: (v: string) => void }) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-slate-700 mb-2">{label} <span className="text-rose-500">*</span></label>
+      <div className="flex gap-2 flex-wrap">
+        {options.map((opt) => (
+          <button key={opt.val} type="button" onClick={() => onChange(opt.val)}
+            className={`px-4 py-2.5 border-2 rounded-xl font-medium text-sm transition-all ${value === opt.val ? opt.color : 'border-slate-200 text-slate-600 hover:border-slate-300 bg-white'}`}>
+            {value === opt.val && <span className="mr-1">✓</span>}{opt.label}
+          </button>
+        ))}
+      </div>
+      <input type="hidden" value={value} required />
+    </div>
+  );
+}
+
+export default function PatrolChecklistPage() {
+  const [mode, setMode] = useState<'form' | 'list'>('form');
+  const [records, setRecords] = useState<PatrolRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
+
+  // Form state
+  const [patrolDate, setPatrolDate] = useState('');
+  const [reportCondition, setReportCondition] = useState('');
+  const [shift, setShift] = useState('');
+  const [employeeCode, setEmployeeCode] = useState('');
+  const [employeeName, setEmployeeName] = useState('');
+  const [patrolTime, setPatrolTime] = useState('');
+  const [selectedBuildings, setSelectedBuildings] = useState<string[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState('');
+
+  // Toggle field states (15 perimeter + 12 interior = 27)
+  const [perimeter, setPerimeter] = useState<Record<string, string>>({
+    fence_lighting: '', fence_objects: '', no_gathering: '', no_flyers: '',
+    fence_normal: '', no_suspicious_parking: '', no_suspicious_boxes: '',
+  });
+  const [interior, setInterior] = useState<Record<string, string>>({
+    no_unauthorized_persons_area: '', door_system_normal: '',
+    no_room_abnormalities: '', no_unauthorized_persons_room: '',
+    no_chemical_obstruction: '', no_container_leaks: '', no_unauthorized_persons_chemical: '', chemical_door_normal: '',
+    no_unauthorized_persons_electrical: '', electrical_door_normal: '', no_electrical_abnormalities: '',
+    equipment_normal: '', no_fire_door_obstruction: '',
+  });
+
+  const fetchRecords = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await apiFetch<{ success: boolean; data: PatrolRecord[] }>('/api/patrol');
+      setRecords(Array.isArray(res) ? res : res.data || []);
+    } catch {} finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    setPatrolDate(new Date().toISOString().split('T')[0]);
+    apiFetch<any>('/api/auth/me').then(d => {
+      const data = d?.data ?? d.user ?? d;
+      const empId = data.username || data.employeeId || data.department || '';
+      if (empId) setEmployeeCode(empId);
+      const name = data.fullName || data.username || '';
+      if (name) setEmployeeName(name);
+    }).catch(() => {});
+    fetchRecords();
+  }, [fetchRecords]);
+
+  const toggleBuilding = (b: string) => {
+    setSelectedBuildings(prev => prev.includes(b) ? prev.filter(x => x !== b) : [...prev, b]);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reportCondition || !shift || !patrolTime || selectedBuildings.length === 0) {
+      setMessage('กรุณากรอกข้อมูลให้ครบถ้วน'); return;
+    }
+    const allPerimeterPass = Object.values(perimeter).every(v => v);
+    const allInteriorPass = Object.values(interior).every(v => v);
+    const allPass = reportCondition === 'ภาวะปกติ' && allPerimeterPass && allInteriorPass;
+
+    const notes: Record<string, string> = {
+      shift, report_condition: reportCondition, patrol_time: patrolTime,
+      buildings: selectedBuildings.join(', '),
+      ...perimeter, ...interior,
+    };
+
+    setSubmitting(true);
+    setMessage('');
+    try {
+      await apiFetch('/api/patrol', {
+        method: 'POST',
+        body: JSON.stringify({
+          patrolDate,
+          patrolRoute: `[${patrolTime}] ${selectedBuildings.join(', ')}`,
+          officerName: employeeName || employeeCode,
+          status: allPass ? 'normal' : 'abnormal',
+          notes: JSON.stringify(notes),
+        }),
+      });
+      setMessage('บันทึกรายงานการลาดตระเวนเรียบร้อยแล้ว');
+      fetchRecords();
+    } catch { setMessage('เกิดข้อผิดพลาดในการบันทึกข้อมูล'); }
+    finally { setSubmitting(false); }
+  };
+
+  const perimeterFields = [
+    { key: 'fence_lighting', label: '1.1 ไฟส่องรั้วและพื้นที่โดยรอบ', pass: 'ปกติ', fail: 'ผิดปกติ', passColor: 'border-emerald-500 bg-emerald-50 text-emerald-700', failColor: 'border-rose-500 bg-rose-50 text-rose-700' },
+    { key: 'fence_objects', label: '1.2 สิ่งของวางขวางริมรั้ว', pass: 'ไม่มี', fail: 'มี', passColor: 'border-emerald-500 bg-emerald-50 text-emerald-700', failColor: 'border-rose-500 bg-rose-50 text-rose-700' },
+    { key: 'no_gathering', label: '1.3 การรวมกลุ่มของบุคคล', pass: 'ไม่มี', fail: 'มี', passColor: 'border-emerald-500 bg-emerald-50 text-emerald-700', failColor: 'border-rose-500 bg-rose-50 text-rose-700' },
+    { key: 'no_flyers', label: '1.4 ใบปลิว/สิ่งพิมพ์', pass: 'ไม่มี', fail: 'มี', passColor: 'border-emerald-500 bg-emerald-50 text-emerald-700', failColor: 'border-rose-500 bg-rose-50 text-rose-700' },
+    { key: 'fence_normal', label: '1.5 รั้วโดยรอบ', pass: 'ปกติ', fail: 'ผิดปกติ', passColor: 'border-emerald-500 bg-emerald-50 text-emerald-700', failColor: 'border-rose-500 bg-rose-50 text-rose-700' },
+    { key: 'no_suspicious_parking', label: '1.6 รถน่าสงสัย', pass: 'ไม่มี', fail: 'มี', passColor: 'border-emerald-500 bg-emerald-50 text-emerald-700', failColor: 'border-rose-500 bg-rose-50 text-rose-700' },
+    { key: 'no_suspicious_boxes', label: '1.7 กล่อง/สิ่งของน่าสงสัย', pass: 'ไม่มี', fail: 'มี', passColor: 'border-emerald-500 bg-emerald-50 text-emerald-700', failColor: 'border-rose-500 bg-rose-50 text-rose-700' },
+  ];
+
+  const interiorFields = [
+    { key: 'no_unauthorized_persons_area', label: '2.1.1 บุคคลภายนอกในพื้นที่ทั่วไป', pass: 'ไม่มี', fail: 'มี' },
+    { key: 'door_system_normal', label: '2.1.2 ระบบประตูเปิด-ปิด', pass: 'ปกติ', fail: 'ผิดปกติ' },
+    { key: 'no_room_abnormalities', label: '2.2.1 ห้องควบคุมปกติ', pass: 'ปกติ', fail: 'ผิดปกติ' },
+    { key: 'no_unauthorized_persons_room', label: '2.2.2 บุคคลภายนอกในห้องควบคุม', pass: 'ไม่มี', fail: 'มี' },
+    { key: 'no_chemical_obstruction', label: '2.3.1 สารเคมีไม่มีสิ่งกีดขวาง', pass: 'ไม่มี', fail: 'มี' },
+    { key: 'no_container_leaks', label: '2.3.2 ถังสารเคมีไม่รั่ว', pass: 'ไม่มี', fail: 'มี' },
+    { key: 'no_unauthorized_persons_chemical', label: '2.3.3 บุคคลภายนอกในห้องสารเคมี', pass: 'ไม่มี', fail: 'มี' },
+    { key: 'chemical_door_normal', label: '2.4 ประตูห้องสารเคมี', pass: 'ปกติ', fail: 'ผิดปกติ' },
+    { key: 'no_unauthorized_persons_electrical', label: '2.5.1 บุคคลภายนอกสถานีไฟฟ้า', pass: 'ไม่มี', fail: 'มี' },
+    { key: 'electrical_door_normal', label: '2.5.2 ประตูสถานีไฟฟ้า', pass: 'ปกติ', fail: 'ผิดปกติ' },
+    { key: 'no_electrical_abnormalities', label: '2.5.3 ความผิดปกติสถานีไฟฟ้า', pass: 'ไม่มี', fail: 'มี' },
+    { key: 'equipment_normal', label: '2.6.1 อุปกรณ์หนีไฟปกติ', pass: 'ปกติ', fail: 'ผิดปกติ' },
+    { key: 'no_fire_door_obstruction', label: '2.6.2 ประตูหนีไฟไม่มีสิ่งกีดขวาง', pass: 'ไม่มี', fail: 'มี' },
+  ];
+
+  const abnormalRecords = records.filter(r => r.status === 'abnormal');
+  const normalRecords = records.filter(r => r.status === 'normal');
+
+  return (
+    <div className="gradient-bg min-h-screen py-4 md:py-8 px-3 md:px-4 font-sans">
+      <div className="max-w-5xl mx-auto space-y-4 md:space-y-6">
+
+        {/* Header */}
+        <PageHeader
+          title="Checklist Patrol"
+          subtitle="รายการตรวจตรา"
+          icon={<ShieldCheck className="w-5 h-5 md:w-6 md:h-6 text-white" />}
+          actions={
+            <button onClick={() => setMode(mode === 'form' ? 'list' : 'form')}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl transition-colors text-sm">
+              {mode === 'form' ? <><Eye className="w-4 h-4" />ดูรายการ</> : <><ShieldCheck className="w-4 h-4" />กรอกรายงาน</>}
+            </button>
+          }
+        />
+
+        {message && (
+          <div className={`p-4 rounded-xl text-center font-medium shadow ${message.includes('เรียบร้อย') ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}`}>
+            {message}
+          </div>
+        )}
+
+        {mode === 'form' ? (
+          /* ========== PATROL FORM ========== */
+          <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
+
+            {/* Section 1: General Info */}
+            <div className="bg-white rounded-2xl p-4 md:p-6 shadow-xl border border-slate-200/60 space-y-4">
+              <h3 className="text-base md:text-lg font-bold text-slate-800 border-b border-slate-200 pb-2">ข้อมูลทั่วไป</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">วันที่ <span className="text-rose-500">*</span></label>
+                  <input type="date" value={patrolDate} onChange={e => setPatrolDate(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-blue-500 outline-none" required />
+                </div>
+                <ToggleGroup label="ตรวจสอบภาวะ" value={reportCondition} onChange={setReportCondition}
+                  options={[{ val: 'ภาวะปกติ', label: 'ภาวะปกติ', color: 'border-emerald-500 bg-emerald-50 text-emerald-700' }, { val: 'ภาวะฉุกเฉิน', label: 'ภาวะฉุกเฉิน', color: 'border-rose-500 bg-rose-50 text-rose-700' }]} />
+                <ToggleGroup label="กะ" value={shift} onChange={setShift}
+                  options={[{ val: 'เช้า', label: '🌅 เช้า', color: 'border-blue-500 bg-blue-50 text-blue-700' }, { val: 'บ่าย', label: '☀️ บ่าย', color: 'border-orange-500 bg-orange-50 text-orange-700' }, { val: 'ดึก', label: '🌙 ดึก', color: 'border-purple-500 bg-purple-50 text-purple-700' }]} />
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">รหัสพนักงาน <span className="text-rose-500">*</span></label>
+                  <input type="text" value={employeeCode} onChange={e => setEmployeeCode(e.target.value)} placeholder="รหัสพนักงาน"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-blue-500 outline-none" required />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">ชื่อนามสกุล <span className="text-rose-500">*</span></label>
+                  <input type="text" value={employeeName} onChange={e => setEmployeeName(e.target.value)} placeholder="ชื่อ-นามสกุล"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-blue-500 outline-none" required />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">เวลาทำการเดินตรวจ <span className="text-rose-500">*</span></label>
+                  <select value={patrolTime} onChange={e => setPatrolTime(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-blue-500 outline-none" required>
+                    <option value="" disabled>เลือกเวลา</option>
+                    {TIME_SLOTS.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">อาคารที่ตรวจ <span className="text-rose-500">*</span></label>
+                <div className="flex gap-2 flex-wrap">
+                  {BUILDING_OPTIONS.map(b => (
+                    <button key={b} type="button" onClick={() => toggleBuilding(b)}
+                      className={`px-4 py-2 border-2 rounded-xl font-medium text-sm transition-all ${selectedBuildings.includes(b) ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-600 hover:border-emerald-300 bg-white'}`}>
+                      {selectedBuildings.includes(b) && <span className="mr-1">✓</span>}{b}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Section 2: Perimeter */}
+            <div className="bg-white rounded-2xl p-4 md:p-6 shadow-xl border border-slate-200/60 space-y-4">
+              <h3 className="text-base md:text-lg font-bold text-slate-800 border-b border-slate-200 pb-2">1. การตรวจสอบแนวรั้ว</h3>
+              {perimeterFields.map(f => (
+                <div key={f.key}>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">{f.label} <span className="text-rose-500">*</span></label>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => setPerimeter({ ...perimeter, [f.key]: f.pass })}
+                      className={`flex-1 px-4 py-2.5 border-2 rounded-xl font-medium text-sm transition-all ${perimeter[f.key] === f.pass ? f.passColor : 'border-slate-200 text-slate-600 hover:border-emerald-300 bg-white'}`}>
+                      {perimeter[f.key] === f.pass && <span className="mr-1">✓</span>}{f.pass}
+                    </button>
+                    <button type="button" onClick={() => setPerimeter({ ...perimeter, [f.key]: f.fail })}
+                      className={`flex-1 px-4 py-2.5 border-2 rounded-xl font-medium text-sm transition-all ${perimeter[f.key] === f.fail ? f.failColor : 'border-slate-200 text-slate-600 hover:border-rose-300 bg-white'}`}>
+                      {perimeter[f.key] === f.fail && <span className="mr-1">✗</span>}{f.fail}
+                    </button>
+                  </div>
+                  <input type="hidden" value={perimeter[f.key]} required />
+                </div>
+              ))}
+            </div>
+
+            {/* Section 3: Interior */}
+            <div className="bg-white rounded-2xl p-4 md:p-6 shadow-xl border border-slate-200/60 space-y-4">
+              <h3 className="text-base md:text-lg font-bold text-slate-800 border-b border-slate-200 pb-2">2. การตรวจสอบพื้นที่ภายใน</h3>
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-slate-500 uppercase">2.1 พื้นที่ทั่วไป</p>
+                {interiorFields.slice(0, 2).map(f => (
+                  <ToggleField key={f.key} field={f} value={interior[f.key]} onChange={v => setInterior({ ...interior, [f.key]: v })} />
+                ))}
+              </div>
+              <div className="space-y-1 pt-2 border-t border-slate-100">
+                <p className="text-xs font-semibold text-slate-500 uppercase">2.2 ห้องควบคุม</p>
+                {interiorFields.slice(2, 4).map(f => (
+                  <ToggleField key={f.key} field={f} value={interior[f.key]} onChange={v => setInterior({ ...interior, [f.key]: v })} />
+                ))}
+              </div>
+              <div className="space-y-1 pt-2 border-t border-slate-100">
+                <p className="text-xs font-semibold text-slate-500 uppercase">2.3-2.4 ห้องเก็บสารเคมี / สถานีจ่ายไฟฟ้า</p>
+                {interiorFields.slice(4, 9).map(f => (
+                  <ToggleField key={f.key} field={f} value={interior[f.key]} onChange={v => setInterior({ ...interior, [f.key]: v })} />
+                ))}
+              </div>
+              <div className="space-y-1 pt-2 border-t border-slate-100">
+                <p className="text-xs font-semibold text-slate-500 uppercase">2.5-2.6 สถานีจ่ายไฟฟ้า / อุปกรณ์หนีไฟ</p>
+                {interiorFields.slice(9).map(f => (
+                  <ToggleField key={f.key} field={f} value={interior[f.key]} onChange={v => setInterior({ ...interior, [f.key]: v })} />
+                ))}
+              </div>
+            </div>
+
+            <div className="pt-2 flex justify-center">
+              <button type="submit" disabled={submitting}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-10 rounded-full shadow-lg transition-transform active:scale-95 text-sm md:text-base disabled:opacity-50">
+                {submitting ? 'กำลังบันทึก...' : '💾 บันทึกรายงานการลาดตระเวน'}
+              </button>
+            </div>
+          </form>
+        ) : (
+          /* ========== LIST MODE ========== */
+          <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-4 text-center">
+                <div className="text-2xl font-black text-slate-800">{records.length}</div>
+                <div className="text-xs text-slate-500">รายการทั้งหมด</div>
+              </div>
+              <div className="bg-white rounded-2xl shadow-lg border border-emerald-200/60 p-4 text-center">
+                <div className="text-2xl font-black text-emerald-600">{normalRecords.length}</div>
+                <div className="text-xs text-slate-500">ปกติ</div>
+              </div>
+              <div className="bg-white rounded-2xl shadow-lg border border-rose-200/60 p-4 text-center">
+                <div className="text-2xl font-black text-rose-600">{abnormalRecords.length}</div>
+                <div className="text-xs text-slate-500">ผิดปกติ</div>
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="bg-white rounded-2xl p-12 text-center"><RefreshCw className="w-6 h-6 animate-spin text-blue-500 mx-auto mb-2" /><p className="text-slate-400 text-sm">กำลังโหลด...</p></div>
+            ) : records.length === 0 ? (
+              <div className="bg-white rounded-2xl p-12 text-center"><ShieldCheck className="w-12 h-12 text-slate-300 mx-auto mb-3" /><p className="text-slate-400">ยังไม่มีรายงาน</p></div>
+            ) : (
+              <>
+                {records.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(rec => {
+                  const items = parseNotes(rec.notes || '{}');
+                  return (
+                    <div key={rec.id} className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-5">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className={`w-2.5 h-2.5 rounded-full ${rec.status === 'normal' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                        <span className="font-bold text-slate-800 text-sm">{rec.patrolRoute || 'ไม่ระบุเส้นทาง'}</span>
+                        <span className="text-xs text-slate-500">{formatDate(rec.patrolDate || rec.createdAt)}</span>
+                        <span className="text-xs text-slate-500">{rec.officerName}</span>
+                      </div>
+                      {items.length > 0 && (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5 mt-2">
+                          {items.filter(i => i.key !== 'buildings').map(item => (
+                            <div key={item.key} className={`text-[10px] px-2 py-1 rounded-lg ${item.pass ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+                              {item.pass ? '✓' : '✗'} {item.label}: {item.value}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                {records.length > PAGE_SIZE && <Pagination page={page} totalItems={records.length} pageSize={PAGE_SIZE} onPageChange={setPage} />}
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ToggleField({ field, value, onChange }: { field: { key: string; label: string; pass: string; fail: string }; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="py-1.5">
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-slate-700 flex-1">{field.label}</span>
+        <div className="flex gap-1.5">
+          <button type="button" onClick={() => onChange(field.pass)}
+            className={`px-3 py-1.5 border rounded-lg font-medium text-xs transition-all ${value === field.pass ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-500 hover:border-emerald-300'}`}>
+            {value === field.pass && '✓ '}{field.pass}
+          </button>
+          <button type="button" onClick={() => onChange(field.fail)}
+            className={`px-3 py-1.5 border rounded-lg font-medium text-xs transition-all ${value === field.fail ? 'border-rose-500 bg-rose-50 text-rose-700' : 'border-slate-200 text-slate-500 hover:border-rose-300'}`}>
+            {value === field.fail && '✗ '}{field.fail}
+          </button>
+        </div>
+        <input type="hidden" value={value} required />
+      </div>
+    </div>
+  );
+}

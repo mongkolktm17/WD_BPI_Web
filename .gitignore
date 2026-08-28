@@ -1,20 +1,42 @@
-# Ignored files for WD Security Dashboard
+# WD BPI Security System - Next.js & NestJS Monorepo
 
-# Database files
-*.sql
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+apps/web/.next/
+
+# NestJS build
+dist/
+apps/api/dist/
+
+# Environment files
+.env
+.env.local
+.env.production
+apps/web/.env
+apps/web/.env.local
+apps/api/.env
+apps/api/.env.local
+
+# Database files & Dumps
+*.dump.sql
+*.backup.sql
 *.sqlite
 *.db
 
-# Configuration files with sensitive data
-config.php
+# Temporary & Cookie files
+cookies*.txt
+tmp/
+*.tmp
 
-# Dependency directories
-/vendor/
-/node_modules/
-
-# Log files
+# Logs
 *.log
 error_log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # OS generated files
 .DS_Store
@@ -26,34 +48,13 @@ Thumbs.db
 *.sublime-project
 *.sublime-workspace
 
-# Compiled files
-*.class
-*.o
-*.pyc
-*.phpc
-
-# Temporary files
-*~
-#*#
-.#*
-.fuse_hidden*
-.directory
-.nfs*
-
-# Diagnostic and Meta files
-*.txt
-diag_*.php
-check_*.php
-test_*.php
-*.zip
-*.backup
-query
-report_assets/Images/images_logo.png
-
 # Archive directory
 /unuse/
+legacy/unuse/
 
+# Local cache files
+cache/
+legacy/cache/
 
-  
-# Local cache files  
-cache/ 
+# Legacy PHP system (in legacy/ folder)
+legacy/config.php

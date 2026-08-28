@@ -1,0 +1,679 @@
+﻿<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ศูนย์รวมรายงานอาคารและ ระบบความปลอดภัย</title>
+    <link rel="icon" href="public/assets/favicon.ico" type="image/x-icon">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="theme.css">
+</head>
+
+<body class="custom-font" style="background: linear-gradient(135deg, #e0f2fe 0%, #b3e5fc 100%);">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- Header -->
+        <div class="glass-card rounded-3xl shadow-xl p-8 mb-8">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-3xl font-bold section-title mb-2">ศูนย์รวมรายงาน</h1>
+                    <p class="text-gray-600 text-lg">ยินดีต้อนรับ,
+                        adminxx!
+                    </p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <a href="dashboard.php"
+                        class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-xl transition-colors">กลับ
+                        Dashboard</a>
+                                            <a href="manage_officers.php"
+                            class="submit-btn-modern text-white text-sm font-semibold py-2 px-4 rounded-xl">จัดการเจ้าหน้าที่</a>
+                        <a href="manage_roles.php"
+                            class="submit-btn-modern text-white text-sm font-semibold py-2 px-4 rounded-xl">จัดการ Role</a>
+                                        <a href="logout.php"
+                        class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-xl transition-colors">ออกจากระบบ</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Links -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 mb-8">
+                                <a href="select_building.php"
+                        class="glass-card rounded-2xl p-6 text-center text-slate-700 hover:text-blue-600 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                        <div class="text-blue-500 mx-auto"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10 mb-3"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M9 21v-2.25a2.25 2.25 0 00-2.25-2.25H5.25v-2.25H3v4.5h1.5v-2.25a.75.75 0 01.75-.75h1.5a.75.75 0 01.75.75V21m-3-18h-2.25a2.25 2.25 0 00-2.25 2.25v2.25H3V1.5h2.25A2.25 2.25 0 017.5 3.75v2.25H9V3.75A2.25 2.25 0 006.75 1.5z" /></svg></div>
+                        <span class="font-semibold mt-2 block">รายงานอาคาร</span>
+                    </a>
+                                        <a href="car_parking.php"
+                        class="glass-card rounded-2xl p-6 text-center text-slate-700 hover:text-blue-600 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                        <div class="text-blue-500 mx-auto"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10 mb-3"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.125-.504 1.125-1.125V14.25m-17.25 4.5h10.5a1.125 1.125 0 001.125-1.125V6.75a1.125 1.125 0 00-1.125-1.125H3.375A1.125 1.125 0 002.25 6.75v10.5a1.125 1.125 0 001.125 1.125z" /></svg></div>
+                        <span class="font-semibold mt-2 block">ตรวจลานจอดรถ</span>
+                    </a>
+                                        <a href="cctv_inspection_form.php"
+                        class="glass-card rounded-2xl p-6 text-center text-slate-700 hover:text-blue-600 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                        <div class="text-blue-500 mx-auto"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10 mb-3"><path stroke-linecap="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9A2.25 2.25 0 004.5 18.75z" /></svg></div>
+                        <span class="font-semibold mt-2 block">ตรวจห้อง CCTV</span>
+                    </a>
+                                        <a href="check_hand_held.php"
+                        class="glass-card rounded-2xl p-6 text-center text-slate-700 hover:text-blue-600 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                        <div class="text-blue-500 mx-auto"><img src="report_assets/Images/tool_2.png" alt="Hand Held" class="w-10 h-10 mb-3"></div>
+                        <span class="font-semibold mt-2 block">ตรวจ Hand Held</span>
+                    </a>
+                                        <a href="check_list_patrol_new.php"
+                        class="glass-card rounded-2xl p-6 text-center text-slate-700 hover:text-blue-600 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                        <div class="text-blue-500 mx-auto"><img src="report_assets/Images/security-officer.png" alt="Patrol" class="w-10 h-10 mb-3"></div>
+                        <span class="font-semibold mt-2 block">Checklist Patrol</span>
+                    </a>
+                                        <a href="walkthrough_metal_detector.php"
+                        class="glass-card rounded-2xl p-6 text-center text-slate-700 hover:text-blue-600 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                        <div class="text-blue-500 mx-auto"><img src="report_assets/Images/metal-detector-gate.png" alt="Metal Detector" class="w-10 h-10 mb-3"></div>
+                        <span class="font-semibold mt-2 block">ตรวจ Metal Detector</span>
+                    </a>
+                                        <a href="nvr_recording_days.php"
+                        class="glass-card rounded-2xl p-6 text-center text-slate-700 hover:text-blue-600 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                        <div class="text-blue-500 mx-auto"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10 mb-3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
+                        <span class="font-semibold mt-2 block">NVR Recording Days</span>
+                    </a>
+                                        <a href="cctv_angle_check.php"
+                        class="glass-card rounded-2xl p-6 text-center text-slate-700 hover:text-blue-600 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                        <div class="text-blue-500 mx-auto"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10 mb-3"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg></div>
+                        <span class="font-semibold mt-2 block">CCTV Angle Check</span>
+                    </a>
+                                        <a href="guard_duty_log.php"
+                        class="glass-card rounded-2xl p-6 text-center text-slate-700 hover:text-blue-600 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                        <div class="text-blue-500 mx-auto"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10 mb-3"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg></div>
+                        <span class="font-semibold mt-2 block">Guard Duty Log</span>
+                    </a>
+                                        <a href="cctv_report.php"
+                        class="glass-card rounded-2xl p-6 text-center text-slate-700 hover:text-blue-600 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                        <div class="text-blue-500 mx-auto"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10 mb-3"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg></div>
+                        <span class="font-semibold mt-2 block">รายงาน CCTV</span>
+                    </a>
+                                        <a href="report_visual.php"
+                        class="glass-card rounded-2xl p-6 text-center text-slate-700 hover:text-blue-600 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                        <div class="text-blue-500 mx-auto"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10 mb-3"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg></div>
+                        <span class="font-semibold mt-2 block">สถิติรายสัปดาห์/เดือน</span>
+                    </a>
+                            </div>
+
+        
+        <!-- Reports Table -->
+        <div class="glass-card rounded-3xl shadow-xl p-6 mt-8">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                <h2 class="text-2xl font-bold section-title">รายงานเหตุการณ์ล่าสุด</h2>
+                <button onclick="exportTableToCSV('recent_incident_reports.csv')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-5 rounded-xl transition-colors shadow-md flex items-center gap-2 text-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                    </svg>
+                    ส่งออกเป็น CSV
+                </button>
+            </div>
+            
+            <!-- Filter Bar -->
+            <form method="GET" class="flex flex-wrap gap-3 items-end mb-6 bg-slate-50/50 p-4 rounded-2xl border border-slate-200/50">
+                <div class="flex-1 min-w-[200px]">
+                    <label class="block text-xs font-semibold text-slate-500 mb-1 ml-1">ประเภทรายงาน</label>
+                    <select name="report_type_filter" class="w-full bg-white/80 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400 transition-all">
+                        <option value="all">ทั้งหมด</option>
+                        <option value="general" >รายงานทั่วไป</option>
+                        <option value="car_parking" >ตรวจลานจอดรถ</option>
+                        <option value="cctv_inspection" >ตรวจห้อง CCTV</option>
+                        <option value="hand_held" >ตรวจ Hand Held</option>
+                        <option value="patrol" >Checklist Patrol</option>
+                        <option value="guard_count" >บันทึกจำนวน รปภ.</option>
+                        <option value="cctv_report" >NVR Recording</option>
+                        <option value="cctv_angle" >CCTV Angle Check</option>
+                        <option value="metal_detector" >ตรวจ Metal Detector</option>
+                    </select>
+                </div>
+                <div class="flex-1 min-w-[150px]">
+                    <label class="block text-xs font-semibold text-slate-500 mb-1 ml-1">ผู้รายงาน (ชื่อ/รหัส)</label>
+                    <input type="text" name="submitter_filter" id="submitter_filter" list="submitter_suggestions" autocomplete="off" value="" placeholder="ค้นหา..." class="w-full bg-white/80 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400 transition-all">
+                    <datalist id="submitter_suggestions"></datalist>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1 ml-1">ตั้งแต่วันที่</label>
+                    <input type="date" name="date_from" value="" class="bg-white/80 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400 transition-all">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1 ml-1">ถึงวันที่</label>
+                    <input type="date" name="date_to" value="" class="bg-white/80 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400 transition-all">
+                </div>
+                <div class="flex gap-2">
+                    <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95">
+                        กรองข้อมูล
+                    </button>
+                    <a href="report_page.php" class="bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold py-2 px-4 rounded-xl transition-all active:scale-95 text-center">
+                        ล้าง
+                    </a>
+                </div>
+            </form>
+
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-transparent">
+                    <thead class="text-slate-600 uppercase text-sm leading-normal">
+                        <tr>
+                            <th class="py-3 px-6 text-left">เวลาส่ง</th>
+                            <th class="py-3 px-6 text-left">ประเภทรายงาน</th>
+                            <th class="py-3 px-6 text-left">รายละเอียด</th>
+                            <th class="py-3 px-6 text-left">ผู้รายงาน</th>
+                            <th class="py-3 px-6 text-center">การกระทำ</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-slate-600 text-sm font-light">
+                                                                                    <tr class="border-b border-slate-200/50 hover:bg-white/50">
+                                    <td class="py-4 px-6 text-left whitespace-nowrap">
+                                        2026-07-26 16:45:59                                    </td>
+                                    <td class="py-4 px-6 text-left">รายงานทั่วไป</td>
+                                    <td class="py-4 px-6 text-left max-w-xs truncate">
+                                        อาคาร: 6, จุด: Rel.Lab B2L3 - 15.00 น 16.00 นสังเกตการณ์ตามทางเดินบันไดหนีไฟและในห้องแลปตรวจพนักงานบ้างเป็นระยะ                                    </td>
+                                    <td class="py-4 px-6 text-left">
+                                        กาญน์ริสา เอกตระกูล                                    </td>
+                                    <td class="py-4 px-6 text-center">
+                                        <div class="flex item-center justify-center">
+                                                                                            <a href="view_report.php?id=93776"
+                                                    class="w-5 mr-2 transform text-blue-500 hover:text-blue-700 hover:scale-110">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                        stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                    </svg>
+                                                </a>
+                                                                                                                                        <a href="edit_report.php?id=93776"
+                                                    class="w-5 mr-2 transform text-yellow-500 hover:text-yellow-700 hover:scale-110">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                        stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                    </svg>
+                                                </a>
+                                                                                                                                        <a href="delete_report.php?id=93776"
+                                                    onclick="return confirm('คุณแน่ใจหรือไม่ว่าต้องการลบรายงานนี้?');"
+                                                    class="w-5 transform text-red-500 hover:text-red-700 hover:scale-110">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                        stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </a>
+                                                                                    </div>
+                                    </td>
+                                </tr>
+                                                            <tr class="border-b border-slate-200/50 hover:bg-white/50">
+                                    <td class="py-4 px-6 text-left whitespace-nowrap">
+                                        2026-07-26 16:43:59                                    </td>
+                                    <td class="py-4 px-6 text-left">รายงานทั่วไป</td>
+                                    <td class="py-4 px-6 text-left max-w-xs truncate">
+                                        อาคาร: 4, จุด: Gate 1 - เวลานี้ไปช่วยวอคเกอร์ตรวจพนักงานไปพักเบรคเดินผ่านตู้สแกนเป็นระยะปกติคะ15.00-16.00                                    </td>
+                                    <td class="py-4 px-6 text-left">
+                                        เพียร สมนึก                                    </td>
+                                    <td class="py-4 px-6 text-center">
+                                        <div class="flex item-center justify-center">
+                                                                                            <a href="view_report.php?id=93775"
+                                                    class="w-5 mr-2 transform text-blue-500 hover:text-blue-700 hover:scale-110">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                        stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                    </svg>
+                                                </a>
+                                                                                                                                        <a href="edit_report.php?id=93775"
+                                                    class="w-5 mr-2 transform text-yellow-500 hover:text-yellow-700 hover:scale-110">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                        stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                    </svg>
+                                                </a>
+                                                                                                                                        <a href="delete_report.php?id=93775"
+                                                    onclick="return confirm('คุณแน่ใจหรือไม่ว่าต้องการลบรายงานนี้?');"
+                                                    class="w-5 transform text-red-500 hover:text-red-700 hover:scale-110">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                        stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </a>
+                                                                                    </div>
+                                    </td>
+                                </tr>
+                                                            <tr class="border-b border-slate-200/50 hover:bg-white/50">
+                                    <td class="py-4 px-6 text-left whitespace-nowrap">
+                                        2026-07-26 16:42:24                                    </td>
+                                    <td class="py-4 px-6 text-left">รายงานทั่วไป</td>
+                                    <td class="py-4 px-6 text-left max-w-xs truncate">
+                                        อาคาร: 4, จุด: Worker - 16.00 นถึง 17.00 นไปพักเบรคค่ะ                                    </td>
+                                    <td class="py-4 px-6 text-left">
+                                        นุส สีหามาตร                                    </td>
+                                    <td class="py-4 px-6 text-center">
+                                        <div class="flex item-center justify-center">
+                                                                                            <a href="view_report.php?id=93774"
+                                                    class="w-5 mr-2 transform text-blue-500 hover:text-blue-700 hover:scale-110">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                        stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                    </svg>
+                                                </a>
+                                                                                                                                        <a href="edit_report.php?id=93774"
+                                                    class="w-5 mr-2 transform text-yellow-500 hover:text-yellow-700 hover:scale-110">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                        stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                    </svg>
+                                                </a>
+                                                                                                                                        <a href="delete_report.php?id=93774"
+                                                    onclick="return confirm('คุณแน่ใจหรือไม่ว่าต้องการลบรายงานนี้?');"
+                                                    class="w-5 transform text-red-500 hover:text-red-700 hover:scale-110">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                        stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </a>
+                                                                                    </div>
+                                    </td>
+                                </tr>
+                                                            <tr class="border-b border-slate-200/50 hover:bg-white/50">
+                                    <td class="py-4 px-6 text-left whitespace-nowrap">
+                                        2026-07-26 16:25:42                                    </td>
+                                    <td class="py-4 px-6 text-left">รายงานทั่วไป</td>
+                                    <td class="py-4 px-6 text-left max-w-xs truncate">
+                                        อาคาร: 4, จุด: Patrol 2 - เวลา 15.00 น.- 16:00 น ได้ไปพักเบรค 50/64 รอบที่ 2 เสร็จเรียบร้อยเหตุการณ์ปกติครับ                                    </td>
+                                    <td class="py-4 px-6 text-left">
+                                        นัฐพงศ์ ชูรอด                                    </td>
+                                    <td class="py-4 px-6 text-center">
+                                        <div class="flex item-center justify-center">
+                                                                                            <a href="view_report.php?id=93773"
+                                                    class="w-5 mr-2 transform text-blue-500 hover:text-blue-700 hover:scale-110">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                        stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                    </svg>
+                                                </a>
+                                                                                                                                        <a href="edit_report.php?id=93773"
+                                                    class="w-5 mr-2 transform text-yellow-500 hover:text-yellow-700 hover:scale-110">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                        stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                    </svg>
+                                                </a>
+                                                                                                                                        <a href="delete_report.php?id=93773"
+                                                    onclick="return confirm('คุณแน่ใจหรือไม่ว่าต้องการลบรายงานนี้?');"
+                                                    class="w-5 transform text-red-500 hover:text-red-700 hover:scale-110">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                        stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </a>
+                                                                                    </div>
+                                    </td>
+                                </tr>
+                                                            <tr class="border-b border-slate-200/50 hover:bg-white/50">
+                                    <td class="py-4 px-6 text-left whitespace-nowrap">
+                                        2026-07-26 16:25:12                                    </td>
+                                    <td class="py-4 px-6 text-left">รายงานทั่วไป</td>
+                                    <td class="py-4 px-6 text-left max-w-xs truncate">
+                                        อาคาร: 4, จุด: Patrol 2 - เวลา 13:00 น ถึง 15:00 น ได้คอย support ลูกข่ายตามจุดต่างๆเป็นระยะเหตุการณ์ปกติครับ                                    </td>
+                                    <td class="py-4 px-6 text-left">
+                                        นัฐพงศ์ ชูรอด                                    </td>
+                                    <td class="py-4 px-6 text-center">
+                                        <div class="flex item-center justify-center">
+                                                                                            <a href="view_report.php?id=93772"
+                                                    class="w-5 mr-2 transform text-blue-500 hover:text-blue-700 hover:scale-110">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                        stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                    </svg>
+                                                </a>
+                                                                                                                                        <a href="edit_report.php?id=93772"
+                                                    class="w-5 mr-2 transform text-yellow-500 hover:text-yellow-700 hover:scale-110">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                        stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                    </svg>
+                                                </a>
+                                                                                                                                        <a href="delete_report.php?id=93772"
+                                                    onclick="return confirm('คุณแน่ใจหรือไม่ว่าต้องการลบรายงานนี้?');"
+                                                    class="w-5 transform text-red-500 hover:text-red-700 hover:scale-110">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                        stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </a>
+                                                                                    </div>
+                                    </td>
+                                </tr>
+                                                            <tr class="border-b border-slate-200/50 hover:bg-white/50">
+                                    <td class="py-4 px-6 text-left whitespace-nowrap">
+                                        2026-07-26 16:24:06                                    </td>
+                                    <td class="py-4 px-6 text-left">รายงานทั่วไป</td>
+                                    <td class="py-4 px-6 text-left max-w-xs truncate">
+                                        อาคาร: 4, จุด: Patrol 2 - เวลา 12.00-13:00 น. ได้ไปเปลี่ยนจุดปาร์ค 3 ไปพักเบรค 50/64 และคอยสังเกตการณ์พื้นที่รอบๆเก็บรักษาการณ์และบริเวณใกล้เคียงเป็นระยะเหตุการณ์ปกติครับ                                    </td>
+                                    <td class="py-4 px-6 text-left">
+                                        นัฐพงศ์ ชูรอด                                    </td>
+                                    <td class="py-4 px-6 text-center">
+                                        <div class="flex item-center justify-center">
+                                                                                            <a href="view_report.php?id=93771"
+                                                    class="w-5 mr-2 transform text-blue-500 hover:text-blue-700 hover:scale-110">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                        stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                    </svg>
+                                                </a>
+                                                                                                                                        <a href="edit_report.php?id=93771"
+                                                    class="w-5 mr-2 transform text-yellow-500 hover:text-yellow-700 hover:scale-110">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                        stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                    </svg>
+                                                </a>
+                                                                                                                                        <a href="delete_report.php?id=93771"
+                                                    onclick="return confirm('คุณแน่ใจหรือไม่ว่าต้องการลบรายงานนี้?');"
+                                                    class="w-5 transform text-red-500 hover:text-red-700 hover:scale-110">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                        stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </a>
+                                                                                    </div>
+                                    </td>
+                                </tr>
+                                                            <tr class="border-b border-slate-200/50 hover:bg-white/50">
+                                    <td class="py-4 px-6 text-left whitespace-nowrap">
+                                        2026-07-26 16:23:13                                    </td>
+                                    <td class="py-4 px-6 text-left">รายงานทั่วไป</td>
+                                    <td class="py-4 px-6 text-left max-w-xs truncate">
+                                        อาคาร: 4, จุด: Patrol 2 - เวลา 11:00 น ถึง 12:00 น. ได้ไปพักเบรค 50/64 รอบที่ 1 เสร็จเรียบร้อยเหตุการณ์ปกติครับ                                    </td>
+                                    <td class="py-4 px-6 text-left">
+                                        นัฐพงศ์ ชูรอด                                    </td>
+                                    <td class="py-4 px-6 text-center">
+                                        <div class="flex item-center justify-center">
+                                                                                            <a href="view_report.php?id=93770"
+                                                    class="w-5 mr-2 transform text-blue-500 hover:text-blue-700 hover:scale-110">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                        stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                    </svg>
+                                                </a>
+                                                                                                                                        <a href="edit_report.php?id=93770"
+                                                    class="w-5 mr-2 transform text-yellow-500 hover:text-yellow-700 hover:scale-110">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                        stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                    </svg>
+                                                </a>
+                                                                                                                                        <a href="delete_report.php?id=93770"
+                                                    onclick="return confirm('คุณแน่ใจหรือไม่ว่าต้องการลบรายงานนี้?');"
+                                                    class="w-5 transform text-red-500 hover:text-red-700 hover:scale-110">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                        stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </a>
+                                                                                    </div>
+                                    </td>
+                                </tr>
+                                                            <tr class="border-b border-slate-200/50 hover:bg-white/50">
+                                    <td class="py-4 px-6 text-left whitespace-nowrap">
+                                        2026-07-26 16:22:46                                    </td>
+                                    <td class="py-4 px-6 text-left">รายงานทั่วไป</td>
+                                    <td class="py-4 px-6 text-left max-w-xs truncate">
+                                        อาคาร: 4, จุด: Patrol 2 - เวลา 8:00 น ถึง 11:00 น ได้เดินตรวจพื้นที่พร้อมกับสแกนมอสรอบนอกและในอาคาร 4 และอาคาร 3 เดินตรวจตามจุดต่างๆและตรวจระบบประตู access ประตูทุกประตูคอยสังเกตการณ์จุดต่างๆเป็นระยะเหตุการณ์ปกติครับ                                    </td>
+                                    <td class="py-4 px-6 text-left">
+                                        นัฐพงศ์ ชูรอด                                    </td>
+                                    <td class="py-4 px-6 text-center">
+                                        <div class="flex item-center justify-center">
+                                                                                            <a href="view_report.php?id=93769"
+                                                    class="w-5 mr-2 transform text-blue-500 hover:text-blue-700 hover:scale-110">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                        stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                    </svg>
+                                                </a>
+                                                                                                                                        <a href="edit_report.php?id=93769"
+                                                    class="w-5 mr-2 transform text-yellow-500 hover:text-yellow-700 hover:scale-110">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                        stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                    </svg>
+                                                </a>
+                                                                                                                                        <a href="delete_report.php?id=93769"
+                                                    onclick="return confirm('คุณแน่ใจหรือไม่ว่าต้องการลบรายงานนี้?');"
+                                                    class="w-5 transform text-red-500 hover:text-red-700 hover:scale-110">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                        stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </a>
+                                                                                    </div>
+                                    </td>
+                                </tr>
+                                                            <tr class="border-b border-slate-200/50 hover:bg-white/50">
+                                    <td class="py-4 px-6 text-left whitespace-nowrap">
+                                        2026-07-26 16:20:03                                    </td>
+                                    <td class="py-4 px-6 text-left">รายงานทั่วไป</td>
+                                    <td class="py-4 px-6 text-left max-w-xs truncate">
+                                        อาคาร: 2, จุด: A2 - 15.00-16.00น
+เวลานี้คอยตรวจพนักงานแล้วคอยสังเกตการณ์บริเวณจุดรักษาการณ์เหตุการณ์โดยรวมเรียบร้อยดีค่ะ                                    </td>
+                                    <td class="py-4 px-6 text-left">
+                                        ทิพย์รัตน์ นพแก้ว                                    </td>
+                                    <td class="py-4 px-6 text-center">
+                                        <div class="flex item-center justify-center">
+                                                                                            <a href="view_report.php?id=93768"
+                                                    class="w-5 mr-2 transform text-blue-500 hover:text-blue-700 hover:scale-110">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                        stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                    </svg>
+                                                </a>
+                                                                                                                                        <a href="edit_report.php?id=93768"
+                                                    class="w-5 mr-2 transform text-yellow-500 hover:text-yellow-700 hover:scale-110">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                        stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                    </svg>
+                                                </a>
+                                                                                                                                        <a href="delete_report.php?id=93768"
+                                                    onclick="return confirm('คุณแน่ใจหรือไม่ว่าต้องการลบรายงานนี้?');"
+                                                    class="w-5 transform text-red-500 hover:text-red-700 hover:scale-110">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                        stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </a>
+                                                                                    </div>
+                                    </td>
+                                </tr>
+                                                            <tr class="border-b border-slate-200/50 hover:bg-white/50">
+                                    <td class="py-4 px-6 text-left whitespace-nowrap">
+                                        2026-07-26 16:19:31                                    </td>
+                                    <td class="py-4 px-6 text-left">รายงานทั่วไป</td>
+                                    <td class="py-4 px-6 text-left max-w-xs truncate">
+                                        อาคาร: 3, จุด: EIXT INSPECTION (ทางออก) - ตรวจดูพนักงานเดินผ่านตู้สแกนเป็นระยะตรวจกระเป๋าเหตุการณ์ปกติค่ะ                                    </td>
+                                    <td class="py-4 px-6 text-left">
+                                        ปิยะมาศ ศิลารัตน์                                    </td>
+                                    <td class="py-4 px-6 text-center">
+                                        <div class="flex item-center justify-center">
+                                                                                            <a href="view_report.php?id=93767"
+                                                    class="w-5 mr-2 transform text-blue-500 hover:text-blue-700 hover:scale-110">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                        stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                    </svg>
+                                                </a>
+                                                                                                                                        <a href="edit_report.php?id=93767"
+                                                    class="w-5 mr-2 transform text-yellow-500 hover:text-yellow-700 hover:scale-110">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                        stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                    </svg>
+                                                </a>
+                                                                                                                                        <a href="delete_report.php?id=93767"
+                                                    onclick="return confirm('คุณแน่ใจหรือไม่ว่าต้องการลบรายงานนี้?');"
+                                                    class="w-5 transform text-red-500 hover:text-red-700 hover:scale-110">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                        stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </a>
+                                                                                    </div>
+                                    </td>
+                                </tr>
+                                                                        </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+                            <div class="mt-6 flex items-center justify-between">
+                    <div class="text-sm text-slate-600">
+                        Showing page 1 of 10759                    </div>
+                    <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                        
+                                                    <a href="?page=1"
+                                class="relative inline-flex items-center px-4 py-2 border text-sm font-medium z-10 bg-blue-50 border-blue-500 text-blue-600 transition-colors">
+                                1                            </a>
+                                                    <a href="?page=2"
+                                class="relative inline-flex items-center px-4 py-2 border text-sm font-medium bg-white border-slate-300 text-slate-500 hover:bg-slate-50 transition-colors">
+                                2                            </a>
+                                                    <a href="?page=3"
+                                class="relative inline-flex items-center px-4 py-2 border text-sm font-medium bg-white border-slate-300 text-slate-500 hover:bg-slate-50 transition-colors">
+                                3                            </a>
+                        
+                        <span class="relative inline-flex items-center px-4 py-2 border border-slate-300 bg-white text-sm font-medium text-slate-700">...</span><a href="?page=10759" class="relative inline-flex items-center px-4 py-2 border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">10759</a>
+                                                    <a href="?page=2"
+                                class="relative inline-flex items-center px-3 py-2 rounded-r-md border border-slate-300 bg-white text-sm font-medium text-slate-500 hover:bg-slate-50 transition-colors">
+                                <span>Next</span>
+                            </a>
+                                            </nav>
+                </div>
+                    </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="mt-12 mb-6 text-center">
+        <div class="flex flex-col items-center justify-center gap-2">
+            <div class="flex items-center gap-2">
+                <img src="report_assets/Images/PCS_logo.png" alt="PCS Engineering Solution"
+                    class="h-10 w-auto opacity-90 hover:opacity-100 transition-opacity">
+                <span class="font-semibold text-slate-600 text-lg tracking-tight">PCS Engineering Solution</span>
+            </div>
+            <p class="text-sm text-slate-400">
+                &copy; 2025 PCS Engineering Solution. All rights reserved.
+            </p>
+        </div>
+    </footer>
+    <script>
+    const submitterInput = document.getElementById('submitter_filter');
+    const submitterList = document.getElementById('submitter_suggestions');
+    let debounceTimer;
+
+    if (submitterInput && submitterList) {
+        submitterInput.addEventListener('input', function() {
+            const query = this.value;
+            if (query.length < 2) {
+                submitterList.innerHTML = '';
+                return;
+            }
+
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                fetch(`get_users_autocomplete.php?q=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        submitterList.innerHTML = '';
+                        data.forEach(name => {
+                             const option = document.createElement('option');
+                             option.value = name;
+                             submitterList.appendChild(option);
+                        });
+                    })
+                    .catch(err => console.error('Error fetching suggestions:', err));
+            }, 300);
+        });
+    }
+
+    function exportTableToCSV(filename) {
+        const csv = [];
+        const rows = document.querySelectorAll("table tr");
+        
+        for (let i = 0; i < rows.length; i++) {
+            const row = [], cols = rows[i].querySelectorAll("td, th");
+            
+            // Skip rows containing pagination or empty messages
+            if (cols.length === 1 && cols[0].getAttribute("colspan")) {
+                continue;
+            }
+            
+            // For report_page.php, we only export the first 4 columns, skipping the 'Action' column
+            const colsToExport = Math.min(cols.length, 4);
+            for (let j = 0; j < colsToExport; j++) {
+                let text = cols[j].getAttribute("title") || cols[j].innerText.trim();
+                text = text.replace(/"/g, '""');
+                row.push('"' + text + '"');
+            }
+            
+            if (row.length > 0) {
+                csv.push(row.join(","));
+            }
+        }
+
+        const csvContent = "\uFEFF" + csv.join("\n");
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        if (link.download !== undefined) {
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    }
+    </script>
+</body>
+
+</html>
+

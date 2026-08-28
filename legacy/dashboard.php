@@ -307,6 +307,11 @@ $conn->close();
                         <?php if (!is_null($morning_contract)): ?>
                             <div class="text-[10px] text-gray-400"><span class="<?php echo $morning_color; ?>">●</span>
                                 Actual / <span class="text-blue-400">●</span> Contract</div><?php endif; ?>
+                        <div id="day-shift-last-update" class="text-[10px] text-slate-400 mt-1 truncate">
+                            <?php if (!empty($security_status['morning_last_update'] ?? $security_status['last_update'])): ?>
+                                รายงาน: <?php echo date('d/m H:i', strtotime($security_status['morning_last_update'] ?? $security_status['last_update'])); ?>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </div>
 
@@ -334,6 +339,11 @@ $conn->close();
                         <?php if (!is_null($evening_contract)): ?>
                             <div class="text-[10px] text-gray-400"><span class="<?php echo $evening_color; ?>">●</span>
                                 Actual / <span class="text-blue-400">●</span> Contract</div><?php endif; ?>
+                        <div id="night-shift-last-update" class="text-[10px] text-slate-400 mt-1 truncate">
+                            <?php if (!empty($security_status['evening_last_update'] ?? $security_status['last_update'])): ?>
+                                รายงาน: <?php echo date('d/m H:i', strtotime($security_status['evening_last_update'] ?? $security_status['last_update'])); ?>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </div>
 

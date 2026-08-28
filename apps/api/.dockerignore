@@ -1,0 +1,10 @@
+node_modules
+dist
+.git
+.env
+*.md
+tests
+__tests__
+coverage
+.nyc_output
+.nx
