@@ -1,7 +1,7 @@
 <div align="center">
 
-# 🛡️ WD BPI Security Management System
-### Next-Gen Security & Facility Operations Platform
+# 🛡️ WD BPI Security Operations & Facility Management Platform
+### Real-Time Security Monitoring, Facility KPIs & Operations Dashboard
 
 [![Version](https://img.shields.io/badge/version-2.1.0-blue.svg?style=for-the-badge&logo=semver)](CHANGELOG.md)
 [![Next.js](https://img.shields.io/badge/Next.js-16.2-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
@@ -13,49 +13,60 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
 <p align="center">
-  ระบบบริหารจัดการและติดตามความปลอดภัยแบบเรียลไทม์ (Real-Time Security & Facility Operations Management System)<br>
-  สำหรับ <strong>Western Digital Storage Technologies (Thailand) Ltd. - BPI Site</strong>
+  Enterprise-grade security personnel tracking, CCTV/NVR compliance, and facility management platform<br>
+  built for <strong>Western Digital Storage Technologies (Thailand) Ltd. - Bang Pa-in (BPI) Site</strong>
 </p>
 
-[✨ คุณสมบัติหลัก](#-คุณสมบัติหลัก-key-features) •
-[🏛️ สถาปัตยกรรมระบบ](#️-สถาปัตยกรรมระบบ-architecture) •
-[🚀 การติดตั้งและใช้งาน](#-การเริ่มต้นใช้งาน-getting-started) •
-[🐳 Docker](#-การรันด้วย-docker) •
-[📝 ประวัติการอัปเดต](#-ประวัติการอัปเดต-changelog)
+[✨ Key Features](#-key-features) •
+[🏛️ Architecture](#️-system-architecture) •
+[🚀 Quick Start](#-getting-started) •
+[🐳 Docker Deployment](#-docker-deployment) •
+[📝 Changelog](#-changelog) •
+[📄 License](#-license)
 
 ---
 
 </div>
 
-## 🌟 คุณสมบัติหลัก (Key Features)
+## 🌟 Key Features
 
-- 👮 **Smart Guard Duty Log (บันทึกเวร รปภ.)**:
-  - บันทึกแยกกะได้อย่างอิสระ: เลือกบันทึก **กะเช้า (07:00–19:00)** หรือ **กะดึก (19:00–07:00)** หรือ **ทั้งสองกะ**
-  - ระบบ Auto-Prefill ดึงค่ายอดล่าสุดมาเป็นค่าเริ่มต้น ช่วยให้กรอกข้อมูลได้อย่างรวดเร็ว
-  - ระบบ Carry-Forward คงค่าเดิมอัตโนมัติหากไม่ได้กรอก พร้อมระบุเวลาที่รายงานเข้ามาล่าสุดของแต่ละกะ
-- 🅿️ **Real-Time Parking Lot Monitoring**:
-  - ติดตามความหนาแน่นและที่จอดรถยนต์ (Car Lots) และรถจักรยานยนต์ (Motorcycle Lots) แยกตามอาคาร/โซน
-- 📹 **NVR 62-Day Compliance & CCTV Online Status**:
-  - ตรวจสอบความพร้อมของระบบบันทึกภาพย้อนหลัง 62 วันตามมาตรฐานความปลอดภัย และสถานะกล้องออนไลน์แบบเรียลไทม์
-- 🔍 **Metal Detector Health Checks**:
-  - บันทึกและวิเคราะห์ผลการทดสอบเครื่องตรวจจับโลหะแบบเดินผ่าน (Walkthrough) และแบบมือถือ (Handheld)
-- 📊 **Visual Analytics & Sparklines**:
-  - กราฟแนวโน้มย้อนหลัง 7 วัน พร้อมตัวบ่งชี้ทิศทางข้อมูล (Trends) และการส่งออกรายงานเป็น CSV รองรับภาษาไทย (UTF-8 BOM)
+### 👮 Intelligent Guard Duty Logging
+- **Shift-Separated Recording**: Flexible entry options for **Day Shift (`07:00–19:00`)**, **Night Shift (`19:00–07:00`)**, or **Both shifts** simultaneously.
+- **Smart Time Detection**: Automatically pre-selects the appropriate shift based on real-time clock.
+- **Historical Prefill**: Automatically pre-populates previous Actual & Contract counts as initial defaults.
+- **Carry-Forward Intelligence**: Retains the last known shift headcount without overwriting individual shift report timestamps.
+- **Independent Timestamps**: Displays distinct "Last Reported" timestamps for Day and Night shifts on the dashboard.
+
+### 🅿️ Real-Time Parking Lot Monitoring
+- Live tracking of vehicle occupancy and availability across Car Lots (1,075 capacity) and Motorcycle Lots (757 capacity).
+- Building-level and zone-level breakdown with visual utilization progress bars.
+
+### 📹 CCTV & NVR Compliance (62-Day Retention)
+- Real-time online/offline camera monitoring across the facility.
+- 62-day video retention compliance auditing per NVR device with instant threshold warnings.
+
+### 🔍 Metal Detector Health Checks
+- Regular operational health checks and status tracking for Walkthrough Metal Detectors and Handheld Metal Detectors.
+- Zone pass/fail compliance indicators.
+
+### 📊 Modern Visual Analytics & Reporting
+- 7-day sparkline trend charts with directional change indicators.
+- One-click CSV export with UTF-8 BOM encoding for seamless Microsoft Excel compatibility.
 
 ---
 
-## 🏛️ สถาปัตยกรรมระบบ (Architecture)
+## 🏛️ System Architecture
 
-โครงการถูกออกแบบในรูปแบบ **Modern Monorepo** พร้อมระบบ **Legacy PHP Support** เพื่อการทำงานที่ต่อเนื่อง:
+This repository is structured as a **Modern Monorepo** powered by Turborepo, while preserving the legacy PHP/MySQL service for backward compatibility:
 
 ```text
 wdbpi/
 ├── apps/
-│   ├── web/               # Next.js 16 (App Router) + React 19 + Tailwind CSS
-│   └── api/               # NestJS 11 + Prisma ORM 7 + PostgreSQL + Redis
+│   ├── web/               # Next.js 16 (App Router) + React 19 + TailwindCSS v4
+│   └── api/               # NestJS 11 + Prisma ORM 7 + PostgreSQL + Redis Cache
 ├── legacy/                # PHP 8.2 + MySQL (Original Core System)
 │   ├── dashboard.php      # Legacy Dashboard View
-│   ├── guard_duty_log.php # Enhanced Shift Guard Duty Log
+│   ├── guard_duty_log.php # Enhanced Shift-Separated Guard Duty Log
 │   └── get_security_status.php
 ├── docker/                # Multi-stage Dockerfiles & Nginx Reverse Proxy Configs
 ├── prisma/                # Prisma Schema & Database Migrations
@@ -64,58 +75,61 @@ wdbpi/
 
 ---
 
-## 🚀 การเริ่มต้นใช้งาน (Getting Started)
+## 🚀 Getting Started
 
-### 1. ความต้องการของระบบ (Prerequisites)
+### Prerequisites
 - **Node.js**: `>= 20.0.0`
-- **npm** หรือ **pnpm**
-- **PHP**: `>= 8.1` (สำหรับ Legacy System)
+- **npm** or **pnpm**
+- **PHP**: `>= 8.1` *(for Legacy PHP service)*
 - **PostgreSQL**: `>= 16`
-- **Docker & Docker Compose** (แนะนำสำหรับ Production/Containerized)
+- **Docker & Docker Compose** *(recommended for production deployment)*
 
-### 2. การติดตั้งแบบ Monorepo (Next.js + NestJS)
+### Local Monorepo Setup (Next.js + NestJS)
 
 ```bash
-# โคลนโปรเจกต์
+# 1. Clone the repository
 git clone https://github.com/PCS-IOT/WD_BPI_Web.git
 cd WD_BPI_Web
 
-# ติดตั้ง Dependencies ทั้งหมดผ่าน Turborepo
+# 2. Install monorepo dependencies
 npm install
 
-# กำหนดค่าตัวแปรสภาพแวดล้อม
+# 3. Configure environment variables
 cp .env.example .env
 
-# รันโหมด Development (รันพร้อมกันทั้ง Web & API)
+# 4. Start the development server (runs Web & API concurrently)
 npm run dev
 ```
 
 - 🌐 **Web Frontend**: `http://localhost:3000`
 - ⚙️ **NestJS API**: `http://localhost:3001/api`
-- 📚 **Swagger Docs**: `http://localhost:3001/api/docs`
+- 📚 **Swagger API Docs**: `http://localhost:3001/api/docs`
 
 ---
 
-## 🐳 การรันด้วย Docker (Unified Stack)
+## 🐳 Docker Deployment
 
-สามารถเปิดใช้งานทั้งระบบ (Next.js, NestJS, Legacy PHP, Nginx, PostgreSQL, Redis) ด้วยคำสั่งเดียว:
+Run the complete unified stack (Next.js, NestJS, Legacy PHP, Nginx reverse proxy, PostgreSQL, and Redis) with a single command:
 
 ```bash
-# สั่ง Build และรันคอนเทนเนอร์ทั้งหมด
+# Build and launch all containers
 docker compose up -d --build
+
+# View container logs
+docker compose logs -f
 ```
 
 ---
 
-## 📝 ประวัติการอัปเดต (Changelog)
+## 📝 Changelog
 
-ดูรายละเอียดการอัปเดตและประวัติเวอร์ชันทั้งหมดได้ที่ [CHANGELOG.md](CHANGELOG.md)
+Detailed release notes and version history are available in [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
-## 📄 ใบอนุญาต (License)
+## 📄 License
 
-This project is licensed under the [MIT License](LICENSE).
+Distributed under the [MIT License](LICENSE).
 
 <div align="center">
   <sub>Developed & Maintained for <strong>Western Digital BPI Site</strong></sub>
