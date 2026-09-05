@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import AnimatedDropdown from '@/components/AnimatedDropdown';
-import { Clock, CheckCircle2, Car, Trash2, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Clock, CheckCircle2, Car, Trash2, Eye, Pencil, ChevronLeft, ChevronRight } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import { apiFetch } from '@/lib/api';
 
@@ -42,6 +42,12 @@ export default function CarParkingPage() {
   const [historyTotal, setHistoryTotal] = useState(0);
   const historyLimit = 20;
   const [selectedReport, setSelectedReport] = useState<any>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+
+  // Compare mode (uses loaded history only, no extra API)
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareAId, setCompareAId] = useState<number | null>(null);
+  const [compareBId, setCompareBId] = useState<number | null>(null);
 
   const fetchHistory = useCallback(async (page: number) => {
     setHistoryLoading(true);
@@ -90,8 +96,44 @@ export default function CarParkingPage() {
     try {
       await apiFetch(`/api/parking/${id}`, { method: 'DELETE' });
       setMessage('ลบรายงานเรียบร้อยแล้ว');
+      if (editingId === id) handleCancelEdit();
       fetchHistory(historyPage);
     } catch { setMessage('ลบไม่สำเร็จ'); }
+  };
+
+  const handleEdit = (h: any) => {
+    setEditingId(h.id);
+    setInspectionDate(h.recordDate ? new Date(h.recordDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
+    setInspectorCode(h.inspectorCode || '');
+    setInspectorName(h.inspectorName || '');
+    if (h.shift?.includes('ดึก') || h.shift?.includes('PM')) setShift('กะดึก (19.00 - 07.00)');
+    else setShift('กะเช้า (07.00 - 19.00)');
+    setSpareTireStatus(h.spareTireStatus && !h.spareTireStatus.includes('?') ? h.spareTireStatus : 'ครบถ้วน');
+    const carCounts: Record<string, string> = {};
+    const motoCounts: Record<string, string> = {};
+    if (h.lotCounts && typeof h.lotCounts === 'object') {
+      for (const [k, v] of Object.entries(h.lotCounts) as any[]) {
+        const num = typeof v === 'object' && v !== null ? v.vehicleCount : v;
+        if (num === undefined || num === null || num === '') continue;
+        const isMoto = typeof v === 'object' && v !== null ? v.vehicleType === 'moto' : String(k).includes('จอด');
+        if (isMoto) motoCounts[k] = String(num);
+        else carCounts[k] = String(num);
+      }
+    }
+    setCarLotCounts(carCounts);
+    setMotoLotCounts(motoCounts);
+    const platesStr = h.licensePlates || h.carLicense || '';
+    setLicensePlates(platesStr && platesStr !== '-' ? platesStr.split(',').map((s: string) => s.trim()).filter(Boolean) : ['']);
+    setMessage('');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setCarLotCounts({});
+    setMotoLotCounts({});
+    setLicensePlates(['']);
+    setSpareTireStatus('ครบถ้วน');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -112,6 +154,32 @@ export default function CarParkingPage() {
       const motoCounts: Record<string, number> = {};
       Object.entries(motoLotCounts).forEach(([k,v])=>{ if(v && parseInt(v)>0) motoCounts[k]=parseInt(v); });
 
+      if (editingId !== null) {
+        const lotCounts: Record<string, any> = {};
+        Object.entries(carCounts).forEach(([lot, count]) => { lotCounts[lot] = { vehicleType: 'car', vehicleCount: String(count) }; });
+        Object.entries(motoCounts).forEach(([lot, count]) => { lotCounts[lot] = { vehicleType: 'moto', vehicleCount: String(count) }; });
+        const motoVals = Object.values(motoCounts);
+        await apiFetch(`/api/parking/${editingId}`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            recordDate: inspectionDate,
+            inspectorCode,
+            inspectorName,
+            shift: shift.includes('เช้า') ? 'กะเช้า' : 'กะดึก',
+            spareTireStatus,
+            licensePlates: plates.join(', ') || undefined,
+            totalCars: Object.values(carCounts).reduce((s, v) => s + v, 0),
+            motorcycleCount1: motoVals[0] ?? 0,
+            motorcycleCount2: motoVals[1] ?? 0,
+            motorcycleCount3: motoVals[2] ?? 0,
+            lotCounts,
+          }),
+        });
+        setMessage('แก้ไขรายงานเรียบร้อย');
+        handleCancelEdit();
+        fetchHistory(historyPage);
+        return;
+      }
       const vehicles = plates.map((plate)=>({
         plateNumber: plate,
         vehicleType: 'car',
@@ -157,13 +225,83 @@ export default function CarParkingPage() {
 
   const totalPages = Math.max(1, Math.ceil(historyTotal / historyLimit));
 
+  // Default A/B = 2 latest records from loaded history
+  useEffect(() => {
+    if (history.length >= 1 && compareAId === null) setCompareAId(history[0].id);
+    if (history.length >= 2 && compareBId === null) setCompareBId(history[1].id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [history]);
+
+  const formatCompareLabel = (h: any) => {
+    const d = h.recordDate ? new Date(h.recordDate).toLocaleDateString('th-TH') : (h.createdAt ? new Date(h.createdAt).toLocaleDateString('th-TH') : '-');
+    const s = h.shift && !String(h.shift).includes('?') ? h.shift.replace('กะ', '').trim() || h.shift : 'เช้า';
+    return `${d} • ${s} • ${h.inspectorName || h.inspectorCode || '#' + h.id}`;
+  };
+
+  // Same fuzzy logic as history table getCount, but returns number (0 when missing)
+  const getCompareNum = (h: any, lotName: string, isMoto = false, motoIdx?: number): number => {
+    if (!h) return 0;
+    // Prefer motorcycleCount1-3 for moto lots when present
+    if (isMoto && motoIdx !== undefined) {
+      const k = `motorcycleCount${motoIdx + 1}`;
+      if (h[k] !== undefined && h[k] !== null && h[k] !== '') {
+        const n = Number(h[k]);
+        if (!Number.isNaN(n)) return n;
+      }
+    }
+    if (h.lotCounts && typeof h.lotCounts === 'object') {
+      if (h.lotCounts[lotName] !== undefined && h.lotCounts[lotName] !== null) {
+        const v = h.lotCounts[lotName];
+        const num = typeof v === 'object' && v !== null ? v.vehicleCount : v;
+        if (num !== undefined && num !== null && num !== '') {
+          const n = Number(num);
+          return Number.isNaN(n) ? 0 : n;
+        }
+      }
+      const targetNum = lotName.match(/(\d+(\/\d+)?|B\.?\d+)/i)?.[0];
+      for (const [key, rawVal] of Object.entries(h.lotCounts)) {
+        const val: any = rawVal;
+        const curNum = key.match(/(\d+(\/\d+)?|B\.?\d+)/i)?.[0];
+        if (targetNum && curNum && targetNum.toLowerCase() === curNum.toLowerCase()) {
+          const isCurMoto = typeof val === 'object' && val !== null ? val.vehicleType === 'moto' : String(key).includes('จอด');
+          if (!!isMoto === !!isCurMoto) {
+            const num = typeof val === 'object' && val !== null ? val.vehicleCount : val;
+            if (num !== undefined && num !== null && num !== '') {
+              const n = Number(num);
+              return Number.isNaN(n) ? 0 : n;
+            }
+          }
+        }
+      }
+    }
+    return 0;
+  };
+
+  const compareA = history.find((h: any) => h.id === compareAId) ?? null;
+  const compareB = history.find((h: any) => h.id === compareBId) ?? null;
+  const CAR_CAP = CAR_LOTS.reduce((s, l) => s + l.capacity, 0);
+  const MOTO_CAP = MOTORCYCLE_LOTS.reduce((s, l) => s + l.capacity, 0);
+  const sumCar = (h: any) => (h ? CAR_LOTS.reduce((s, lot) => s + getCompareNum(h, lot.name, false), 0) : 0);
+  const sumMoto = (h: any) => (h ? MOTORCYCLE_LOTS.reduce((s, lot, i) => s + getCompareNum(h, lot.name, true, i), 0) : 0);
+  const totalCarA = compareA ? (Number(compareA.totalCars) > 0 ? Number(compareA.totalCars) : sumCar(compareA)) || sumCar(compareA) : 0;
+  const totalCarB = compareB ? (Number(compareB.totalCars) > 0 ? Number(compareB.totalCars) : sumCar(compareB)) || sumCar(compareB) : 0;
+  // Prefer lot-sum for consistency; fall back to totalCars only when lot-sum is 0 handled above
+  const totalMotoA = sumMoto(compareA);
+  const totalMotoB = sumMoto(compareB);
+  const occCarA = CAR_CAP ? (totalCarA / CAR_CAP) * 100 : 0;
+  const occCarB = CAR_CAP ? (totalCarB / CAR_CAP) * 100 : 0;
+  const occMotoA = MOTO_CAP ? (totalMotoA / MOTO_CAP) * 100 : 0;
+  const occMotoB = MOTO_CAP ? (totalMotoB / MOTO_CAP) * 100 : 0;
+  const diffClass = (d: number) => d > 0 ? 'text-emerald-600 font-bold' : d < 0 ? 'text-rose-600 font-bold' : 'text-slate-400';
+  const fmtDiff = (d: number) => d > 0 ? `+${d}` : `${d}`;
+
   return (
     <div className="gradient-bg min-h-screen py-4 md:py-8 px-3 md:px-4 font-sans">
       <div className="max-w-4xl mx-auto space-y-4 md:space-y-6">
 
         <PageHeader
           title="ตรวจลานจอดรถ"
-          subtitle="Car Parking Inspection"
+          subtitle={editingId !== null ? `กำลังแก้ไขรายงาน #${editingId}` : 'Car Parking Inspection'}
           icon={<Car className="w-5 h-5 md:w-6 h-6 text-white" />}
         />
 
@@ -296,13 +434,22 @@ export default function CarParkingPage() {
           </div>
 
           {/* Submit */}
-          <div className="pt-4 flex justify-center">
+          <div className="pt-4 flex justify-center gap-3">
+            {editingId !== null && (
+              <button
+                type="button"
+                onClick={handleCancelEdit}
+                className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 md:py-3.5 px-6 md:px-10 rounded-full shadow-lg transition-transform active:scale-95 text-sm md:text-base"
+              >
+                ✕ ยกเลิกการแก้ไข
+              </button>
+            )}
             <button
               type="submit"
               disabled={loading}
               className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 md:py-3.5 px-6 md:px-10 rounded-full shadow-lg transition-transform active:scale-95 text-sm md:text-base disabled:opacity-50"
             >
-              {loading ? 'กำลังบันทึก...' : '💾 บันทึกรายงานการตรวจเช็ค'}
+              {loading ? 'กำลังบันทึก...' : editingId !== null ? '💾 บันทึกการแก้ไข' : '💾 บันทึกรายงานการตรวจเช็ค'}
             </button>
           </div>
 
@@ -361,6 +508,180 @@ export default function CarParkingPage() {
               📥 ส่งออกเป็น CSV
             </button>
           </div>
+
+          {/* Compare mode toggle */}
+          <div className="flex items-center gap-2 mb-3">
+            <button
+              type="button"
+              onClick={() => setCompareMode((v) => !v)}
+              className={`relative w-10 h-6 rounded-full transition-colors ${compareMode ? 'bg-blue-600' : 'bg-slate-300'}`}
+              title="โหมดเปรียบเทียบ"
+            >
+              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${compareMode ? 'left-5' : 'left-0.5'}`} />
+            </button>
+            <span className="text-sm font-semibold text-slate-700">โหมดเปรียบเทียบ</span>
+            {compareMode && <span className="text-xs text-slate-400">(ใช้ข้อมูล history ที่โหลดไว้ ไม่ยิง API เพิ่ม)</span>}
+          </div>
+
+          {compareMode && (
+            <div className="mb-4 p-3 md:p-4 rounded-xl border border-blue-200 bg-blue-50/50 space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-2 items-end">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Record A (เก่า)</label>
+                  <select
+                    value={compareAId ?? ''}
+                    onChange={(e) => setCompareAId(e.target.value ? Number(e.target.value) : null)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {history.map((h: any) => (
+                      <option key={h.id} value={h.id}>A: {formatCompareLabel(h)}</option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { const a = compareAId; setCompareAId(compareBId); setCompareBId(a); }}
+                  className="px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm font-bold text-slate-600 hover:bg-slate-50 whitespace-nowrap"
+                  title="สลับ A/B"
+                >
+                  ⇄ สลับ A/B
+                </button>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Record B (ใหม่)</label>
+                  <select
+                    value={compareBId ?? ''}
+                    onChange={(e) => setCompareBId(e.target.value ? Number(e.target.value) : null)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {history.map((h: any) => (
+                      <option key={h.id} value={h.id}>B: {formatCompareLabel(h)}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {!compareA || !compareB ? (
+                <div className="text-center text-xs text-slate-500 py-2">ต้องมี history อย่างน้อย 2 รายการเพื่อเปรียบเทียบ</div>
+              ) : (
+                <>
+                  <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                    <table className="w-full text-xs border-collapse">
+                      <thead className="bg-slate-50 text-slate-700 border-b border-slate-200">
+                        <tr>
+                          <th className="py-2 px-2 text-left whitespace-nowrap">ลาน</th>
+                          <th className="py-2 px-2 text-center whitespace-nowrap">A</th>
+                          <th className="py-2 px-2 text-center whitespace-nowrap">B</th>
+                          <th className="py-2 px-2 text-center whitespace-nowrap">Diff (B−A)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-slate-600">
+                        {CAR_LOTS.map((lot) => {
+                          const a = getCompareNum(compareA, lot.name, false);
+                          const b = getCompareNum(compareB, lot.name, false);
+                          const d = b - a;
+                          return (
+                            <tr key={lot.name} className="hover:bg-slate-50">
+                              <td className="py-2 px-2 whitespace-nowrap font-medium text-slate-700">{lot.short} <span className="text-slate-400 font-normal hidden sm:inline">{lot.name}</span></td>
+                              <td className="py-2 px-2 text-center">{a}</td>
+                              <td className="py-2 px-2 text-center">{b}</td>
+                              <td className={`py-2 px-2 text-center ${diffClass(d)}`}>{fmtDiff(d)}</td>
+                            </tr>
+                          );
+                        })}
+                        {MOTORCYCLE_LOTS.map((lot, i) => {
+                          const a = getCompareNum(compareA, lot.name, true, i);
+                          const b = getCompareNum(compareB, lot.name, true, i);
+                          const d = b - a;
+                          return (
+                            <tr key={lot.name} className="hover:bg-emerald-50/40">
+                              <td className="py-2 px-2 whitespace-nowrap font-medium text-emerald-900">{lot.short} <span className="text-slate-400 font-normal hidden sm:inline">{lot.name}</span></td>
+                              <td className="py-2 px-2 text-center">{a}</td>
+                              <td className="py-2 px-2 text-center">{b}</td>
+                              <td className={`py-2 px-2 text-center ${diffClass(d)}`}>{fmtDiff(d)}</td>
+                            </tr>
+                          );
+                        })}
+                        {/* Summary rows */}
+                        <tr className="bg-slate-50 font-semibold">
+                          <td className="py-2 px-2">รวมรถยนต์</td>
+                          <td className="py-2 px-2 text-center">{totalCarA}</td>
+                          <td className="py-2 px-2 text-center">{totalCarB}</td>
+                          <td className={`py-2 px-2 text-center ${diffClass(totalCarB - totalCarA)}`}>{fmtDiff(totalCarB - totalCarA)}</td>
+                        </tr>
+                        <tr className="bg-emerald-50/60 font-semibold">
+                          <td className="py-2 px-2">รวมมอไซค์</td>
+                          <td className="py-2 px-2 text-center">{totalMotoA}</td>
+                          <td className="py-2 px-2 text-center">{totalMotoB}</td>
+                          <td className={`py-2 px-2 text-center ${diffClass(totalMotoB - totalMotoA)}`}>{fmtDiff(totalMotoB - totalMotoA)}</td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 px-2">Occupancy รถยนต์ ({CAR_CAP} slot)</td>
+                          <td className="py-2 px-2 text-center">{occCarA.toFixed(1)}%</td>
+                          <td className="py-2 px-2 text-center">{occCarB.toFixed(1)}%</td>
+                          <td className={`py-2 px-2 text-center ${diffClass(totalCarB - totalCarA)}`}>{(occCarB - occCarA) >= 0 ? '+' : ''}{(occCarB - occCarA).toFixed(1)}%</td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 px-2">Occupancy มอไซค์ ({MOTO_CAP} slot)</td>
+                          <td className="py-2 px-2 text-center">{occMotoA.toFixed(1)}%</td>
+                          <td className="py-2 px-2 text-center">{occMotoB.toFixed(1)}%</td>
+                          <td className={`py-2 px-2 text-center ${diffClass(totalMotoB - totalMotoA)}`}>{(occMotoB - occMotoA) >= 0 ? '+' : ''}{(occMotoB - occMotoA).toFixed(1)}%</td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 px-2">ยางอะไหล่</td>
+                          <td className="py-2 px-2 text-center">{compareA.spareTireStatus || '-'}</td>
+                          <td className="py-2 px-2 text-center">{compareB.spareTireStatus || '-'}</td>
+                          <td className={`py-2 px-2 text-center ${compareA.spareTireStatus === compareB.spareTireStatus ? 'text-slate-400' : 'text-amber-600 font-bold'}`}>{compareA.spareTireStatus === compareB.spareTireStatus ? '=' : '≠'}</td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 px-2">ผู้ตรวจ</td>
+                          <td className="py-2 px-2 text-center">{compareA.inspectorName || compareA.inspectorCode || '-'}</td>
+                          <td className="py-2 px-2 text-center">{compareB.inspectorName || compareB.inspectorCode || '-'}</td>
+                          <td className="py-2 px-2 text-center text-slate-400">{compareA.inspectorCode === compareB.inspectorCode ? '=' : '≠'}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Simple div bars: car A vs B, moto A vs B */}
+                  <div className="bg-white rounded-xl border border-slate-200 p-3 space-y-2">
+                    <div className="text-xs font-bold text-slate-700">กราฟเปรียบเทียบ (แท่ง)</div>
+                    {(() => {
+                      const max = Math.max(totalCarA, totalCarB, totalMotoA, totalMotoB, 1);
+                      const bar = (val: number, color: string) => (
+                        <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.max(0, Math.min(100, (val / max) * 100))}%` }} />
+                        </div>
+                      );
+                      return (
+                        <div className="space-y-2 text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="w-16 shrink-0 font-semibold text-blue-800">รถยนต์ A</span>
+                            {bar(totalCarA, 'bg-blue-500')}
+                            <span className="w-10 text-right font-bold">{totalCarA}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="w-16 shrink-0 font-semibold text-blue-800">รถยนต์ B</span>
+                            {bar(totalCarB, 'bg-blue-700')}
+                            <span className="w-10 text-right font-bold">{totalCarB}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="w-16 shrink-0 font-semibold text-emerald-800">มอไซค์ A</span>
+                            {bar(totalMotoA, 'bg-emerald-400')}
+                            <span className="w-10 text-right font-bold">{totalMotoA}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="w-16 shrink-0 font-semibold text-emerald-800">มอไซค์ B</span>
+                            {bar(totalMotoB, 'bg-emerald-600')}
+                            <span className="w-10 text-right font-bold">{totalMotoB}</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
 
           {historyLoading ? (
             <div className="text-center py-8 text-slate-400 text-sm">กำลังโหลด...</div>
@@ -497,6 +818,13 @@ export default function CarParkingPage() {
                               title="ดูรายละเอียด"
                             >
                               <Eye className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleEdit(h)}
+                              className="p-1 hover:bg-amber-50 text-amber-600 rounded"
+                              title="แก้ไข"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => handleDelete(h.id)}

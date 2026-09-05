@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Building2, Clock, Mic, X, Shield } from 'lucide-react';
+import { Building2, Clock, Mic, X, Shield, Pencil, Trash2 } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import { apiFetch } from '@/lib/api';
 
@@ -28,6 +28,7 @@ export default function HandheldDetectorPage() {
   const [history, setHistory] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<any>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   useEffect(() => {
     setInspectionDate(new Date().toISOString().split('T')[0]);
@@ -40,11 +41,29 @@ export default function HandheldDetectorPage() {
   }, []);
 
   useEffect(() => {
+    fetchHistory();
+  }, []);
+
+  const fetchHistory = () => {
     apiFetch<any>('/api/metal-detector/handheld-checks?limit=50')
       .then((data) => setHistory(data.data || []))
       .catch(() => {})
       .finally(() => setHistoryLoading(false));
-  }, []);
+  };
+
+  const toInputDate = (v: any) => {
+    if (!v) return '';
+    try {
+      return new Date(v).toISOString().split('T')[0];
+    } catch { return ''; }
+  };
+
+  const safeParseRemark = (remark: any): any => {
+    if (remark == null) return null;
+    if (typeof remark === 'object') return remark;
+    if (typeof remark !== 'string') return null;
+    try { return JSON.parse(remark); } catch { return null; }
+  };
 
   const startSpeechRecognition = (targetId: string) => {
     const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -68,6 +87,66 @@ export default function HandheldDetectorPage() {
     recognition.start();
   };
 
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setMessage('');
+  };
+
+  const handleEdit = (item: any) => {
+    setSelectedReport(null);
+    setEditingId(item.id);
+    setMessage('');
+    const legacy = item.legacy;
+    if (item._legacy && legacy) {
+      setInspectionDate(toInputDate(legacy.inspectionDate || item.checkDate) || new Date().toISOString().split('T')[0]);
+      setBuilding(legacy.building || '');
+      setGuardPost(legacy.guardPost || '');
+      setInspectorCode(legacy.inspectorCode || '');
+      setInspectorName(legacy.inspectorName || item.inspector || '');
+      setShift(legacy.shift || '');
+      setBatteryStatus(legacy.batteryStatus || '');
+      setLedStatus(legacy.ledStatus || '');
+      setDetectionTestStatus(legacy.detectionTestStatus || '');
+      setAlarmStatus(legacy.alarmStatus || '');
+      setRemarks(legacy.remarks || '');
+    } else {
+      setInspectionDate(toInputDate(item.checkDate) || new Date().toISOString().split('T')[0]);
+      const parsed = safeParseRemark(item.remark);
+      if (parsed && typeof parsed === 'object') {
+        setBuilding(parsed.building || '');
+        setGuardPost(parsed.guard_post || parsed.guardPost || '');
+        setInspectorCode(parsed.inspector_code || parsed.inspectorCode || '');
+        setInspectorName(parsed.inspector_name || parsed.inspectorName || '');
+        setShift(parsed.shift || '');
+        setBatteryStatus(parsed.battery_status || parsed.batteryStatus || '');
+        setLedStatus(parsed.led_status || parsed.ledStatus || '');
+        setDetectionTestStatus(parsed.detection_test_status || parsed.detectionTestStatus || '');
+        setAlarmStatus(parsed.alarm_status || parsed.alarmStatus || '');
+        setRemarks(parsed.remarks || '');
+      } else {
+        // remark ไม่ใช่ JSON ใช้ค่าเดิม: inspector แยก code/name, remarks = raw
+        const insp: string = item.inspector || '';
+        const parts = insp.split(' ');
+        setInspectorCode(parts[0] || '');
+        setInspectorName(parts.slice(1).join(' ') || insp);
+        setRemarks(typeof item.remark === 'string' ? item.remark : '');
+      }
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('ยืนยันการลบรายงานนี้?')) return;
+    try {
+      await apiFetch(`/api/metal-detector/handheld-checks/${id}`, { method: 'DELETE' });
+      setMessage('ลบรายงานเรียบร้อยแล้ว');
+      if (editingId === id) setEditingId(null);
+      fetchHistory();
+    } catch {
+      setMessage('เกิดข้อผิดพลาดในการลบข้อมูล');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage('');
@@ -79,8 +158,8 @@ export default function HandheldDetectorPage() {
 
     setLoading(true);
     try {
-      await apiFetch('/api/metal-detector/handheld-checks', {
-        method: 'POST',
+      await apiFetch(editingId ? `/api/metal-detector/handheld-checks/${editingId}` : '/api/metal-detector/handheld-checks', {
+        method: editingId ? 'PUT' : 'POST',
         body: JSON.stringify({
           equipmentId: 1,
           checkDate: inspectionDate,
@@ -100,7 +179,9 @@ export default function HandheldDetectorPage() {
           inspector: `${inspectorCode} ${inspectorName}`,
         }),
       });
-      setMessage('ส่งรายงานการตรวจเช็คเรียบร้อยแล้ว');
+      setMessage(editingId ? 'แก้ไขรายงานเรียบร้อยแล้ว' : 'ส่งรายงานการตรวจเช็คเรียบร้อยแล้ว');
+      setEditingId(null);
+      fetchHistory();
     } catch (err) {
       setMessage('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
     } finally {
@@ -337,13 +418,22 @@ export default function HandheldDetectorPage() {
           </div>
 
           {/* Submit */}
-          <div className="text-center pt-4">
+          <div className="text-center pt-4 flex justify-center gap-3 flex-wrap">
+            {editingId && (
+              <button
+                type="button"
+                onClick={handleCancelEdit}
+                className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-4 px-8 rounded-3xl text-lg shadow-lg transition-transform active:scale-95"
+              >
+                ยกเลิก
+              </button>
+            )}
             <button
               type="submit"
               disabled={loading}
               className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 px-12 rounded-3xl text-lg shadow-lg transition-transform active:scale-95 disabled:opacity-50"
             >
-              {loading ? 'กำลังบันทึก...' : 'ส่งรายงาน'}
+              {loading ? 'กำลังบันทึก...' : editingId ? '💾 บันทึกการแก้ไข' : 'ส่งรายงาน'}
             </button>
           </div>
 
@@ -369,6 +459,7 @@ export default function HandheldDetectorPage() {
                     <th className="text-left py-3 px-3 font-semibold text-slate-600">สถานะ</th>
                     <th className="text-left py-3 px-3 font-semibold text-slate-600">ผู้ตรวจ</th>
                     <th className="text-left py-3 px-3 font-semibold text-slate-600">หมายเหตุ</th>
+                    <th className="text-right py-3 px-3 font-semibold text-slate-600">จัดการ</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -384,6 +475,26 @@ export default function HandheldDetectorPage() {
                       </td>
                       <td className="py-3 px-3 text-slate-700">{item.inspector || '-'}</td>
                       <td className="py-3 px-3 text-slate-600 max-w-md truncate">{item.remark || '-'}</td>
+                      <td className="py-3 px-3">
+                        <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            title="แก้ไข"
+                            onClick={() => handleEdit(item)}
+                            className="p-1.5 rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            title="ลบ"
+                            onClick={() => handleDelete(item.id)}
+                            className="p-1.5 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

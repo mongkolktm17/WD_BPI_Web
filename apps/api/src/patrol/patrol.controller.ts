@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, ParseIntPipe, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, ParseIntPipe, UseGuards, Request } from '@nestjs/common';
 import { PatrolService } from './patrol.service';
 import { CreatePatrolDto } from './dto/create-patrol.dto';
 import { UpdatePatrolDto } from './dto/update-patrol.dto';
@@ -30,7 +30,7 @@ export class PatrolController {
   }
 
   @Delete(':id')
-  async remove(@Param('id', ParseIntPipe) id: number) {
-    return this.patrolService.remove(id);
+  async remove(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
+    return this.patrolService.remove(id, req.user?.username);
   }
 }

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import AnimatedDropdown from '@/components/AnimatedDropdown';
-import { Clock, MapPin, X, Shield } from 'lucide-react';
+import { Clock, MapPin, X, Shield, Pencil, Trash2 } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import { apiFetch } from '@/lib/api';
 
@@ -38,6 +38,7 @@ export default function WalkthroughDetectorPage() {
   const [history, setHistory] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<any>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   // Default fallback detectors if DB empty
   const FALLBACK_DETECTORS: WalkthroughDetector[] = [
@@ -65,11 +66,118 @@ export default function WalkthroughDetectorPage() {
   }, []);
 
   useEffect(() => {
+    fetchHistory();
+  }, []);
+
+  const fetchHistory = () => {
     apiFetch<any>('/api/metal-detector/walkthrough-checks?limit=50')
       .then((data) => setHistory(data.data || []))
       .catch(() => {})
       .finally(() => setHistoryLoading(false));
-  }, []);
+  };
+
+  const toInputDate = (v: any) => {
+    if (!v) return '';
+    try {
+      return new Date(v).toISOString().split('T')[0];
+    } catch { return ''; }
+  };
+
+  const safeParseRemark = (remark: any) => {
+    if (remark == null) return null;
+    if (typeof remark === 'object') return remark;
+    if (typeof remark !== 'string') return null;
+    try { return JSON.parse(remark); } catch { return null; }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setMessage('');
+    setZoneStatuses({ zone1: 'Pass', zone2: 'Pass', zone3: 'Pass', zone4: 'Pass', zone5: 'Pass', zone6: 'Pass' });
+    setGuardPost('');
+  };
+
+  const handleEdit = (item: any) => {
+    setSelectedReport(null);
+    setEditingId(item.id);
+    setMessage('');
+    const legacy = item.legacy;
+    if (item._legacy && legacy) {
+      setInspectionDate(toInputDate(legacy.inspectionDate || item.checkDate) || new Date().toISOString().split('T')[0]);
+      setEmployeeId(legacy.employeeId || '');
+      setEmployeeName(legacy.employeeName || item.inspector || '');
+      setBuilding(legacy.building || 'B2');
+      setGuardPost(legacy.guardPost || '');
+      setScannerBrand(legacy.scannerBrand || 'Garrett');
+      setShift(legacy.shift || 'กะเช้า (07.00 - 19.00)');
+      setZoneStatuses({
+        zone1: legacy.zone1Status || 'Pass',
+        zone2: legacy.zone2Status || 'Pass',
+        zone3: legacy.zone3Status || 'Pass',
+        zone4: legacy.zone4Status || 'Pass',
+        zone5: legacy.zone5Status || 'Pass',
+        zone6: legacy.zone6Status || 'Pass',
+      });
+      setSelectedDetectorId('');
+    } else {
+      setInspectionDate(toInputDate(item.checkDate) || new Date().toISOString().split('T')[0]);
+      // inspector: "code name..."
+      const insp: string = item.inspector || '';
+      const parts = insp.split(' ');
+      setEmployeeId(parts[0] || '');
+      setEmployeeName(parts.slice(1).join(' ') || '');
+      setSelectedDetectorId(item.detectorId ? String(item.detectorId) : (item.detector?.id ? String(item.detector.id) : ''));
+      const parsed = safeParseRemark(item.remark);
+      if (parsed && typeof parsed === 'object') {
+        if (parsed.building) setBuilding(parsed.building);
+        if (parsed.guardPost || parsed.guard_post) setGuardPost(parsed.guardPost || parsed.guard_post);
+        if (parsed.scannerBrand || parsed.brand) setScannerBrand(parsed.scannerBrand || parsed.brand);
+        if (parsed.shift) setShift(parsed.shift);
+        const zs: Record<string, string> = {};
+        for (let i = 1; i <= 6; i++) {
+          zs[`zone${i}`] = parsed[`zone${i}`] || parsed[`zone${i}Status`] || 'Pass';
+        }
+        setZoneStatuses((prev) => ({ ...prev, ...zs }));
+      } else {
+        const remarkStr: string = typeof item.remark === 'string' ? item.remark : '';
+        const locStr: string = item.location || '';
+        // building from [B2] or location prefix
+        const bMatch = remarkStr.match(/\[([^\]]+)\]/);
+        let b = bMatch?.[1] || locStr.split(' ')[0] || 'B2';
+        if (!['B2','B3','B4','B9'].includes(b)) b = 'B2';
+        setBuilding(b);
+        // guardPost: remark part before first | minus [B..], fallback location minus building
+        const beforePipe = remarkStr.split('|')[0] || '';
+        const gp = beforePipe.replace(/^\[.*?\]\s*/, '').trim() || locStr.replace(/^[A-Z0-9]+\s*/, '').trim();
+        setGuardPost(gp);
+        const brandPart = remarkStr.split('|')[1]?.trim();
+        if (brandPart) setScannerBrand(brandPart);
+        // zones: match zone1:Pass / Z1:Pass / zone1=Pass
+        const zones: Record<string, string> = { zone1: 'Pass', zone2: 'Pass', zone3: 'Pass', zone4: 'Pass', zone5: 'Pass', zone6: 'Pass' };
+        const zoneSummary = remarkStr.split('|')[2] || remarkStr;
+        const re = /(?:zone|z)\s*([1-6])\s*[:=]\s*([A-Za-z]+)/gi;
+        let m: RegExpExecArray | null;
+        while ((m = re.exec(zoneSummary)) !== null) {
+          const v = m[2].charAt(0).toUpperCase() + m[2].slice(1).toLowerCase();
+          zones[`zone${m[1]}`] = ['Pass','Fail','Other'].includes(v) ? v : 'Pass';
+        }
+        setZoneStatuses(zones);
+      }
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('ยืนยันการลบรายงานนี้?')) return;
+    try {
+      await apiFetch(`/api/metal-detector/walkthrough-checks/${id}`, { method: 'DELETE' });
+      setMessage('ลบรายงานเรียบร้อยแล้ว');
+      if (editingId === id) { setEditingId(null); }
+      fetchHistory();
+    } catch {
+      setMessage('เกิดข้อผิดพลาดในการลบข้อมูล');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,8 +204,8 @@ export default function WalkthroughDetectorPage() {
         detCode = fallback.detectorCode;
       }
 
-      await apiFetch('/api/metal-detector/walkthrough-checks', {
-        method: 'POST',
+      await apiFetch(editingId ? `/api/metal-detector/walkthrough-checks/${editingId}` : '/api/metal-detector/walkthrough-checks', {
+        method: editingId ? 'PUT' : 'POST',
         body: JSON.stringify({
           detectorId: detId,
           detectorCode: detCode,
@@ -108,9 +216,10 @@ export default function WalkthroughDetectorPage() {
           inspector: `${employeeId} ${employeeName}`,
         }),
       });
-      setMessage('ส่งรายงานการตรวจเช็คเรียบร้อยแล้ว');
+      setMessage(editingId ? 'แก้ไขรายงานเรียบร้อยแล้ว' : 'ส่งรายงานการตรวจเช็คเรียบร้อยแล้ว');
+      setEditingId(null);
       // Refresh history
-      apiFetch<any>('/api/metal-detector/walkthrough-checks?limit=50').then((data)=>setHistory(data.data || [])).catch(()=>{});
+      fetchHistory();
     } catch (err) {
       setMessage('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
     } finally {
@@ -259,15 +368,24 @@ export default function WalkthroughDetectorPage() {
             </div>
           </div>
 
-           <div className="pt-4 flex justify-center">
+           <div className="pt-4 flex justify-center gap-3 flex-wrap">
+            {editingId && (
+              <button
+                type="button"
+                onClick={handleCancelEdit}
+                className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 md:py-3.5 px-6 md:px-10 rounded-full shadow-lg transition-transform active:scale-95 text-sm md:text-base"
+              >
+                ยกเลิก
+              </button>
+            )}
             <button
               type="submit"
               disabled={loading}
               className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 md:py-3.5 px-6 md:px-10 rounded-full shadow-lg transition-transform active:scale-95 text-sm md:text-base"
             >
-              {loading ? 'กำลังบันทึก...' : '📊 ส่งรายงานสถานะ Walkthrough'}
+              {loading ? 'กำลังบันทึก...' : editingId ? '💾 บันทึกการแก้ไข' : '📊 ส่งรายงานสถานะ Walkthrough'}
             </button>
-          </div>
+           </div>
         </form>
 
         {/* History Section */}
@@ -291,6 +409,7 @@ export default function WalkthroughDetectorPage() {
                     <th className="text-left py-3 px-3 font-semibold text-slate-600">จุด</th>
                     <th className="text-left py-3 px-3 font-semibold text-slate-600">สถานะ</th>
                     <th className="text-left py-3 px-3 font-semibold text-slate-600">ผู้ตรวจ</th>
+                    <th className="text-right py-3 px-3 font-semibold text-slate-600">จัดการ</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -307,6 +426,26 @@ export default function WalkthroughDetectorPage() {
                         </span>
                       </td>
                       <td className="py-3 px-3 text-slate-700">{item.inspector || '-'}</td>
+                      <td className="py-3 px-3">
+                        <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            title="แก้ไข"
+                            onClick={() => handleEdit(item)}
+                            className="p-1.5 rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            title="ลบ"
+                            onClick={() => handleDelete(item.id)}
+                            className="p-1.5 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

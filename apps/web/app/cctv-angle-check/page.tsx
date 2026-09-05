@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/api';
 import MicButton from '@/components/MicButton';
-import { RefreshCw, Camera, Eye, Edit, Building2, Cctv } from 'lucide-react';
+import { RefreshCw, Camera, Eye, Edit, Building2, Cctv, ChevronDown, Upload } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 
 interface ImageMapResponse {
@@ -44,6 +44,228 @@ const NVR_CAMERA_CONFIG: Record<string, number[]> = {
 };
 
 type PageMode = 'create' | 'view';
+
+// ─── Import panel: นำเข้าชื่อกล้อง (CSV) ─────────────────────────────
+// CSV 4 คอลัมน์: buildingCode (เช่น 2/3/4/9 หรือ B2/B3/B4/B9), cameraNo, cameraName, location
+function normalizeBuildingCode(input: string): string {
+  const t = (input || '').trim().toUpperCase().replace(/^อาคาร\s*/, '');
+  if (!t) return '';
+  if (/^\d+[A-Z]?$/.test(t)) return `B${t}`; // "2" -> "B2"
+  return t; // "B2", "B3" ฯลฯ ใช้ตรง ๆ
+}
+
+function parseCsvLine(line: string): string[] {
+  const out: string[] = [];
+  let cur = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') { cur += '"'; i++; }
+      else inQuotes = !inQuotes;
+    } else if (ch === ',' && !inQuotes) {
+      out.push(cur); cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  out.push(cur);
+  return out.map((s) => s.trim().replace(/^"|"$/g, ''));
+}
+
+function CameraImportPanel({ buildings: buildingsProp, onImported }: { buildings: any[]; onImported: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [csvText, setCsvText] = useState('');
+  const [localBuildings, setLocalBuildings] = useState<any[]>([]);
+  const [importing, setImporting] = useState(false);
+  const [result, setResult] = useState<{ created: number; skipped: number; errors: string[] } | null>(null);
+  const [error, setError] = useState('');
+
+  // ถ้าหา buildings state จากหน้าหลักไม่เจอ (ว่าง) ให้ fetch เองใน panel
+  useEffect(() => {
+    if (buildingsProp && buildingsProp.length > 0) return;
+    apiFetch<any>('/api/cctv/buildings')
+      .then((res) => {
+        const list = res?.data ?? res;
+        if (Array.isArray(list)) setLocalBuildings(list);
+      })
+      .catch(() => {});
+  }, [buildingsProp]);
+
+  const buildings = buildingsProp && buildingsProp.length > 0 ? buildingsProp : localBuildings;
+
+  const resolveBuildingId = useCallback((code: string): number | undefined => {
+    const norm = normalizeBuildingCode(code);
+    if (!norm || buildings.length === 0) return undefined;
+    const found = buildings.find((b: any) => {
+      const bc = (b.buildingCode || '').toString().toUpperCase().trim();
+      const bn = (b.buildingName || '').toString().toUpperCase().trim();
+      return bc === norm || bc === code.trim().toUpperCase() || bn === norm || bn.includes(norm);
+    });
+    return found?.id;
+  }, [buildings]);
+
+  const rows = React.useMemo(() => {
+    return csvText
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0)
+      .map((line) => parseCsvLine(line));
+  }, [csvText]);
+
+  const handleFile = async (f: File | undefined) => {
+    if (!f) return;
+    const text = await f.text();
+    setCsvText(text);
+  };
+
+  const handleImport = async () => {
+    setError('');
+    setResult(null);
+    const payload: { buildingId: number; cameraNo: string; cameraName: string; location?: string; status?: string }[] = [];
+    const clientErrors: string[] = [];
+    rows.forEach((cols, idx) => {
+      const [code = '', cameraNo = '', cameraName = '', location = ''] = cols;
+      if (!code || !cameraNo || !cameraName) {
+        clientErrors.push(`บรรทัด ${idx + 1}: ข้อมูลไม่ครบ (ต้องมี buildingCode, cameraNo, cameraName)`);
+        return;
+      }
+      const buildingId = resolveBuildingId(code);
+      if (!buildingId) {
+        clientErrors.push(`บรรทัด ${idx + 1}: ไม่พบอาคาร "${code}" ในระบบ`);
+        return;
+      }
+      payload.push({ buildingId, cameraNo, cameraName, location: location || undefined, status: 'normal' });
+    });
+    if (payload.length === 0) {
+      setError(clientErrors.length > 0 ? clientErrors.join('\n') : 'ไม่มีข้อมูลที่นำเข้าได้');
+      if (clientErrors.length > 0) setResult({ created: 0, skipped: rows.length, errors: clientErrors });
+      return;
+    }
+    setImporting(true);
+    try {
+      const res = await apiFetch<any>('/api/cctv/cameras/import', { method: 'POST', body: JSON.stringify(payload) });
+      const out = res?.data ?? res;
+      setResult({
+        created: out?.created ?? 0,
+        skipped: (out?.skipped ?? 0) + clientErrors.length,
+        errors: [...clientErrors, ...((out?.errors as string[]) || [])],
+      });
+      onImported();
+    } catch (e: any) {
+      setError(e?.message || 'นำเข้าไม่สำเร็จ');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between p-4 md:p-5 hover:bg-slate-50 transition-colors"
+      >
+        <span className="flex items-center gap-2 text-sm md:text-base font-bold text-slate-800">
+          <Upload className="w-4 h-4 text-slate-500" />
+          นำเข้าชื่อกล้อง (CSV)
+          <span className="text-[10px] md:text-xs font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+            buildingCode, cameraNo, cameraName, location
+          </span>
+        </span>
+        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="px-4 md:px-5 pb-4 md:pb-5 space-y-3 border-t border-slate-100 pt-4">
+          <p className="text-xs text-slate-500">
+            วาง CSV 4 คอลัมน์: <code className="bg-slate-100 px-1 rounded">buildingCode, cameraNo, cameraName, location</code> เช่น{' '}
+            <code className="bg-slate-100 px-1 rounded">2,B2-NVR1-CH01,หน้าทางเข้า B2,โถงชั้น 1</code> (buildingCode ใส่ 2/3/4/9 หรือ B2/B3/B4/B9 ได้)
+          </p>
+          {/* lookup แปลง buildingCode -> buildingId */}
+          <div className="flex flex-wrap gap-1.5 text-[11px]">
+            <span className="text-slate-400 self-center">อาคารในระบบ:</span>
+            {buildings.length === 0 ? (
+              <span className="text-slate-400">กำลังโหลด...</span>
+            ) : (
+              buildings.map((b: any) => (
+                <span key={b.id} className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full font-medium">
+                  {b.buildingCode} → id {b.id}
+                </span>
+              ))
+            )}
+          </div>
+          <textarea
+            value={csvText}
+            onChange={(e) => setCsvText(e.target.value)}
+            placeholder={'2,B2-NVR1-CH01,หน้าทางเข้า B2,โถงชั้น 1\n3,B3-NVR1-CH01,ลานจอดรถ B3,ชั้น G'}
+            rows={5}
+            className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm font-mono focus:ring-2 focus:ring-blue-500 outline-none"
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="text-xs px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 cursor-pointer font-medium text-slate-600">
+              📁 เลือกไฟล์ .csv
+              <input type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />
+            </label>
+            <span className="text-[11px] text-slate-400">{rows.length > 0 ? `${rows.length} แถว` : ''}</span>
+            <button
+              onClick={handleImport}
+              disabled={importing || rows.length === 0}
+              className="ml-auto px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs md:text-sm font-bold disabled:opacity-50"
+            >
+              {importing ? 'กำลังนำเข้า...' : `นำเข้า ${rows.length} แถว`}
+            </button>
+          </div>
+          {/* preview */}
+          {rows.length > 0 && (
+            <div className="overflow-x-auto max-h-48 overflow-y-auto border border-slate-100 rounded-xl">
+              <table className="w-full text-xs">
+                <thead className="bg-slate-50 sticky top-0">
+                  <tr>
+                    <th className="text-left px-2 py-1 text-slate-500">#</th>
+                    <th className="text-left px-2 py-1 text-slate-500">buildingCode</th>
+                    <th className="text-left px-2 py-1 text-slate-500">→ buildingId</th>
+                    <th className="text-left px-2 py-1 text-slate-500">cameraNo</th>
+                    <th className="text-left px-2 py-1 text-slate-500">cameraName</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.slice(0, 50).map((cols, i) => {
+                    const bId = resolveBuildingId(cols[0] || '');
+                    return (
+                      <tr key={i} className="border-t border-slate-100">
+                        <td className="px-2 py-1 text-slate-400">{i + 1}</td>
+                        <td className="px-2 py-1">{cols[0]}</td>
+                        <td className="px-2 py-1 font-bold">
+                          {bId ? <span className="text-emerald-600">{bId}</span> : <span className="text-rose-500">ไม่พบ</span>}
+                        </td>
+                        <td className="px-2 py-1">{cols[1]}</td>
+                        <td className="px-2 py-1">{cols[2]}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {rows.length > 50 && <div className="text-center text-[11px] text-slate-400 py-1">แสดง 50 แถวแรก</div>}
+            </div>
+          )}
+          {error && <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs whitespace-pre-line">{error}</div>}
+          {result && (
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
+              <div className="font-bold text-slate-700">
+                นำเข้าแล้ว: <span className="text-emerald-600">{result.created}</span> · ข้าม: <span className="text-amber-600">{result.skipped}</span>
+              </div>
+              {result.errors.length > 0 && (
+                <ul className="list-disc list-inside text-rose-600 max-h-32 overflow-y-auto">
+                  {result.errors.slice(0, 30).map((er, i) => <li key={i}>{er}</li>)}
+                  {result.errors.length > 30 && <li>...และอีก {result.errors.length - 30} รายการ</li>}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function CctvAngleCheckPage() {
   const [mode, setMode] = useState<PageMode>('create');
@@ -519,6 +741,9 @@ export default function CctvAngleCheckPage() {
             </div>
           </div>
         )}
+
+        {/* นำเข้าชื่อกล้อง (CSV) — collapsible, อยู่ล่างสุด ไม่บัง flow หลัก */}
+        <CameraImportPanel buildings={buildings} onImported={fetchCameras} />
 
       </div>
     </div>

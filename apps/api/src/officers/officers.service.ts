@@ -53,4 +53,29 @@ export class OfficersService {
     await this.findOne(id);
     return this.prisma.officer.delete({ where: { id } });
   }
+
+  async importOfficers(dtos: CreateOfficerDto[]) {
+    const results = { created: 0, skipped: 0, errors: [] as string[] };
+    for (const dto of dtos) {
+      try {
+        if (!dto.employeeId || !dto.firstName || !dto.lastName) {
+          results.skipped++;
+          continue;
+        }
+        const existing = await this.prisma.officer.findUnique({
+          where: { employeeId: dto.employeeId },
+        });
+        if (existing) {
+          results.skipped++;
+          continue;
+        }
+        await this.prisma.officer.create({ data: dto });
+        results.created++;
+      } catch (e: any) {
+        results.skipped++;
+        results.errors.push(`${dto.employeeId || '?'}: ${e.message}`);
+      }
+    }
+    return results;
+  }
 }

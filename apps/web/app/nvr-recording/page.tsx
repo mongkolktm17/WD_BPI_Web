@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from '@/lib/api';
-import { Radio } from 'lucide-react';
+import { Radio, Pencil, Trash2 } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 
 interface NvrDevice {
@@ -62,6 +62,42 @@ export default function NvrRecordingPage() {
 
   const handleDaysChange = (nvrId: number, val: string) => {
     setRecordingDays({ ...recordingDays, [nvrId]: val });
+  };
+
+  const refetchRecordings = async () => {
+    const rRes = await apiFetch<any>('/api/cctv/nvr-recordings');
+    setRecordings(rRes.data || []);
+  };
+
+  // Edit single row via prompt + PUT (fits batch-POST form best:
+  // loading into the input then pressing save would create NEW rows,
+  // while PUT edits the row in place)
+  const handleEdit = async (rec: NvrRecording) => {
+    const input = prompt(`แก้ไขจำนวนวันบันทึก (รายการ #${rec.id})`, String(rec.daysRecorded));
+    if (input === null) return;
+    const days = Number(input);
+    if (isNaN(days) || days < 0) { setMessage('จำนวนวันไม่ถูกต้อง'); return; }
+    try {
+      await apiFetch(`/api/cctv/nvr-recordings/${rec.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ daysRecorded: days, status: days >= 62 ? 'pass' : 'fail' }),
+      });
+      setMessage('✅ แก้ไขรายการเรียบร้อยแล้ว');
+      await refetchRecordings();
+    } catch {
+      setMessage('เกิดข้อผิดพลาดในการแก้ไขข้อมูล');
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('ยืนยันการลบรายการนี้?')) return;
+    try {
+      await apiFetch(`/api/cctv/nvr-recordings/${id}`, { method: 'DELETE' });
+      setMessage('✅ ลบรายการเรียบร้อยแล้ว');
+      await refetchRecordings();
+    } catch {
+      setMessage('เกิดข้อผิดพลาดในการลบข้อมูล');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -238,6 +274,7 @@ export default function NvrRecordingPage() {
                     <th className="px-4 py-3">NVR</th>
                     <th className="px-4 py-3 text-center">วันบันทึก</th>
                     <th className="px-4 py-3 text-center">สถานะ</th>
+                    <th className="px-4 py-3 text-center">จัดการ</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -263,6 +300,14 @@ export default function NvrRecordingPage() {
                             <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${isPass ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
                               {isPass ? '✓ ผ่านเกณฑ์' : '✕ ต่ำกว่าเกณฑ์'}
                             </span>
+                          </td>
+                          <td className="px-4 py-3 text-center whitespace-nowrap">
+                            <button type="button" onClick={() => handleEdit(rec)} title="แก้ไขจำนวนวัน (PUT)" className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors inline-flex">
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button type="button" onClick={() => handleDelete(rec.id)} title="ลบ" className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors inline-flex">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </td>
                         </tr>
                       );

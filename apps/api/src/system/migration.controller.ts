@@ -9,6 +9,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { AdminGuard } from '../common/guards/admin.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { MigrationService, MigrationOptions } from './migration.service';
 import * as fs from 'fs';
@@ -20,37 +21,47 @@ interface UploadedMulterFile {
   buffer: Buffer;
 }
 
+const SQL_DUMP_EXTENSIONS = ['.sql', '.dump', '.txt'];
+const MAX_DUMP_BYTES = 100 * 1024 * 1024; // 100MB
+
+@UseGuards(AuthGuard('jwt'), AdminGuard)
 @Controller('system/migration')
 export class MigrationController {
   constructor(private readonly migrationService: MigrationService) {}
 
-  @UseGuards(AuthGuard('jwt'))
   @Get('status')
   async getStatus() {
     return this.migrationService.getDatabaseStatus();
   }
 
-  @UseGuards(AuthGuard('jwt'))
   @Post('validate')
   async validateDump(@Body() body: { customFilePath?: string }) {
     return this.migrationService.validateDumpFile(body.customFilePath);
   }
 
-  @UseGuards(AuthGuard('jwt'))
   @Post('execute')
   async executeMigration(@Body() options: MigrationOptions) {
     return this.migrationService.executeMigration(options);
   }
 
-  @UseGuards(AuthGuard('jwt'))
   @Get('verify')
   async runDeepVerification() {
     return this.migrationService.runDeepVerification();
   }
 
-  @UseGuards(AuthGuard('jwt'))
   @Post('upload')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: MAX_DUMP_BYTES },
+      fileFilter: (_req, file, cb) => {
+        const ext = path.extname(file.originalname || '').toLowerCase();
+        if (!SQL_DUMP_EXTENSIONS.includes(ext)) {
+          return cb(new BadRequestException('รองรับเฉพาะไฟล์ .sql / .dump / .txt'), false);
+        }
+        cb(null, true);
+      },
+    }),
+  )
   async uploadDumpFile(@UploadedFile() file?: UploadedMulterFile) {
     if (!file) {
       throw new BadRequestException('กรุณาเลือกไฟล์ SQL ที่ต้องการอัปโหลด');

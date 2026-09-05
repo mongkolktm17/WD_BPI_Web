@@ -136,9 +136,9 @@ export class ReportsService {
     });
   }
 
-  async removeBuildingReport(id: number) {
+  async removeBuildingReport(id: number, deletedBy?: string) {
     await this.findOneBuildingReport(id);
-    await this.prisma.buildingReport.update({ where: { id }, data: { isDeleted: true } });
+    await this.prisma.buildingReport.update({ where: { id }, data: { isDeleted: true, deletedBy: deletedBy ?? null, deletedAt: new Date() } });
     return { message: 'ลบข้อมูลรายงานเรียบร้อยแล้ว' };
   }
 
@@ -148,8 +148,8 @@ export class ReportsService {
     const submitter = query?.submitter || '';
     const dateFrom = query?.dateFrom || '';
     const dateTo = query?.dateTo || '';
-    const page = query?.page || 1;
-    const limit = query?.limit || 20;
+    const page = query?.page && Number.isFinite(query.page) ? Math.max(Math.floor(query.page), 1) : 1;
+    const limit = query?.limit && Number.isFinite(query.limit) ? Math.min(Math.max(Math.floor(query.limit), 1), 5000) : 20;
     const offset = (page - 1) * limit;
 
     const conditions: string[] = [];
@@ -180,7 +180,8 @@ export class ReportsService {
       reportQueries.push(`
         SELECT id, created_at AS submission_time, 'รายงานทั่วไป' AS report_type, 'general' AS type_key,
           CONCAT('อาคาร: ', building, ', จุด: ', guard_post, ' - ', incident_report) AS details,
-          full_name AS submitted_by, 'reports/building-reports' AS api_path
+          full_name AS submitted_by, 'reports/building-reports' AS api_path,
+          employee_id AS employee_code
         FROM building_reports WHERE (is_deleted = false OR is_deleted IS NULL)
       `);
     }
@@ -188,12 +189,14 @@ export class ReportsService {
       reportQueries.push(`
         SELECT id, created_at AS submission_time, 'ตรวจลานจอดรถ' AS report_type, 'car_parking' AS type_key,
           CONCAT('กะ: ', shift, ', สถานะยางอะไหล่: ', spare_tire_status) AS details,
-          inspector_name AS submitted_by, 'parking' AS api_path
+          inspector_name AS submitted_by, 'parking' AS api_path,
+          inspector_code AS employee_code
         FROM car_parking_reports
         UNION ALL
         SELECT id, created_at AS submission_time, 'ตรวจลานจอดรถ' AS report_type, 'car_parking' AS type_key,
           CONCAT('รถ: ', COALESCE(total_cars::text, '0'), ' | มอไซค์: ', COALESCE(motorcycle_count_1::text, '0'), '/', COALESCE(motorcycle_count_2::text, '0'), '/', COALESCE(motorcycle_count_3::text, '0')) AS details,
-          COALESCE(inspector_name, driver_name, '-') AS submitted_by, 'parking' AS api_path
+          COALESCE(inspector_name, driver_name, '-') AS submitted_by, 'parking' AS api_path,
+          COALESCE(inspector_code, '') AS employee_code
         FROM car_parkings WHERE (is_deleted = false OR is_deleted IS NULL)
       `);
     }
@@ -201,7 +204,8 @@ export class ReportsService {
       reportQueries.push(`
         SELECT id, created_at AS submission_time, 'ตรวจห้อง CCTV' AS report_type, 'cctv_inspection' AS type_key,
           CONCAT('ผ่าน: ', total_passed, '/', total_checked, ' | ผิดปกติ: ', total_failed) AS details,
-          inspector_name AS submitted_by, 'cctv/inspections' AS api_path
+          inspector_name AS submitted_by, 'cctv/inspections' AS api_path,
+          NULL AS employee_code
         FROM cctv_inspections WHERE (is_deleted = false OR is_deleted IS NULL)
       `);
     }
@@ -209,12 +213,14 @@ export class ReportsService {
       reportQueries.push(`
         SELECT id, created_at AS submission_time, 'ตรวจ Hand Held' AS report_type, 'hand_held' AS type_key,
           CONCAT('อาคาร: ', building, ', จุด: ', guard_post, ', กะ: ', shift) AS details,
-          inspector_name AS submitted_by, 'metal-detector/handheld-checks' AS api_path
+          inspector_name AS submitted_by, 'metal-detector/handheld-checks' AS api_path,
+          inspector_code AS employee_code
         FROM hand_held_checks
         UNION ALL
         SELECT hc.id, hc.created_at AS submission_time, 'ตรวจ Hand Held' AS report_type, 'hand_held' AS type_key,
           CONCAT('อุปกรณ์: ', COALESCE(he.device_name, '-'), ', สถานะ: ', hc.status) AS details,
-          COALESCE(hc.inspector, '-') AS submitted_by, 'metal-detector/handheld-checks' AS api_path
+          COALESCE(hc.inspector, '-') AS submitted_by, 'metal-detector/handheld-checks' AS api_path,
+          NULL AS employee_code
         FROM handheld_checks hc LEFT JOIN handheld_equipment he ON hc.equipment_id = he.id
         WHERE (hc.is_deleted = false OR hc.is_deleted IS NULL)
       `);
@@ -223,7 +229,8 @@ export class ReportsService {
       reportQueries.push(`
         SELECT id, created_at AS submission_time, 'Checklist Patrol' AS report_type, 'patrol' AS type_key,
           CONCAT('เส้นทาง: ', patrol_route, ', สถานะ: ', status) AS details,
-          officer_name AS submitted_by, 'patrol' AS api_path
+          officer_name AS submitted_by, 'patrol' AS api_path,
+          NULL AS employee_code
         FROM patrol_reports WHERE (is_deleted = false OR is_deleted IS NULL)
       `);
     }
@@ -231,7 +238,8 @@ export class ReportsService {
       reportQueries.push(`
         SELECT id, created_at AS submission_time, 'บันทึกจำนวน รปภ.' AS report_type, 'guard_count' AS type_key,
           CONCAT('กะ: ', shift, ', มา: ', present_guards, '/', total_guards) AS details,
-          COALESCE(remark, 'N/A') AS submitted_by, 'guards/counts' AS api_path
+          COALESCE(remark, 'N/A') AS submitted_by, 'guards/counts' AS api_path,
+          NULL AS employee_code
         FROM guard_counts WHERE (is_deleted = false OR is_deleted IS NULL)
       `);
     }
@@ -239,7 +247,8 @@ export class ReportsService {
       reportQueries.push(`
         SELECT id, report_date AS submission_time, 'NVR Recording' AS report_type, 'cctv_report' AS type_key,
           CONCAT('ปกติ: ', total_normal, ' | ผิดปกติ: ', total_abnormal) AS details,
-          reporter_name AS submitted_by, 'cctv/reports' AS api_path
+          reporter_name AS submitted_by, 'cctv/reports' AS api_path,
+          NULL AS employee_code
         FROM cctv_reports WHERE (is_deleted = false OR is_deleted IS NULL)
       `);
     }
@@ -247,12 +256,14 @@ export class ReportsService {
       reportQueries.push(`
         SELECT id, report_date AS submission_time, 'CCTV Angle Check' AS report_type, 'cctv_angle' AS type_key,
           CONCAT('ตึก: ', building, ', NVR: ', nvr, ', Correct: ', correct_cameras, '/', total_cameras) AS details,
-          checked_by AS submitted_by, 'cctv/camera-checks' AS api_path
+          checked_by AS submitted_by, 'cctv/camera-checks' AS api_path,
+          NULL AS employee_code
         FROM cctv_angle_reports
         UNION ALL
         SELECT cc.id, cc.check_date AS submission_time, 'CCTV Angle Check' AS report_type, 'cctv_angle' AS type_key,
           CONCAT('กล้อง: ', COALESCE(c.camera_name, c.camera_no, '-'), ', สถานะ: ', cc.status) AS details,
-          COALESCE(cc.checked_by, '-') AS submitted_by, 'cctv/camera-checks' AS api_path
+          COALESCE(cc.checked_by, '-') AS submitted_by, 'cctv/camera-checks' AS api_path,
+          NULL AS employee_code
         FROM camera_checks cc LEFT JOIN cameras c ON cc.camera_id = c.id
         WHERE (cc.is_deleted = false OR cc.is_deleted IS NULL)
       `);
@@ -261,12 +272,14 @@ export class ReportsService {
       reportQueries.push(`
         SELECT id, created_at AS submission_time, 'ตรวจ Metal Detector' AS report_type, 'metal_detector' AS type_key,
           CONCAT('อาคาร: ', building, ', จุด: ', guard_post, ', ยี่ห้อ: ', scanner_brand) AS details,
-          employee_name AS submitted_by, 'metal-detector/walkthrough-checks' AS api_path
+          employee_name AS submitted_by, 'metal-detector/walkthrough-checks' AS api_path,
+          employee_id AS employee_code
         FROM metal_detector_checks
         UNION ALL
         SELECT wc.id, wc.created_at AS submission_time, 'ตรวจ Metal Detector' AS report_type, 'metal_detector' AS type_key,
           CONCAT('เครื่องตรวจ: ', COALESCE(wd.detector_code, wd.location, '-'), ', สถานะ: ', wc.status) AS details,
-          COALESCE(wc.inspector, '-') AS submitted_by, 'metal-detector/walkthrough-checks' AS api_path
+          COALESCE(wc.inspector, '-') AS submitted_by, 'metal-detector/walkthrough-checks' AS api_path,
+          NULL AS employee_code
         FROM walkthrough_checks wc LEFT JOIN walkthrough_detectors wd ON wc.detector_id = wd.id
         WHERE (wc.is_deleted = false OR wc.is_deleted IS NULL)
       `);
@@ -296,6 +309,7 @@ export class ReportsService {
         details: row.details,
         submittedBy: row.submitted_by,
         apiPath: row.api_path,
+        employeeId: row.employee_code ?? null,
       }));
       return { data, total, page, limit };
     } catch (err: any) {
@@ -305,7 +319,7 @@ export class ReportsService {
       try {
         const fb = await this.prisma.buildingReport.findMany({ orderBy: { createdAt: 'desc' }, take: limit, skip: offset });
         return {
-          data: fb.map(r => ({ id: r.id, submissionTime: r.createdAt, reportType: 'รายงานทั่วไป', typeKey: 'general', details: r.incidentReport, submittedBy: r.fullName, apiPath: 'reports/building-reports' })),
+          data: fb.map(r => ({ id: r.id, submissionTime: r.createdAt, reportType: 'รายงานทั่วไป', typeKey: 'general', details: r.incidentReport, submittedBy: r.fullName, apiPath: 'reports/building-reports', employeeId: r.employeeId })),
           total: fb.length,
           page,
           limit,

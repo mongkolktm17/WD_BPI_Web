@@ -246,7 +246,7 @@ export default function CctvReportPage() {
   const currentStats = useMemo(() => {
     const config = buildingConfigs[currentBuilding];
     if (!config || !config.nvrs) {
-      return { total: 0, online: 0, offline: 0, percentage: 100, nvrStats: {} };
+      return { total: 0, online: 0, offline: 0, percentage: 100, nvrStats: {} as Record<string, { online_channels: number; total_channels: number; percentage: number }> };
     }
 
     let total = 0;

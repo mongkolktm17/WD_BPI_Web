@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '@/lib/api';
+import { useRequireAdmin } from '@/lib/useRequireAdmin';
 import PageHeader from '@/components/PageHeader';
 import {
   Settings,
@@ -112,6 +113,7 @@ interface VerificationReport {
 }
 
 export default function AdminSettingsPage() {
+  const authorized = useRequireAdmin();
   const [tab, setTab] = useState<Tab>('overview');
   const [status, setStatus] = useState<DatabaseStatus | null>(null);
   const [statusLoading, setStatusLoading] = useState(true);
@@ -379,6 +381,11 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="space-y-6">
+      {authorized !== true && (
+        <div className="p-8 text-center text-slate-500 text-sm">กำลังตรวจสอบสิทธิ์...</div>
+      )}
+      {authorized === true && (
+      <>
       {/* Header */}
       <PageHeader
         title="ตั้งค่าระบบและนำเข้าฐานข้อมูล"
@@ -1212,6 +1219,8 @@ export default function AdminSettingsPage() {
             </div>
           )}
         </div>
+      )}
+      </>
       )}
     </div>
   );

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   ShieldCheck, RefreshCw, CheckCircle2, XCircle, Clock,
-  ChevronDown, ChevronUp, Eye
+  ChevronDown, ChevronUp, Eye, Pencil, Trash2, X
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import Pagination from '@/components/Pagination';
@@ -98,6 +98,7 @@ export default function PatrolChecklistPage() {
   const [selectedBuildings, setSelectedBuildings] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   // Toggle field states (15 perimeter + 12 interior = 27)
   const [perimeter, setPerimeter] = useState<Record<string, string>>({
@@ -136,6 +137,63 @@ export default function PatrolChecklistPage() {
     setSelectedBuildings(prev => prev.includes(b) ? prev.filter(x => x !== b) : [...prev, b]);
   };
 
+  const resetForm = () => {
+    setEditingId(null);
+    setPatrolDate(new Date().toISOString().split('T')[0]);
+    setReportCondition('');
+    setShift('');
+    setPatrolTime('');
+    setSelectedBuildings([]);
+    setPerimeter({ fence_lighting: '', fence_objects: '', no_gathering: '', no_flyers: '', fence_normal: '', no_suspicious_parking: '', no_suspicious_boxes: '' });
+    setInterior({ no_unauthorized_persons_area: '', door_system_normal: '', no_room_abnormalities: '', no_unauthorized_persons_room: '', no_chemical_obstruction: '', no_container_leaks: '', no_unauthorized_persons_chemical: '', chemical_door_normal: '', no_unauthorized_persons_electrical: '', electrical_door_normal: '', no_electrical_abnormalities: '', equipment_normal: '', no_fire_door_obstruction: '' });
+  };
+
+  const handleEdit = (rec: PatrolRecord) => {
+    setEditingId(rec.id);
+    setPatrolDate((rec.patrolDate || '').split('T')[0] || new Date().toISOString().split('T')[0]);
+    try {
+      const notes = JSON.parse(rec.notes || '{}');
+      setReportCondition(notes.report_condition || '');
+      setShift(notes.shift || '');
+      setPatrolTime(notes.patrol_time || '');
+      const bldgs = String(notes.buildings || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+      setSelectedBuildings(bldgs);
+      setPerimeter({
+        fence_lighting: notes.fence_lighting || '', fence_objects: notes.fence_objects || '',
+        no_gathering: notes.no_gathering || '', no_flyers: notes.no_flyers || '',
+        fence_normal: notes.fence_normal || '', no_suspicious_parking: notes.no_suspicious_parking || '',
+        no_suspicious_boxes: notes.no_suspicious_boxes || '',
+      });
+      setInterior({
+        no_unauthorized_persons_area: notes.no_unauthorized_persons_area || '', door_system_normal: notes.door_system_normal || '',
+        no_room_abnormalities: notes.no_room_abnormalities || '', no_unauthorized_persons_room: notes.no_unauthorized_persons_room || '',
+        no_chemical_obstruction: notes.no_chemical_obstruction || '', no_container_leaks: notes.no_container_leaks || '',
+        no_unauthorized_persons_chemical: notes.no_unauthorized_persons_chemical || '', chemical_door_normal: notes.chemical_door_normal || '',
+        no_unauthorized_persons_electrical: notes.no_unauthorized_persons_electrical || '', electrical_door_normal: notes.electrical_door_normal || '',
+        no_electrical_abnormalities: notes.no_electrical_abnormalities || '', equipment_normal: notes.equipment_normal || '',
+        no_fire_door_obstruction: notes.no_fire_door_obstruction || '',
+      });
+      if (rec.officerName) setEmployeeName(rec.officerName);
+    } catch { /* keep defaults if notes unparseable */ }
+    setMode('form');
+    setMessage('');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCancelEdit = () => {
+    resetForm();
+    setMessage('');
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('ยืนยันการลบรายงานนี้?')) return;
+    try {
+      await apiFetch(`/api/patrol/${id}`, { method: 'DELETE' });
+      setMessage('ลบรายงานเรียบร้อยแล้ว');
+      fetchRecords();
+    } catch { setMessage('เกิดข้อผิดพลาดในการลบข้อมูล'); }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reportCondition || !shift || !patrolTime || selectedBuildings.length === 0) {
@@ -154,17 +212,21 @@ export default function PatrolChecklistPage() {
     setSubmitting(true);
     setMessage('');
     try {
-      await apiFetch('/api/patrol', {
-        method: 'POST',
-        body: JSON.stringify({
-          patrolDate,
-          patrolRoute: `[${patrolTime}] ${selectedBuildings.join(', ')}`,
-          officerName: employeeName || employeeCode,
-          status: allPass ? 'normal' : 'abnormal',
-          notes: JSON.stringify(notes),
-        }),
-      });
-      setMessage('บันทึกรายงานการลาดตระเวนเรียบร้อยแล้ว');
+      const payload = {
+        patrolDate,
+        patrolRoute: `[${patrolTime}] ${selectedBuildings.join(', ')}`,
+        officerName: employeeName || employeeCode,
+        status: allPass ? 'normal' : 'abnormal',
+        notes: JSON.stringify(notes),
+      };
+      if (editingId !== null) {
+        await apiFetch(`/api/patrol/${editingId}`, { method: 'PUT', body: JSON.stringify(payload) });
+        setMessage('แก้ไขรายงานการลาดตระเวนเรียบร้อยแล้ว');
+        setEditingId(null);
+      } else {
+        await apiFetch('/api/patrol', { method: 'POST', body: JSON.stringify(payload) });
+        setMessage('บันทึกรายงานการลาดตระเวนเรียบร้อยแล้ว');
+      }
       fetchRecords();
     } catch { setMessage('เกิดข้อผิดพลาดในการบันทึกข้อมูล'); }
     finally { setSubmitting(false); }
@@ -225,6 +287,14 @@ export default function PatrolChecklistPage() {
         {mode === 'form' ? (
           /* ========== PATROL FORM ========== */
           <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
+            {editingId !== null && (
+              <div className="bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 flex items-center justify-between gap-2">
+                <span className="text-sm font-bold text-amber-800">✏️ กำลังแก้ไขรายการ #{editingId} — บันทึกจะใช้ PUT /api/patrol/{editingId}</span>
+                <button type="button" onClick={handleCancelEdit} className="inline-flex items-center gap-1 text-xs font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-300 rounded-lg px-3 py-1.5">
+                  <X className="w-3.5 h-3.5" />ยกเลิก
+                </button>
+              </div>
+            )}
 
             {/* Section 1: General Info */}
             <div className="bg-white rounded-2xl p-4 md:p-6 shadow-xl border border-slate-200/60 space-y-4">
@@ -321,11 +391,17 @@ export default function PatrolChecklistPage() {
               </div>
             </div>
 
-            <div className="pt-2 flex justify-center">
+            <div className="pt-2 flex justify-center gap-3 flex-wrap">
               <button type="submit" disabled={submitting}
                 className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-10 rounded-full shadow-lg transition-transform active:scale-95 text-sm md:text-base disabled:opacity-50">
-                {submitting ? 'กำลังบันทึก...' : '💾 บันทึกรายงานการลาดตระเวน'}
+                {submitting ? 'กำลังบันทึก...' : editingId !== null ? '💾 บันทึกการแก้ไข (PUT)' : '💾 บันทึกรายงานการลาดตระเวน'}
               </button>
+              {editingId !== null && (
+                <button type="button" onClick={handleCancelEdit}
+                  className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3.5 px-8 rounded-full shadow transition-colors text-sm md:text-base inline-flex items-center gap-2">
+                  <X className="w-4 h-4" />ยกเลิกการแก้ไข
+                </button>
+              )}
             </div>
           </form>
         ) : (
@@ -356,11 +432,19 @@ export default function PatrolChecklistPage() {
                   const items = parseNotes(rec.notes || '{}');
                   return (
                     <div key={rec.id} className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-5">
-                      <div className="flex items-center gap-3 mb-2">
+                      <div className="flex items-center gap-3 mb-2 flex-wrap">
                         <div className={`w-2.5 h-2.5 rounded-full ${rec.status === 'normal' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
                         <span className="font-bold text-slate-800 text-sm">{rec.patrolRoute || 'ไม่ระบุเส้นทาง'}</span>
                         <span className="text-xs text-slate-500">{formatDate(rec.patrolDate || rec.createdAt)}</span>
                         <span className="text-xs text-slate-500">{rec.officerName}</span>
+                        <span className="ml-auto inline-flex gap-1">
+                          <button type="button" onClick={() => handleEdit(rec)} title="แก้ไข" className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button type="button" onClick={() => handleDelete(rec.id)} title="ลบ" className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </span>
                       </div>
                       {items.length > 0 && (
                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5 mt-2">

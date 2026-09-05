@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, ParseIntPipe, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, ParseIntPipe, UseGuards, Request } from '@nestjs/common';
 import { ParkingService } from './parking.service';
 import { CreateParkingDto } from './dto/create-parking.dto';
 import { CreateParkingBatchDto } from './dto/create-parking-batch.dto';
@@ -22,8 +22,10 @@ export class ParkingController {
 
   @Get('history')
   async getHistory(@Query() query: { limit?: string; offset?: string }) {
-    const limit = query.limit ? parseInt(query.limit) : 20;
-    const offset = query.offset ? parseInt(query.offset) : 0;
+    const rawLimit = query.limit ? parseInt(query.limit) : 20;
+    const rawOffset = query.offset ? parseInt(query.offset) : 0;
+    const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 500) : 20;
+    const offset = Number.isFinite(rawOffset) ? Math.max(rawOffset, 0) : 0;
     return this.parkingService.getHistory(limit, offset);
   }
 
@@ -48,7 +50,7 @@ export class ParkingController {
   }
 
   @Delete(':id')
-  async remove(@Param('id', ParseIntPipe) id: number) {
-    return this.parkingService.remove(id);
+  async remove(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
+    return this.parkingService.remove(id, req.user?.username);
   }
 }

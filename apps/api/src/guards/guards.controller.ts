@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, ParseIntPipe, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, ParseIntPipe, UseGuards, Request } from '@nestjs/common';
 import { GuardsService } from './guards.service';
 import { CreateDutyLogDto } from './dto/create-duty-log.dto';
 import { UpdateDutyLogDto } from './dto/update-duty-log.dto';
@@ -45,14 +45,14 @@ export class GuardsController {
     return this.guardsService.findAllCounts({ ...query, limit: query.limit ? parseInt(query.limit) : undefined });
   }
 
-  @Get('counts/:id')
-  async findOneCount(@Param('id', ParseIntPipe) id: number) {
-    return this.guardsService.findOneCount(id);
-  }
-
   @Get('counts/latest')
   async findLatestCount() {
     return this.guardsService.findLatestCount();
+  }
+
+  @Get('counts/:id')
+  async findOneCount(@Param('id', ParseIntPipe) id: number) {
+    return this.guardsService.findOneCount(id);
   }
 
   @Post('counts')
@@ -66,8 +66,8 @@ export class GuardsController {
   }
 
   @Delete('counts/:id')
-  async removeCount(@Param('id', ParseIntPipe) id: number) {
-    return this.guardsService.removeCount(id);
+  async removeCount(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
+    return this.guardsService.removeCount(id, req.user?.username);
   }
 
   @Get('status')

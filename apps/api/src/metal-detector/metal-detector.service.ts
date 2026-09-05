@@ -485,10 +485,10 @@ export class MetalDetectorService {
   }
 
   // ─── Soft Delete Handheld Check ─────────────────────────────
-  async removeHandheldCheck(id: number) {
+  async removeHandheldCheck(id: number, deletedBy?: string) {
     const check = await this.prisma.handheldCheck.findUnique({ where: { id } });
     if (check) {
-      return this.prisma.handheldCheck.update({ where: { id }, data: { isDeleted: true } });
+      return this.prisma.handheldCheck.update({ where: { id }, data: { isDeleted: true, deletedBy: deletedBy ?? null, deletedAt: new Date() } });
     }
     const legacy = await this.prisma.handHeldCheckLegacy.findUnique({ where: { id } });
     if (legacy) {
@@ -498,10 +498,10 @@ export class MetalDetectorService {
   }
 
   // ─── Soft Delete Walkthrough Check ──────────────────────────
-  async removeWalkthroughCheck(id: number) {
+  async removeWalkthroughCheck(id: number, deletedBy?: string) {
     const check = await this.prisma.walkthroughCheck.findUnique({ where: { id } });
     if (check) {
-      return this.prisma.walkthroughCheck.update({ where: { id }, data: { isDeleted: true } });
+      return this.prisma.walkthroughCheck.update({ where: { id }, data: { isDeleted: true, deletedBy: deletedBy ?? null, deletedAt: new Date() } });
     }
     const legacy = await this.prisma.metalDetectorCheckLegacy.findUnique({ where: { id } });
     if (legacy) {

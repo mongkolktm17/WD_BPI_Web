@@ -6,9 +6,17 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
+import helmet from 'helmet';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // Security headers + hide framework fingerprint
+  app.use(helmet());
+  app.disable('x-powered-by');
+
+  // Trust nginx reverse proxy (correct IPs for throttling/logging)
+  app.set('trust proxy', 1);
 
   app.useGlobalInterceptors(new TransformInterceptor());
   app.useGlobalFilters(new HttpExceptionFilter());
@@ -38,15 +46,17 @@ async function bootstrap() {
     }),
   );
 
-  // Swagger Documentation Setup
-  const config = new DocumentBuilder()
-    .setTitle('WD Security Dashboard API')
-    .setDescription('RESTful API documentation for WD Security Management System')
-    .setVersion('2.0.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+  // Swagger Documentation Setup (non-production only)
+  if (process.env.NODE_ENV !== 'production') {
+    const config = new DocumentBuilder()
+      .setTitle('WD Security Dashboard API')
+      .setDescription('RESTful API documentation for WD Security Management System')
+      .setVersion('2.0.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/docs', app, document);
+  }
 
   const port = process.env.PORT || 4000;
   await app.listen(port);

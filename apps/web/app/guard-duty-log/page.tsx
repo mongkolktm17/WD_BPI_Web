@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/api';
 import Pagination from '@/components/Pagination';
-import { UserCheck, Sun, Moon, CheckCircle2, History, Clock } from 'lucide-react';
+import { UserCheck, Sun, Moon, CheckCircle2, History, Clock, Pencil, Trash2, X } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 
 interface GuardCount {
@@ -60,6 +60,11 @@ export default function GuardDutyLogPage() {
   const [historyPage, setHistoryPage] = useState(1);
   const HISTORY_PAGE_SIZE = 20;
 
+  // Edit mode: when set, submit uses PUT /api/guards/counts/:id
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editDate, setEditDate] = useState('');
+  const [editRemark, setEditRemark] = useState('');
+
   // Auto-detect shift based on current time (07:00-18:59 = morning, 19:00-06:59 = evening)
   useEffect(() => {
     const hour = new Date().getHours();
@@ -109,12 +114,73 @@ export default function GuardDutyLogPage() {
     fetchStatusAndHistory();
   }, [fetchStatusAndHistory]);
 
+  const handleEdit = (rec: GuardCount) => {
+    setEditingId(rec.id);
+    const shiftVal = rec.shift === 'evening' || rec.shift === 'ดึก' ? 'evening' : 'morning';
+    setSelectedShift(shiftVal as 'morning' | 'evening');
+    if (shiftVal === 'morning') {
+      setMorningShift(rec.presentGuards);
+      setMorningContract(rec.totalGuards);
+    } else {
+      setEveningShift(rec.presentGuards);
+      setEveningContract(rec.totalGuards);
+    }
+    setEditDate((rec.recordDate || '').split('T')[0] || new Date().toISOString().split('T')[0]);
+    setEditRemark(rec.remark || '');
+    setMessage('');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditDate('');
+    setEditRemark('');
+    setMessage('');
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('ยืนยันการลบรายการนี้?')) return;
+    try {
+      await apiFetch(`/api/guards/counts/${id}`, { method: 'DELETE' });
+      setMessage('✅ ลบรายการเรียบร้อยแล้ว');
+      await fetchStatusAndHistory();
+    } catch {
+      setMessage('❌ ลบรายการไม่สำเร็จ');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setMessage('');
 
     try {
+      // Edit mode: update single record via PUT
+      if (editingId !== null) {
+        const shiftKey = selectedShift === 'evening' ? 'evening' : 'morning';
+        const present = shiftKey === 'morning'
+          ? (morningShift === '' ? 0 : Number(morningShift))
+          : (eveningShift === '' ? 0 : Number(eveningShift));
+        const total = shiftKey === 'morning'
+          ? (morningContract === '' ? 0 : Number(morningContract))
+          : (eveningContract === '' ? 0 : Number(eveningContract));
+        await apiFetch(`/api/guards/counts/${editingId}`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            recordDate: editDate || new Date().toISOString().split('T')[0],
+            shift: shiftKey,
+            presentGuards: present,
+            totalGuards: total,
+            absentGuards: Math.max(0, total - present),
+            remark: editRemark || undefined,
+          }),
+        });
+        setMessage('✅ แก้ไขข้อมูลเรียบร้อยแล้ว');
+        handleCancelEdit();
+        await fetchStatusAndHistory();
+        return;
+      }
+
       const today = new Date().toISOString().split('T')[0];
       const promises: Promise<any>[] = [];
 
@@ -184,6 +250,29 @@ export default function GuardDutyLogPage() {
 
         {/* Input Form */}
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-4 md:p-6 shadow-xl border border-slate-200/60 space-y-5">
+          {editingId !== null && (
+            <div className="bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 flex items-center justify-between gap-2">
+              <span className="text-sm font-bold text-amber-800">✏️ กำลังแก้ไขรายการ #{editingId} — บันทึกจะใช้ PUT /api/guards/counts/{editingId}</span>
+              <button type="button" onClick={handleCancelEdit} className="inline-flex items-center gap-1 text-xs font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-300 rounded-lg px-3 py-1.5">
+                <X className="w-3.5 h-3.5" />ยกเลิก
+              </button>
+            </div>
+          )}
+
+          {editingId !== null && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">วันที่บันทึก (recordDate)</label>
+                <input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)}
+                  className="w-full px-4 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 outline-none text-sm text-slate-800" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">หมายเหตุ (remark)</label>
+                <input type="text" value={editRemark} onChange={(e) => setEditRemark(e.target.value)} placeholder="หมายเหตุ"
+                  className="w-full px-4 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 outline-none text-sm text-slate-800" />
+              </div>
+            </div>
+          )}
           
           {/* Shift Selection Mode */}
           <div>
@@ -367,14 +456,20 @@ export default function GuardDutyLogPage() {
             </div>
           </div>
 
-          <div className="pt-2 flex justify-center">
+          <div className="pt-2 flex justify-center gap-3 flex-wrap">
             <button
               type="submit"
               disabled={loading}
               className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 md:py-3.5 px-8 md:px-12 rounded-full shadow-lg transition-transform active:scale-95 text-sm md:text-base flex items-center gap-2"
             >
-              {loading ? 'กำลังบันทึก...' : `💾 บันทึกจำนวน รปภ. (${selectedShift === 'morning' ? 'กะเช้า' : selectedShift === 'evening' ? 'กะดึก' : 'ทั้งสองกะ'})`}
+              {loading ? 'กำลังบันทึก...' : editingId !== null ? '💾 บันทึกการแก้ไข (PUT)' : `💾 บันทึกจำนวน รปภ. (${selectedShift === 'morning' ? 'กะเช้า' : selectedShift === 'evening' ? 'กะดึก' : 'ทั้งสองกะ'})`}
             </button>
+            {editingId !== null && (
+              <button type="button" onClick={handleCancelEdit}
+                className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 px-8 rounded-full shadow transition-colors text-sm md:text-base inline-flex items-center gap-2">
+                <X className="w-4 h-4" />ยกเลิกการแก้ไข
+              </button>
+            )}
           </div>
         </form>
 
@@ -404,6 +499,7 @@ export default function GuardDutyLogPage() {
                       <th className="px-4 py-3">ตามสัญญา</th>
                       <th className="px-4 py-3">ขาด</th>
                       <th className="px-4 py-3">หมายเหตุ</th>
+                      <th className="px-4 py-3 text-center">จัดการ</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -428,6 +524,14 @@ export default function GuardDutyLogPage() {
                         <td className="px-4 py-3"><span className="text-blue-600 font-bold">{rec.totalGuards}</span></td>
                         <td className="px-4 py-3"><span className={`font-bold ${rec.absentGuards > 0 ? 'text-rose-600' : 'text-slate-400'}`}>{rec.absentGuards}</span></td>
                         <td className="px-4 py-3 text-slate-500 text-xs">{rec.remark || '-'}</td>
+                        <td className="px-4 py-3 text-center whitespace-nowrap">
+                          <button type="button" onClick={() => handleEdit(rec)} title="แก้ไข" className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors inline-flex">
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button type="button" onClick={() => handleDelete(rec.id)} title="ลบ" className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors inline-flex">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import Link from 'next/link';
 import AnimatedDropdown from '@/components/AnimatedDropdown';
 import Pagination from '@/components/Pagination';
 import {
@@ -19,9 +20,11 @@ import {
   Building,
   KeyRound,
   Download,
+  Upload,
   FileSpreadsheet,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
+import { useRequireAdmin } from '@/lib/useRequireAdmin';
 import PageHeader from '@/components/PageHeader';
 
 interface User {
@@ -51,6 +54,7 @@ const ROLES_LIST = [
 ];
 
 export default function AdminUsersPage() {
+  const authorized = useRequireAdmin();
   const [users, setUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRoleFilter, setSelectedRoleFilter] = useState('all');
@@ -275,6 +279,11 @@ export default function AdminUsersPage() {
 
   return (
     <div className="space-y-6">
+      {authorized !== true && (
+        <div className="p-8 text-center text-slate-500 text-sm">กำลังตรวจสอบสิทธิ์...</div>
+      )}
+      {authorized === true && (
+      <>
       {/* Header */}
       <PageHeader
         title="จัดการบัญชีผู้ใช้งานระบบ"
@@ -282,6 +291,39 @@ export default function AdminUsersPage() {
         icon={<Users className="w-5 h-5 md:w-6 md:h-6 text-white" />}
         actions={
           <div className="flex items-center gap-2">
+            <button
+              onClick={async () => {
+                try {
+                  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+                  const res = await fetch('/api/users/export/csv', {
+                    headers: token ? { Authorization: `Bearer ${token}` } : {},
+                  });
+                  if (!res.ok) throw new Error('ส่งออกไม่สำเร็จ');
+                  const blob = await res.blob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `users_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}.csv`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                } catch (e: any) {
+                  setError(e?.message || 'ส่งออกไม่สำเร็จ');
+                }
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-md transition-all text-xs md:text-sm cursor-pointer"
+            >
+              <Download className="w-4 h-4" />
+              <span>ส่งออก CSV</span>
+            </button>
+            <Link
+              href="/admin/users/import"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-600 hover:bg-slate-700 text-white font-black rounded-xl shadow-md transition-all text-xs md:text-sm cursor-pointer"
+            >
+              <Upload className="w-4 h-4" />
+              <span>นำเข้า</span>
+            </Link>
             <button
               onClick={() => {
                 setShowModal(true);
@@ -685,6 +727,8 @@ export default function AdminUsersPage() {
             </form>
           </div>
         </div>
+      )}
+      </>
       )}
     </div>
   );

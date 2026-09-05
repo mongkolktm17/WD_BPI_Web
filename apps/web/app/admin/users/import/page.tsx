@@ -5,9 +5,11 @@ import AnimatedDropdown from '@/components/AnimatedDropdown';
 import { Users, Upload, RefreshCw, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
+import { useRequireAdmin } from '@/lib/useRequireAdmin';
 import PageHeader from '@/components/PageHeader';
 
 export default function AdminUsersImportPage() {
+  const authorized = useRequireAdmin();
   const [csvText, setCsvText] = useState('');
   const [roles, setRoles] = useState<{ id: number; roleName: string }[]>([]);
   const [role, setRole] = useState('');
@@ -73,6 +75,11 @@ export default function AdminUsersImportPage() {
   return (
     <div className="gradient-bg min-h-screen py-4 md:py-8 px-3 md:px-4 font-sans">
       <div className="max-w-5xl mx-auto space-y-4 md:space-y-6">
+      {authorized !== true && (
+        <div className="p-8 text-center text-slate-500 text-sm">กำลังตรวจสอบสิทธิ์...</div>
+      )}
+      {authorized === true && (
+      <>
 
         {/* Header */}
         <PageHeader
@@ -174,6 +181,8 @@ export default function AdminUsersImportPage() {
           </div>
         )}
 
+      </>
+      )}
       </div>
     </div>
   );

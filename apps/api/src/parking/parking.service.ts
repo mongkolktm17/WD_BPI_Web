@@ -315,13 +315,23 @@ export class ParkingService {
         ...(dto.timeIn && { timeIn: new Date(dto.timeIn) }),
         ...(dto.timeOut && { timeOut: new Date(dto.timeOut) }),
         ...(dto.status && { status: dto.status }),
+        ...(dto.inspectorCode !== undefined && { inspectorCode: dto.inspectorCode }),
+        ...(dto.inspectorName !== undefined && { inspectorName: dto.inspectorName }),
+        ...(dto.shift !== undefined && { shift: dto.shift }),
+        ...(dto.spareTireStatus !== undefined && { spareTireStatus: dto.spareTireStatus }),
+        ...(dto.licensePlates !== undefined && { licensePlates: dto.licensePlates }),
+        ...(dto.totalCars !== undefined && { totalCars: dto.totalCars }),
+        ...(dto.motorcycleCount1 !== undefined && { motorcycleCount1: dto.motorcycleCount1 }),
+        ...(dto.motorcycleCount2 !== undefined && { motorcycleCount2: dto.motorcycleCount2 }),
+        ...(dto.motorcycleCount3 !== undefined && { motorcycleCount3: dto.motorcycleCount3 }),
+        ...(dto.lotCounts !== undefined && { lotCounts: dto.lotCounts as any }),
       },
     });
   }
 
-  async remove(id: number) {
+  async remove(id: number, deletedBy?: string) {
     await this.findOne(id);
-    await this.prisma.carParking.update({ where: { id }, data: { isDeleted: true } });
+    await this.prisma.carParking.update({ where: { id }, data: { isDeleted: true, deletedBy: deletedBy ?? null, deletedAt: new Date() } });
     return { message: 'ลบข้อมูลที่จอดรถเรียบร้อยแล้ว' };
   }
 

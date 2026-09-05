@@ -14,17 +14,17 @@ import { apiFetch } from '@/lib/api';
 import ReportDetailModal from '@/components/ReportDetailModal';
 
 const QUICK_LINKS = [
-  { name: 'รายงานอาคาร', href: '/select-building', icon: Building2, color: 'from-sky-500 to-blue-600', shadow: 'shadow-sky-500/20' },
-  { name: 'ตรวจลานจอดรถ', href: '/car-parking', icon: Car, color: 'from-sky-500 to-cyan-600', shadow: 'shadow-sky-500/20' },
-  { name: 'ตรวจห้อง CCTV', href: '/cctv-inspection', icon: Camera, color: 'from-indigo-500 to-blue-600', shadow: 'shadow-indigo-500/20' },
-  { name: 'ตรวจ Hand Held', href: '/handheld-detector', icon: Radio, color: 'from-amber-500 to-orange-600', shadow: 'shadow-amber-500/20' },
-  { name: 'Checklist Patrol', href: '/patrol-checklist', icon: ClipboardList, color: 'from-emerald-500 to-teal-600', shadow: 'shadow-emerald-500/20' },
-  { name: 'ตรวจ Metal Detector', href: '/walkthrough-detector', icon: HardHat, color: 'from-teal-500 to-cyan-600', shadow: 'shadow-teal-500/20' },
-  { name: 'NVR Recording Days', href: '/nvr-recording', icon: FileText, color: 'from-violet-500 to-purple-600', shadow: 'shadow-violet-500/20' },
-  { name: 'CCTV Angle Check', href: '/cctv-angle-check', icon: Camera, color: 'from-rose-500 to-pink-600', shadow: 'shadow-rose-500/20' },
-  { name: 'Guard Duty Log', href: '/guard-duty-log', icon: UserCheck, color: 'from-yellow-500 to-amber-600', shadow: 'shadow-yellow-500/20' },
-  { name: 'รายงาน CCTV', href: '/cctv-report', icon: BarChart3, color: 'from-indigo-500 to-violet-600', shadow: 'shadow-indigo-500/20' },
-  { name: 'สถิติรายสัปดาห์/เดือน', href: '/visual-report', icon: BarChart3, color: 'from-pink-500 to-rose-600', shadow: 'shadow-pink-500/20' },
+  { name: 'รายงานอาคาร', href: '/select-building', icon: Building2, color: 'from-sky-500 to-blue-600', shadow: 'shadow-sky-500/20', permission: 'report_page' },
+  { name: 'ตรวจลานจอดรถ', href: '/car-parking', icon: Car, color: 'from-sky-500 to-cyan-600', shadow: 'shadow-sky-500/20', permission: 'car_parking' },
+  { name: 'ตรวจห้อง CCTV', href: '/cctv-inspection', icon: Camera, color: 'from-indigo-500 to-blue-600', shadow: 'shadow-indigo-500/20', permission: 'cctv_inspection' },
+  { name: 'ตรวจ Hand Held', href: '/handheld-detector', icon: Radio, color: 'from-amber-500 to-orange-600', shadow: 'shadow-amber-500/20', permission: 'metal_detector' },
+  { name: 'Checklist Patrol', href: '/patrol-checklist', icon: ClipboardList, color: 'from-emerald-500 to-teal-600', shadow: 'shadow-emerald-500/20', permission: 'patrol_checklist' },
+  { name: 'ตรวจ Metal Detector', href: '/walkthrough-detector', icon: HardHat, color: 'from-teal-500 to-cyan-600', shadow: 'shadow-teal-500/20', permission: 'walkthrough_detector' },
+  { name: 'NVR Recording Days', href: '/nvr-recording', icon: FileText, color: 'from-violet-500 to-purple-600', shadow: 'shadow-violet-500/20', permission: 'nvr_recording' },
+  { name: 'CCTV Angle Check', href: '/cctv-angle-check', icon: Camera, color: 'from-rose-500 to-pink-600', shadow: 'shadow-rose-500/20', permission: 'cctv_angle_check' },
+  { name: 'Guard Duty Log', href: '/guard-duty-log', icon: UserCheck, color: 'from-yellow-500 to-amber-600', shadow: 'shadow-yellow-500/20', permission: 'guard_duty_log' },
+  { name: 'รายงาน CCTV', href: '/cctv-report', icon: BarChart3, color: 'from-indigo-500 to-violet-600', shadow: 'shadow-indigo-500/20', permission: 'cctv_report' },
+  { name: 'สถิติรายสัปดาห์/เดือน', href: '/visual-report', icon: BarChart3, color: 'from-pink-500 to-rose-600', shadow: 'shadow-pink-500/20', permission: 'report_visual' },
 ];
 
 const REPORT_TYPE_OPTIONS = [
@@ -70,6 +70,7 @@ interface ReportItem {
   label: string;
   details: string;
   submitted_by: string;
+  employeeId?: string | null;
   time: string;
   deleteType: string;
   deleteId: number | string;
@@ -77,7 +78,7 @@ interface ReportItem {
   apiPath?: string;
 }
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE_OPTIONS = [10, 50, 100];
 
 function formatDateTime(d: string | Date): string {
   const dt = new Date(d);
@@ -101,7 +102,9 @@ export default function ReportPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [userName, setUserName] = useState('');
+  const [userEmployeeId, setUserEmployeeId] = useState('');
   const [userPermissions, setUserPermissions] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -117,6 +120,8 @@ export default function ReportPage() {
         const u = d?.user ?? d;
         if (u.fullName) setUserName(u.fullName);
         else if (u.username) setUserName(u.username);
+        if (u.username) setUserEmployeeId(String(u.username));
+        else if (u.employeeId) setUserEmployeeId(String(u.employeeId));
         const perms: string[] = [];
         if (u.role?.permissions) {
           for (const p of u.role.permissions) {
@@ -146,7 +151,7 @@ export default function ReportPage() {
       if (dateFrom) params.set('dateFrom', dateFrom);
       if (dateTo) params.set('dateTo', dateTo);
       params.set('page', String(page));
-      params.set('limit', '50');
+      params.set('limit', String(pageSize));
 
       const res = await apiFetch<any>(`/api/reports/all-reports?${params.toString()}`);
 
@@ -159,6 +164,7 @@ export default function ReportPage() {
         label: item.reportType,
         details: item.details || '-',
         submitted_by: item.submittedBy || '-',
+        employeeId: item.employeeId ?? null,
         time: item.submissionTime,
         updatedBy: item.updatedBy,
         apiPath: item.apiPath,
@@ -173,17 +179,21 @@ export default function ReportPage() {
     } finally {
       setLoading(false);
     }
-  }, [filterType, filterSubmitter, dateFrom, dateTo, page]);
+  }, [filterType, filterSubmitter, dateFrom, dateTo, page, pageSize]);
 
   useEffect(() => {
     fetchAllReports();
   }, [fetchAllReports]);
 
   const filteredReports = reports;
-  const totalPages = Math.ceil(totalRecords / 50);
+  const totalPages = Math.ceil(totalRecords / pageSize);
   const pagedReports = reports;
 
   const isAdmin = userPermissions.includes('all') || userPermissions.includes('admin');
+  const hasScopedPermissions = userPermissions.length > 0 && !isAdmin;
+  const visibleQuickLinks = hasScopedPermissions
+    ? QUICK_LINKS.filter((link) => userPermissions.includes(link.permission))
+    : QUICK_LINKS;
 
   const handleDelete = async (deleteType: string, deleteId: number | string) => {
     if (!confirm('คุณแน่ใจหรือไม่ว่าต้องการลบรายงานนี้?')) return;
@@ -195,26 +205,43 @@ export default function ReportPage() {
     }
   };
 
-  const handleExportCSV = () => {
-    const headers = ['เวลาส่ง', 'ประเภทรายงาน', 'รายละเอียด', 'ผู้รายงาน'];
-    const rows = filteredReports.map(r => [
-      formatDateTime(r.time),
-      r.label,
-      r.details,
-      r.submitted_by,
-    ]);
-    const csvContent = '\uFEFF' + [headers, ...rows].map(row =>
-      row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
-    ).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'recent_incident_reports.csv');
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportCSV = async () => {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (filterType !== 'all') params.set('type', filterType);
+      if (filterSubmitter) params.set('submitter', filterSubmitter);
+      if (dateFrom) params.set('dateFrom', dateFrom);
+      if (dateTo) params.set('dateTo', dateTo);
+      const res = await apiFetch<any>(`/api/reports/all-reports/export?${params.toString()}`);
+      const items = res?.data?.data ?? res?.data ?? [];
+      const rows = (Array.isArray(items) ? items : []).map((r: any) => [
+        formatDateTime(r.submissionTime ?? r.time ?? ''),
+        r.reportType ?? r.label ?? '',
+        r.details ?? '',
+        r.submittedBy ?? r.submitted_by ?? '',
+      ]);
+      const headers = ['เวลาส่ง', 'ประเภทรายงาน', 'รายละเอียด', 'ผู้รายงาน'];
+      const csvContent = '\uFEFF' + [headers, ...rows].map(row =>
+        row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+      ).join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      link.setAttribute('download', `recent_incident_reports_${stamp}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err: any) {
+      alert(err.message || 'ส่งออกไม่สำเร็จ');
+    } finally {
+      setExporting(false);
+    }
   };
 
   const handleSubmitterChange = (value: string) => {
@@ -228,8 +255,9 @@ export default function ReportPage() {
     debounceRef.current = setTimeout(() => {
       apiFetch<any>(`/api/reports/all-reports?submitter=${encodeURIComponent(value)}&limit=5`)
         .then((res) => {
-          const items = res?.data ?? [];
-          setSuggestions(items.map((n: any) => n.submittedBy).filter(Boolean));
+          const raw = res?.data?.data ?? res?.data ?? res ?? [];
+          const items = Array.isArray(raw) ? raw : [];
+          setSuggestions(items.map((n: any) => n.submittedBy ?? n.submitted_by).filter(Boolean));
         })
         .catch(() => setSuggestions([]));
     }, 300);
@@ -304,7 +332,7 @@ export default function ReportPage() {
             เปิดฟอร์มรายงาน
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            {QUICK_LINKS.map((link) => {
+            {visibleQuickLinks.map((link) => {
               const Icon = link.icon;
               return (
                 <Link
@@ -327,10 +355,11 @@ export default function ReportPage() {
             <h2 className="text-xl md:text-2xl font-bold section-title">รายงานเหตุการณ์ล่าสุด</h2>
             <button
               onClick={handleExportCSV}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-5 rounded-xl transition-colors shadow-md flex items-center gap-2 text-sm"
+              disabled={exporting}
+              className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold py-2.5 px-5 rounded-xl transition-colors shadow-md flex items-center gap-2 text-sm"
             >
               <Download className="w-4 h-4" />
-              ส่งออกเป็น CSV
+              {exporting ? 'กำลังส่งออก...' : 'ส่งออกเป็น CSV'}
             </button>
           </div>
 
@@ -448,6 +477,9 @@ export default function ReportPage() {
                       </td>
                       <td className="py-3.5 px-5 text-left text-sm text-slate-600">
                         {rep.submitted_by}
+                        {rep.updatedBy && (
+                          <span className="ml-2 text-[11px] font-medium text-orange-600">แก้ไขโดย {rep.updatedBy}</span>
+                        )}
                       </td>
                       <td className="py-3.5 px-5 text-center">
                         <div className="flex items-center justify-center gap-1">
@@ -458,7 +490,7 @@ export default function ReportPage() {
                           >
                             <Eye className="w-4 h-4" />
                           </button>
-                          {(isAdmin || rep.submitted_by === userName) && (
+                          {(isAdmin || rep.submitted_by === userName || (userEmployeeId && rep.employeeId === userEmployeeId)) && (
                             <button
                               onClick={() => handleEditReport(rep)}
                               className="w-8 h-8 flex items-center justify-center rounded-lg text-amber-500 hover:text-white hover:bg-amber-500 transition-all"
@@ -486,7 +518,21 @@ export default function ReportPage() {
           </div>
 
           {!loading && totalRecords > 0 && (
-            <Pagination page={page} totalItems={totalRecords} pageSize={50} onPageChange={setPage} />
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <label className="text-xs text-slate-500 flex items-center gap-2">
+                แสดงต่อหน้า
+                <select
+                  value={pageSize}
+                  onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+                  className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-blue-400"
+                >
+                  {PAGE_SIZE_OPTIONS.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </label>
+              <Pagination page={page} totalItems={totalRecords} pageSize={pageSize} onPageChange={setPage} />
+            </div>
           )}
         </div>
 
@@ -500,6 +546,7 @@ export default function ReportPage() {
         onSaved={() => fetchAllReports()}
         onDeleted={() => fetchAllReports()}
         userName={userName}
+        userEmployeeId={userEmployeeId}
         isAdmin={isAdmin}
       />
     </div>

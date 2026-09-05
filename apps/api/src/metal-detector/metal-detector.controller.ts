@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, ParseIntPipe, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, ParseIntPipe, UseGuards, Request } from '@nestjs/common';
 import { MetalDetectorService } from './metal-detector.service';
 import { CreateHandheldDto } from './dto/create-handheld.dto';
 import { UpdateHandheldDto } from './dto/update-handheld.dto';
@@ -131,12 +131,12 @@ export class MetalDetectorController {
   }
 
   @Delete('handheld-checks/:id')
-  async removeHandheldCheck(@Param('id', ParseIntPipe) id: number) {
-    return this.metalDetectorService.removeHandheldCheck(id);
+  async removeHandheldCheck(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
+    return this.metalDetectorService.removeHandheldCheck(id, req.user?.username);
   }
 
   @Delete('walkthrough-checks/:id')
-  async removeWalkthroughCheck(@Param('id', ParseIntPipe) id: number) {
-    return this.metalDetectorService.removeWalkthroughCheck(id);
+  async removeWalkthroughCheck(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
+    return this.metalDetectorService.removeWalkthroughCheck(id, req.user?.username);
   }
 }

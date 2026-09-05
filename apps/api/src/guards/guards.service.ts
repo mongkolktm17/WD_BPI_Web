@@ -116,10 +116,10 @@ export class GuardsService {
     });
   }
 
-  async removeCount(id: number) {
+  async removeCount(id: number, deletedBy?: string) {
     const count = await this.prisma.guardCount.findUnique({ where: { id } });
     if (!count) throw new NotFoundException('ไม่พบข้อมูลจำนวนยาม');
-    await this.prisma.guardCount.update({ where: { id }, data: { isDeleted: true } });
+    await this.prisma.guardCount.update({ where: { id }, data: { isDeleted: true, deletedBy: deletedBy ?? null, deletedAt: new Date() } });
     return { message: 'ลบข้อมูลจำนวนยามเรียบร้อยแล้ว' };
   }
 

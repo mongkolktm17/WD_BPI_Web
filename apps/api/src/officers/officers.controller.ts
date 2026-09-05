@@ -24,6 +24,11 @@ export class OfficersController {
     return this.officersService.findOne(id);
   }
 
+  @Post('import')
+  async importOfficers(@Body() dtos: CreateOfficerDto[]) {
+    return this.officersService.importOfficers(dtos);
+  }
+
   @Put(':id')
   async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateOfficerDto) {
     return this.officersService.update(id, dto);

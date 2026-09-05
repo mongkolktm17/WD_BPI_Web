@@ -1,5 +1,11 @@
 name: wdbpi-app
 
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   # ============================================================
   # NEW SYSTEM (Node.js + Next.js + PostgreSQL)
@@ -10,6 +16,7 @@ services:
       dockerfile: docker/web.Dockerfile
       target: production
     restart: unless-stopped
+    logging: *default-logging
     environment:
       - NODE_ENV=production
       - PORT=3000
@@ -17,7 +24,7 @@ services:
       - NEXT_PUBLIC_API_URL=/api
       - API_INTERNAL_URL=http://api:4000
       - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost}
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-wdbpi_super_secret_jwt_key_2026}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?NEXTAUTH_SECRET is required - set it in .env (no default allowed)}
       - TZ=Asia/Bangkok
     depends_on:
       api:
@@ -35,12 +42,13 @@ services:
       dockerfile: docker/api.Dockerfile
       target: production
     restart: unless-stopped
+    logging: *default-logging
     environment:
       - NODE_ENV=production
       - PORT=4000
-      - DATABASE_URL=${DATABASE_URL:-postgresql://wdbpi_user:wdbpi_pass@postgres:5432/wdbpi_db?schema=public}
+      - DATABASE_URL=${DATABASE_URL:?DATABASE_URL is required - set it in .env}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379}
-      - JWT_SECRET=${JWT_SECRET:-wdbpi_super_secret_jwt_key_2026}
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required - set it in .env (no default allowed)}
       - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3000,http://localhost}
       - TZ=Asia/Bangkok
     depends_on:
@@ -68,12 +76,13 @@ services:
     image: postgres:18-alpine
     container_name: wdbpi_postgres
     restart: unless-stopped
+    logging: *default-logging
     ports:
       - "5432:5432"
     environment:
       POSTGRES_DB: wdbpi_db
       POSTGRES_USER: wdbpi_user
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-wdbpi_pass}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required - set it in .env}
       TZ: Asia/Bangkok
       PGTZ: Asia/Bangkok
     volumes:
@@ -97,6 +106,7 @@ services:
     image: redis:8-alpine
     container_name: wdbpi_redis
     restart: unless-stopped
+    logging: *default-logging
     command: redis-server /usr/local/etc/redis/redis.conf
     volumes:
       - redis_data:/data
@@ -122,10 +132,11 @@ services:
       dockerfile: docker/php.Dockerfile
       target: production
     restart: unless-stopped
+    logging: *default-logging
     environment:
       - DB_SERVER=mysql
       - DB_USERNAME=${MYSQL_USER:-wdbpi_legacy}
-      - DB_PASSWORD=${MYSQL_PASSWORD:-wdbpi_legacy_pass}
+      - DB_PASSWORD=${MYSQL_PASSWORD:?MYSQL_PASSWORD is required - set it in .env}
       - DB_NAME=${MYSQL_DATABASE:-wdbpi_legacy}
       - TZ=Asia/Bangkok
     depends_on:
@@ -145,13 +156,14 @@ services:
     image: mysql:8.4
     container_name: wdbpi_mysql
     restart: unless-stopped
+    logging: *default-logging
     ports:
       - "3306:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_password}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required - set it in .env}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-wdbpi_legacy}
       MYSQL_USER: ${MYSQL_USER:-wdbpi_legacy}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-wdbpi_legacy_pass}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD is required - set it in .env}
       TZ: Asia/Bangkok
     volumes:
       - mysql_data:/var/lib/mysql
@@ -162,7 +174,7 @@ services:
       --innodb-buffer-pool-size=256M
       --max-connections=100
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-root_password}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -179,6 +191,7 @@ services:
   nginx:
     image: nginx:alpine
     restart: unless-stopped
+    logging: *default-logging
     ports:
       - "80:80"
     volumes:

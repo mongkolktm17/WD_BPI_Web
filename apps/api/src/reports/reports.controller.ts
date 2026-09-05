@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, ParseIntPipe, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, ParseIntPipe, UseGuards, Request } from '@nestjs/common';
 import { ReportsService } from './reports.service';
 import { CreateReportDto } from './dto/create-report.dto';
 import { UpdateReportDto } from './dto/update-report.dto';
@@ -33,11 +33,16 @@ export class ReportsController {
 
   @Get('all-reports')
   async getAllRecentReports(@Query() query: { type?: string; submitter?: string; dateFrom?: string; dateTo?: string; page?: string; limit?: string }) {
-    return this.reportsService.getAllRecentReports({
-      ...query,
-      page: query.page ? parseInt(query.page) : 1,
-      limit: query.limit ? parseInt(query.limit) : 20,
-    });
+    const rawLimit = query.limit ? parseInt(query.limit) : 10;
+    const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 5000) : 10;
+    const rawPage = query.page ? parseInt(query.page) : 1;
+    const page = Number.isFinite(rawPage) ? Math.max(rawPage, 1) : 1;
+    return this.reportsService.getAllRecentReports({ ...query, page, limit });
+  }
+
+  @Get('all-reports/export')
+  async exportRecentReports(@Query() query: { type?: string; submitter?: string; dateFrom?: string; dateTo?: string }) {
+    return this.reportsService.getAllRecentReports({ ...query, page: 1, limit: 5000 });
   }
 
   @Get('building-reports/:id')
@@ -51,8 +56,8 @@ export class ReportsController {
   }
 
   @Delete('building-reports/:id')
-  async removeBuildingReport(@Param('id', ParseIntPipe) id: number) {
-    return this.reportsService.removeBuildingReport(id);
+  async removeBuildingReport(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
+    return this.reportsService.removeBuildingReport(id, req.user?.username);
   }
 
   @Put('building-reports/:id')

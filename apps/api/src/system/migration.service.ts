@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as fs from 'fs';
 import * as readline from 'readline';
@@ -72,6 +72,29 @@ export class MigrationService {
       if (fs.existsSync(p)) return p;
     }
     return candidates[0];
+  }
+
+  /**
+   * Resolve a user-supplied dump path securely.
+   * Only files inside tmp/uploads or legacy/Backup are allowed
+   * (blocks path traversal like /etc/passwd).
+   */
+  public resolveDumpPath(customPath?: string): string {
+    if (!customPath) return this.getDefaultDumpPath();
+    const resolved = path.resolve(customPath);
+    const allowedDirs = [
+      path.resolve(process.cwd(), 'tmp/uploads'),
+      path.resolve('/app/tmp/uploads'),
+      path.resolve(process.cwd(), 'legacy/Backup'),
+      path.resolve('/app/legacy/Backup'),
+    ];
+    const inside = allowedDirs.some(
+      (dir) => resolved === dir || resolved.startsWith(dir + path.sep),
+    );
+    if (!inside) {
+      throw new BadRequestException('ไม่อนุญาตให้ใช้ไฟล์นอกโฟลเดอร์ tmp/uploads หรือ legacy/Backup');
+    }
+    return resolved;
   }
 
   /**
@@ -160,7 +183,7 @@ export class MigrationService {
    * Pre-flight Check / Validate Dump File without changing DB
    */
   async validateDumpFile(customPath?: string) {
-    const filePath = customPath || this.getDefaultDumpPath();
+    const filePath = this.resolveDumpPath(customPath);
     if (!fs.existsSync(filePath)) {
       throw new Error(`ไม่พบไฟล์สำรองข้อมูลที่เส้นทาง: ${filePath}`);
     }
@@ -220,7 +243,7 @@ export class MigrationService {
    */
   async executeMigration(options: MigrationOptions = {}) {
     const startTime = Date.now();
-    const filePath = options.customFilePath || this.getDefaultDumpPath();
+    const filePath = this.resolveDumpPath(options.customFilePath);
     const logs: { time: string; level: 'info' | 'success' | 'warn' | 'error'; message: string }[] = [];
 
     const addLog = (level: 'info' | 'success' | 'warn' | 'error', message: string) => {

@@ -1,6 +1,7 @@
 import { Controller, Get, Put, UseGuards, Request, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
+import { AdminGuard } from '../common/guards/admin.guard';
 import { PrismaService } from '../prisma/prisma.service';
 
 @UseGuards(AuthGuard('jwt'))
@@ -16,6 +17,7 @@ export class SystemController {
     };
   }
 
+  @UseGuards(AuthGuard('jwt'), AdminGuard)
   @Get('schema')
   async getSchema() {
     const tables = await this.prisma.$queryRaw`

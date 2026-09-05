@@ -51,9 +51,9 @@ export class PatrolService {
     });
   }
 
-  async remove(id: number) {
+  async remove(id: number, deletedBy?: string) {
     await this.findOne(id);
-    await this.prisma.patrolReport.update({ where: { id }, data: { isDeleted: true } });
+    await this.prisma.patrolReport.update({ where: { id }, data: { isDeleted: true, deletedBy: deletedBy ?? null, deletedAt: new Date() } });
     return { message: 'ลบข้อมูลรายงานลาดตระเวนเรียบร้อยแล้ว' };
   }
 }

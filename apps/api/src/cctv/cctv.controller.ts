@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, ParseIntPipe, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, ParseIntPipe, UseGuards, Request } from '@nestjs/common';
 import { CctvService } from './cctv.service';
 import { CreateCctvReportDto } from './dto/create-cctv-report.dto';
 import { UpdateCctvReportDto } from './dto/update-cctv-report.dto';
@@ -15,6 +15,7 @@ import { CreateBuildingDto } from './dto/create-building.dto';
 import { AuthGuard } from '@nestjs/passport';
 
 @Controller('cctv')
+@UseGuards(AuthGuard('jwt'))
 export class CctvController {
   constructor(private readonly cctvService: CctvService) {}
 
@@ -77,8 +78,8 @@ export class CctvController {
   }
 
   @Delete('reports/:id')
-  async removeReport(@Param('id', ParseIntPipe) id: number) {
-    return this.cctvService.removeReport(id);
+  async removeReport(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
+    return this.cctvService.removeReport(id, req.user?.username);
   }
 
   // ─── Cameras ──────────────────────────────────────────────────
@@ -96,6 +97,11 @@ export class CctvController {
   @Post('cameras')
   async createCamera(@Body() dto: CreateCameraDto) {
     return this.cctvService.createCamera(dto);
+  }
+
+  @Post('cameras/import')
+  async importCameras(@Body() dtos: CreateCameraDto[]) {
+    return this.cctvService.importCameras(dtos);
   }
 
   @Put('cameras/:id')
@@ -138,8 +144,8 @@ export class CctvController {
   }
 
   @Delete('camera-checks/:id')
-  async removeCameraCheck(@Param('id', ParseIntPipe) id: number) {
-    return this.cctvService.removeCameraCheck(id);
+  async removeCameraCheck(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
+    return this.cctvService.removeCameraCheck(id, req.user?.username);
   }
 
   @Put('camera-checks/:id')
@@ -172,8 +178,8 @@ export class CctvController {
   }
 
   @Delete('inspections/:id')
-  async removeInspection(@Param('id', ParseIntPipe) id: number) {
-    return this.cctvService.removeInspection(id);
+  async removeInspection(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
+    return this.cctvService.removeInspection(id, req.user?.username);
   }
 
   // ─── NVR Devices ──────────────────────────────────────────────

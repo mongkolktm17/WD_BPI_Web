@@ -53,6 +53,7 @@ interface ReportDetailModalProps {
   onSaved: () => void;
   onDeleted: () => void;
   userName: string;
+  userEmployeeId?: string;
   isAdmin: boolean;
 }
 
@@ -64,6 +65,7 @@ export default function ReportDetailModal({
   onSaved,
   onDeleted,
   userName,
+  userEmployeeId,
   isAdmin,
 }: ReportDetailModalProps) {
   const [mode, setMode] = useState<'view' | 'edit'>(initialMode);
@@ -440,7 +442,9 @@ export default function ReportDetailModal({
     }
   };
 
-  const canEdit = isAdmin || report.fullName === userName || report.submitted_by === userName || (report as any).officerName === userName || (report as any).inspectorName === userName;
+  const rpt = report as any;
+  const reportEmployeeId = rpt.employee_id || rpt.employeeId || rpt.inspector_code || rpt.inspectorCode || '';
+  const canEdit = isAdmin || report.fullName === userName || report.submitted_by === userName || (report as any).officerName === userName || (report as any).inspectorName === userName || (userEmployeeId !== undefined && userEmployeeId !== '' && reportEmployeeId !== '' && reportEmployeeId === userEmployeeId);
   const canDelete = isAdmin;
   const buildingConfig = report.building ? BUILDING_CONFIG[report.building] : null;
 
@@ -560,7 +564,6 @@ export default function ReportDetailModal({
               {renderTextField('full_name', 'ชื่อ-นามสกุล')}
               {renderSelectField('shift', 'กะ', [
                 { value: 'เช้า', label: 'เช้า' },
-                { value: 'บ่าย', label: 'บ่าย' },
                 { value: 'ดึก', label: 'ดึก' },
               ])}
               {renderTextField('building', 'อาคาร')}

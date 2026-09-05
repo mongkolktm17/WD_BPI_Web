@@ -1,5 +1,11 @@
 name: wdbpi-dev
 
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   web:
     build:
@@ -57,8 +63,10 @@ services:
       TZ: Asia/Bangkok
       PGTZ: Asia/Bangkok
     volumes:
-      - postgres_dev_data:/var/lib/postgresql/data
+      - postgres_dev_data:/var/lib/postgresql
+      - ./docker/postgres/postgresql.conf:/etc/postgresql/18/main/postgresql.conf:ro
       - ./docker/postgres/init:/docker-entrypoint-initdb.d
+    command: postgres -c config_file=/etc/postgresql/18/main/postgresql.conf
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U wdbpi_user -d wdbpi_db"]
       interval: 5s

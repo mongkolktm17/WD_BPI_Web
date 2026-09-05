@@ -1,4 +1,5 @@
-import { IsString, IsOptional } from 'class-validator';
+import { IsString, IsOptional, IsIn, MaxLength } from 'class-validator';
+import { ALLOWED_BUILDINGS, ALLOWED_SHIFTS } from './create-building-report.dto';
 
 export class UpdateBuildingReportDto {
   @IsString()
@@ -7,6 +8,7 @@ export class UpdateBuildingReportDto {
 
   @IsString()
   @IsOptional()
+  @MaxLength(8)
   employeeId?: string;
 
   @IsString()
@@ -15,10 +17,12 @@ export class UpdateBuildingReportDto {
 
   @IsString()
   @IsOptional()
+  @IsIn(ALLOWED_SHIFTS)
   shift?: string;
 
   @IsString()
   @IsOptional()
+  @IsIn(ALLOWED_BUILDINGS)
   building?: string;
 
   @IsString()

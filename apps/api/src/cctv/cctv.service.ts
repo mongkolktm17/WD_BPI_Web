@@ -316,9 +316,9 @@ export class CctvService {
     });
   }
 
-  async removeReport(id: number) {
+  async removeReport(id: number, deletedBy?: string) {
     await this.findOneReport(id);
-    await this.prisma.cctvReport.update({ where: { id }, data: { isDeleted: true } });
+    await this.prisma.cctvReport.update({ where: { id }, data: { isDeleted: true, deletedBy: deletedBy ?? null, deletedAt: new Date() } });
     return { message: 'ลบรายงาน CCTV เรียบร้อยแล้ว' };
   }
 
@@ -353,6 +353,32 @@ export class CctvService {
         status: dto.status ?? 'normal',
       },
     });
+  }
+
+  async importCameras(dtos: CreateCameraDto[]) {
+    const results = { created: 0, skipped: 0, errors: [] as string[] };
+    for (const dto of dtos) {
+      try {
+        if (!dto.buildingId || !dto.cameraNo || !dto.cameraName) {
+          results.skipped++;
+          continue;
+        }
+        await this.prisma.camera.create({
+          data: {
+            buildingId: dto.buildingId,
+            cameraNo: dto.cameraNo,
+            cameraName: dto.cameraName,
+            location: dto.location,
+            status: dto.status ?? 'normal',
+          },
+        });
+        results.created++;
+      } catch (e: any) {
+        results.skipped++;
+        results.errors.push(`${dto.cameraNo || '?'}: ${e.message}`);
+      }
+    }
+    return results;
   }
 
   async updateCamera(id: number, dto: UpdateCameraDto) {
@@ -456,10 +482,10 @@ export class CctvService {
     return this.createCameraCheck(dto);
   }
 
-  async removeCameraCheck(id: number) {
+  async removeCameraCheck(id: number, deletedBy?: string) {
     const check = await this.prisma.cameraCheck.findUnique({ where: { id } });
     if (!check) throw new NotFoundException('ไม่พบข้อมูลการตรวจสอบมุมกล้อง');
-    await this.prisma.cameraCheck.update({ where: { id }, data: { isDeleted: true } });
+    await this.prisma.cameraCheck.update({ where: { id }, data: { isDeleted: true, deletedBy: deletedBy ?? null, deletedAt: new Date() } });
     return { message: 'ลบข้อมูลเรียบร้อยแล้ว' };
   }
 
@@ -535,9 +561,9 @@ export class CctvService {
     });
   }
 
-  async removeInspection(id: number) {
+  async removeInspection(id: number, deletedBy?: string) {
     await this.findOneInspection(id);
-    await this.prisma.cctvInspection.update({ where: { id }, data: { isDeleted: true } });
+    await this.prisma.cctvInspection.update({ where: { id }, data: { isDeleted: true, deletedBy: deletedBy ?? null, deletedAt: new Date() } });
     return { message: 'ลบข้อมูลการตรวจสอบ CCTV เรียบร้อยแล้ว' };
   }
 

@@ -4,12 +4,19 @@ import { PassportModule } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
+import { PrismaModule } from '../prisma/prisma.module';
+
+const jwtSecret = process.env.JWT_SECRET;
+if (!jwtSecret) {
+  throw new Error('JWT_SECRET is required (no default allowed in production)');
+}
 
 @Module({
   imports: [
     PassportModule,
+    PrismaModule,
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'wdbpi_super_secret_jwt_key_2026',
+      secret: jwtSecret,
       signOptions: { expiresIn: '8h' },
     }),
   ],

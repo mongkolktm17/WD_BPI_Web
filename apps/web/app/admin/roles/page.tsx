@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Pagination from '@/components/Pagination';
-import { Plus, Trash2, RefreshCw, ShieldCheck } from 'lucide-react';
+import { Plus, Trash2, Pencil, RefreshCw, ShieldCheck } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
+import { useRequireAdmin } from '@/lib/useRequireAdmin';
 import PageHeader from '@/components/PageHeader';
 
 interface RolePermission {
@@ -37,6 +38,7 @@ const AVAILABLE_PAGES: Record<string, string> = {
 };
 
 export default function ManageRolesPage() {
+  const authorized = useRequireAdmin();
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
@@ -48,6 +50,15 @@ export default function ManageRolesPage() {
   const [roleName, setRoleName] = useState('');
   const [description, setDescription] = useState('');
   const [selectedPages, setSelectedPages] = useState<string[]>([]);
+  const [editingId, setEditingId] = useState<number | null>(null);
+
+  const resetForm = () => {
+    setRoleName('');
+    setDescription('');
+    setSelectedPages([]);
+    setEditingId(null);
+    setShowForm(false);
+  };
 
   const fetchRoles = useCallback(async () => {
     try {
@@ -73,24 +84,30 @@ export default function ManageRolesPage() {
     if (!roleName.trim()) { setMessage('กรุณากรอกชื่อ Role'); return; }
     setSubmitting(true);
     try {
-      await apiFetch('/api/roles', {
-        method: 'POST',
-        body: JSON.stringify({
-          roleName: roleName.trim(),
-          description: description.trim() || undefined,
-          permissions: selectedPages.map(p => ({
-            moduleName: p,
-            canRead: true,
-            canWrite: false,
-            canDelete: false,
-          })),
-        }),
-      });
-      setMessage('เพิ่ม Role เรียบร้อยแล้ว');
-      setRoleName('');
-      setDescription('');
-      setSelectedPages([]);
-      setShowForm(false);
+      const payload = {
+        roleName: roleName.trim(),
+        description: description.trim() || undefined,
+        permissions: selectedPages.map(p => ({
+          moduleName: p,
+          canRead: true,
+          canWrite: false,
+          canDelete: false,
+        })),
+      };
+      if (editingId !== null) {
+        await apiFetch(`/api/roles/${editingId}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload),
+        });
+        setMessage('แก้ไข Role เรียบร้อยแล้ว');
+      } else {
+        await apiFetch('/api/roles', {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+        setMessage('เพิ่ม Role เรียบร้อยแล้ว');
+      }
+      resetForm();
       fetchRoles();
     } catch (err: any) {
       setMessage(err?.message || 'เกิดข้อผิดพลาดในการบันทึก');
@@ -99,11 +116,21 @@ export default function ManageRolesPage() {
     }
   };
 
+  const handleEdit = (r: Role) => {
+    setEditingId(r.id);
+    setRoleName(r.roleName || '');
+    setDescription(r.description || '');
+    setSelectedPages((r.permissions || []).map(p => p.moduleName));
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleDelete = async (id: number) => {
     if (!confirm('คุณแน่ใจหรือไม่ว่าต้องการลบ Role นี้?')) return;
     try {
       await apiFetch(`/api/roles/${id}`, { method: 'DELETE' });
       setMessage('ลบ Role เรียบร้อยแล้ว');
+      if (editingId === id) resetForm();
       fetchRoles();
     } catch {
       setMessage('เกิดข้อผิดพลาดในการลบ');
@@ -115,6 +142,11 @@ export default function ManageRolesPage() {
   return (
     <div className="gradient-bg min-h-screen py-4 md:py-8 px-3 md:px-4 font-sans">
       <div className="max-w-6xl mx-auto space-y-4 md:space-y-6">
+      {authorized !== true && (
+        <div className="p-8 text-center text-slate-500 text-sm">กำลังตรวจสอบสิทธิ์...</div>
+      )}
+      {authorized === true && (
+      <>
 
         {/* Header */}
         <PageHeader
@@ -139,7 +171,7 @@ export default function ManageRolesPage() {
         {/* Add Role Form */}
         {showForm && (
           <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-4 md:p-6 shadow-xl border border-slate-200/60 space-y-4">
-            <h3 className="text-base md:text-lg font-bold text-slate-800 border-b border-slate-200 pb-2">เพิ่มบทบาทใหม่</h3>
+            <h3 className="text-base md:text-lg font-bold text-slate-800 border-b border-slate-200 pb-2">{editingId !== null ? `แก้ไขบทบาท #${editingId}` : 'เพิ่มบทบาทใหม่'}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">ชื่อบทบาท <span className="text-rose-500">*</span></label>
@@ -162,9 +194,9 @@ export default function ManageRolesPage() {
               </div>
             </div>
             <div className="flex justify-end gap-2">
-              <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-semibold transition-colors">ยกเลิก</button>
+              <button type="button" onClick={resetForm} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-semibold transition-colors">ยกเลิก</button>
               <button type="submit" disabled={submitting} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-6 rounded-xl shadow-lg transition-transform active:scale-95 text-sm disabled:opacity-50">
-                {submitting ? 'กำลังบันทึก...' : '💾 บันทึก'}
+                {submitting ? 'กำลังบันทึก...' : editingId !== null ? '💾 บันทึกการแก้ไข' : '💾 บันทึก'}
               </button>
             </div>
           </form>
@@ -204,7 +236,8 @@ export default function ManageRolesPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <button onClick={() => handleDelete(r.id)} className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                        <button onClick={() => handleEdit(r)} className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" title="แก้ไข"><Pencil className="w-4 h-4" /></button>
+                        <button onClick={() => handleDelete(r.id)} className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" title="ลบ"><Trash2 className="w-4 h-4" /></button>
                       </td>
                     </tr>
                   ))}
@@ -219,6 +252,8 @@ export default function ManageRolesPage() {
           )}
         </div>
 
+      </>
+      )}
       </div>
     </div>
   );
