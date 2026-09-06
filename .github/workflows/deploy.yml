@@ -1,0 +1,118 @@
+name: CI/CD Pipeline - WD Security Dashboard
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: wdbpi_db_test
+          POSTGRES_USER: wdbpi_user
+          POSTGRES_PASSWORD: wdbpi_pass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:8-alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Install Monorepo Dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type Check
+        run: npx tsc --noEmit
+
+      - name: Generate Prisma Client & Deploy Migrations (test DB)
+        run: |
+          npx prisma generate
+          npx prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://wdbpi_user:wdbpi_pass@localhost:5432/wdbpi_db_test?schema=public
+
+      - name: Build Monorepo (Turbo)
+        run: npm run build
+
+      - name: Run Tests
+        run: npm test --if-present
+
+  docker-build:
+    needs: test-and-build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Web Container Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/web.Dockerfile
+          push: false
+          tags: wdbpi-web:latest
+
+      - name: Build API Container Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/api.Dockerfile
+          push: false
+          tags: wdbpi-api:latest
+
+  deploy-staging:
+    needs: test-and-build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: staging
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Staging
+        run: echo "Deploying to staging environment..."
+        env:
+          DEPLOY_ENV: staging
+
+  deploy-production:
+    needs: test-and-build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Production
+        run: echo "Deploying to production environment..."
+        env:
+          DEPLOY_ENV: production

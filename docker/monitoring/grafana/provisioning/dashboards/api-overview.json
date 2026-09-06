@@ -1,0 +1,50 @@
+{
+  "title": "WDBPI API Overview",
+  "uid": "wdbpi-api-overview",
+  "timezone": "Asia/Bangkok",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Request rate (req/s)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "wdbpi-prometheus" },
+      "targets": [
+        { "expr": "sum(rate(wdbpi_http_requests_total[5m]))", "legendFormat": "all" },
+        { "expr": "sum by (status)(rate(wdbpi_http_requests_total[5m]))", "legendFormat": "{{status}}" }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 }
+    },
+    {
+      "id": 2,
+      "title": "p95 latency (s)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "wdbpi-prometheus" },
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum by (le)(rate(wdbpi_http_request_duration_seconds_bucket[5m])))" }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 }
+    },
+    {
+      "id": 3,
+      "title": "Errors (5xx/min)",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "wdbpi-prometheus" },
+      "targets": [
+        { "expr": "sum(rate(wdbpi_http_requests_total{status=~\"5..\"}[5m])) * 60" }
+      ],
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 8 }
+    },
+    {
+      "id": 4,
+      "title": "Top routes by volume",
+      "type": "table",
+      "datasource": { "type": "prometheus", "uid": "wdbpi-prometheus" },
+      "targets": [
+        { "expr": "topk(10, sum by (route)(rate(wdbpi_http_requests_total[5m])))" }
+      ],
+      "gridPos": { "h": 8, "w": 18, "x": 6, "y": 8 }
+    }
+  ],
+  "schemaVersion": 39,
+  "version": 1
+}

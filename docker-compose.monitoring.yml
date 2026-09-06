@@ -1,0 +1,55 @@
+name: wdbpi-monitoring
+
+# Monitoring overlay: Prometheus + Grafana scraping the API /metrics endpoint.
+# Usage:
+#   docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml up -d
+# Scraping goes through the internal network (set METRICS_TOKEN in prod .env
+# and mirror it below so only Prometheus can read /api/metrics).
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  prometheus:
+    image: prom/prometheus:v3.3.0
+    restart: unless-stopped
+    logging: *default-logging
+    volumes:
+      - ./docker/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=30d'
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+
+  grafana:
+    image: grafana/grafana:11.5.2
+    restart: unless-stopped
+    logging: *default-logging
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD is required}
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+
+volumes:
+  prometheus_data:
+  grafana_data:

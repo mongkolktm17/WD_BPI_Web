@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { PermissionGuard } from './common/guards/permission.guard';
+import { AdminGuard } from './common/guards/admin.guard';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
 import { AuthModule } from './auth/auth.module';
@@ -16,6 +18,7 @@ import { ReportsModule } from './reports/reports.module';
 import { UsersModule } from './users/users.module';
 import { SystemModule } from './system/system.module';
 import { LegacyModule } from './legacy/legacy.module';
+import { MetricsModule } from './metrics/metrics.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -39,6 +42,7 @@ import { HealthController } from './health.controller';
     UsersModule,
     SystemModule,
     LegacyModule,
+    MetricsModule,
   ],
   controllers: [HealthController],
   providers: [
@@ -46,6 +50,8 @@ import { HealthController } from './health.controller';
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
     },
+    PermissionGuard,
+    AdminGuard,
   ],
 })
 export class AppModule {}
