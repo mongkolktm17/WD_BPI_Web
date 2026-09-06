@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { User, Lock, ChevronRight, Instagram, Facebook, Twitter } from 'lucide-react';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -56,11 +57,6 @@ export default function LoginPage() {
 
   return (
     <>
-      <link
-        rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
-      />
-
       <div className="login-root-wrapper">
         <div className="container">
           <div className="screen">
@@ -77,10 +73,11 @@ export default function LoginPage() {
                 {loginErr && <div className="login__error">{loginErr}</div>}
 
                 <div className="login__field">
-                  <i className="login__icon fas fa-user"></i>
+                  <User className="login__icon" size={14} />
                   <input
                     type="text"
                     name="username"
+                    autoComplete="username"
                     className="login__input"
                     placeholder="Username"
                     value={username}
@@ -89,7 +86,7 @@ export default function LoginPage() {
                 </div>
 
                 <div className="login__field">
-                  <i className="login__icon fas fa-lock"></i>
+                  <Lock className="login__icon" size={14} />
                   <input
                     type="password"
                     name="password"
@@ -105,16 +102,16 @@ export default function LoginPage() {
                   <span className="button__text">
                     {loading ? 'Logging In...' : 'Log In Now'}
                   </span>
-                  <i className="button__icon fas fa-chevron-right"></i>
+                  <ChevronRight className="button__icon" size={24} />
                 </button>
               </form>
 
               <div className="social-login">
                 <h3>log in via</h3>
                 <div className="social-icons">
-                  <a href="#" className="social-login__icon fab fa-instagram"></a>
-                  <a href="#" className="social-login__icon fab fa-facebook"></a>
-                  <a href="#" className="social-login__icon fab fa-twitter"></a>
+                  <a href="#" className="social-login__icon" aria-label="Instagram"><Instagram size={16} /></a>
+                  <a href="#" className="social-login__icon" aria-label="Facebook"><Facebook size={16} /></a>
+                  <a href="#" className="social-login__icon" aria-label="Twitter"><Twitter size={16} /></a>
                 </div>
               </div>
             </div>

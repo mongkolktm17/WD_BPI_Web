@@ -59,7 +59,7 @@ export function AppShell({ children }: AppShellProps) {
   }, []);
 
   useEffect(() => {
-    if (!mounted || pathname === '/login' || pathname === '/') return;
+    if (!mounted || pathname === '/login' || pathname === '/' || pathname === '/dashboard') return;
     apiFetch<{ first_name?: string; last_name?: string; name?: string; role?: string; role_name?: string }>('/api/auth/me')
       .then((data) => {
         const name = data.name || [data.first_name, data.last_name].filter(Boolean).join(' ');
@@ -96,7 +96,7 @@ export function AppShell({ children }: AppShellProps) {
     }
   };
 
-  if (!mounted || pathname === '/login' || pathname === '/') {
+  if (!mounted || pathname === '/login' || pathname === '/' || pathname === '/dashboard') {
     return <>{children}</>;
   }
 

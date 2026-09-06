@@ -446,3 +446,47 @@ body:has(.login-root-wrapper) {
   padding-right: env(safe-area-inset-right);
   padding-bottom: env(safe-area-inset-bottom);
 }
+
+/* ══════════════ SOC Command Center theme (scoped, additive) ══════════════ */
+.soc-root {
+  background: #f1f5f9;
+  background-image:
+    radial-gradient(1200px 400px at 10% -5%, rgba(59, 130, 246, 0.08), transparent 60%),
+    radial-gradient(1000px 380px at 95% 0%, rgba(20, 184, 166, 0.07), transparent 60%);
+}
+
+.soc-glass {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 10px 30px -12px rgba(15, 40, 90, 0.18), 0 2px 6px -2px rgba(15, 40, 90, 0.06);
+}
+
+.soc-navy {
+  background: linear-gradient(135deg, #0b2545 0%, #10325e 55%, #0e4a6e 100%);
+  border: 1px solid rgba(56, 130, 190, 0.35);
+  box-shadow: 0 10px 30px -12px rgba(11, 37, 69, 0.55);
+}
+
+.soc-navy-glow {
+  background:
+    radial-gradient(300px 120px at 15% 50%, rgba(52, 211, 153, 0.18), transparent 70%),
+    radial-gradient(260px 120px at 85% 40%, rgba(56, 189, 248, 0.16), transparent 70%);
+}
+
+.soc-glow-green {
+  box-shadow: 0 0 10px 2px rgba(16, 185, 129, 0.8);
+}
+
+.soc-pulse-line {
+  stroke-dasharray: 220;
+  stroke-dashoffset: 220;
+  animation: soc-pulse-draw 3.2s ease-in-out infinite;
+}
+
+@keyframes soc-pulse-draw {
+  0% { stroke-dashoffset: 220; opacity: 0.5; }
+  50% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: -220; opacity: 0.5; }
+}

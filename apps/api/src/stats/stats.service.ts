@@ -91,7 +91,10 @@ export class StatsService {
     const weekAgo = new Date(todayStart);
     weekAgo.setDate(weekAgo.getDate() - 6);
 
-    const dateKey = (d: Date): string => d.toISOString().split('T')[0];
+    // Local-calendar day key (YYYY-MM-DD). toISOString() would shift the day
+    // in UTC+X timezones (e.g. Asia/Bangkok), emptying the "today" bucket.
+    const dateKey = (d: Date): string =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
     // Build 7-day date range
     const dates: string[] = [];
@@ -312,8 +315,13 @@ export class StatsService {
     const motoLotBreakdown: Record<string, number> = {};
     if (latestParking?.lotCounts && typeof latestParking.lotCounts === 'object') {
       const lc = latestParking.lotCounts as any;
-      carLots.forEach(l=> { const v = lc[l]; parkingLotBreakdown[l] = v ? parseInt(v.vehicleCount||v) ||0 : 0; });
-      motoLots.forEach(l=> { const v = lc[l]; motoLotBreakdown[l] = v ? parseInt(v.vehicleCount||v) ||0 : 0; });
+      // Normalize to NFC: Thai keys written from different clients (web form,
+      // psql imports, legacy dumps) may use different combining sequences.
+      const normMap = new Map<string, any>();
+      for (const [k, v] of Object.entries(lc)) normMap.set(k.normalize('NFC'), v);
+      const lookup = (lot: string) => normMap.get(lot.normalize('NFC'));
+      carLots.forEach(l => { const v = lookup(l); parkingLotBreakdown[l] = v ? parseInt(v.vehicleCount ?? v) || 0 : 0; });
+      motoLots.forEach(l => { const v = lookup(l); motoLotBreakdown[l] = v ? parseInt(v.vehicleCount ?? v) || 0 : 0; });
     } else {
       // fallback from totalCars distributed
       carLots.forEach(l=> parkingLotBreakdown[l]=0);
@@ -444,7 +452,10 @@ export class StatsService {
       return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]}`;
     };
 
-    const dateKey = (d: Date): string => d.toISOString().split('T')[0];
+    // Local-calendar day key (YYYY-MM-DD). toISOString() would shift the day
+    // in UTC+X timezones (e.g. Asia/Bangkok), emptying the "today" bucket.
+    const dateKey = (d: Date): string =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const monthKey = (d: Date): string => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     const getKey = (d: Date) => (isYearRange ? monthKey(d) : dateKey(d));
 
