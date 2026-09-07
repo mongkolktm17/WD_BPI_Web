@@ -1,0 +1,149 @@
+name: Legacy PHP - Staging & Production
+
+# The legacy PHP app deploys from the `legacy` branch. The Next.js monorepo
+# keeps its own pipeline in deploy.yml on `main`; the two never overlap.
+on:
+  push:
+    branches: [ legacy ]
+    paths:
+      - 'legacy/**'
+      - '.github/workflows/deploy-legacy.yml'
+  pull_request:
+    branches: [ legacy ]
+    paths:
+      - 'legacy/**'
+  workflow_dispatch:
+    inputs:
+      promote_to_production:
+        description: 'Deploy this commit to PRODUCTION (requires approval)'
+        type: boolean
+        default: false
+
+concurrency:
+  # Never let two deploys rsync the same webroot at once.
+  group: legacy-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  STAGING_ROOT: /var/www/wdbpi-staging
+  PROD_ROOT: /var/www/wdbpi
+
+jobs:
+  # ---------------------------------------------------------------------
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # PHP 7.4 matches production. Linting on a newer PHP would accept
+      # syntax the server cannot actually run.
+      - name: Set up PHP 7.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+          coverage: none
+
+      - name: Syntax-check every PHP file
+        run: |
+          fail=0
+          while IFS= read -r -d '' f; do
+            php -l "$f" > /dev/null 2>&1 || { echo "SYNTAX ERROR: $f"; php -l "$f" || true; fail=1; }
+          done < <(find legacy -name '*.php' -not -path 'legacy/Backup/*' -not -path 'legacy/unuse/*' -print0)
+          [ "$fail" -eq 0 ] || exit 1
+          echo "All PHP files parse cleanly."
+
+      # An rsync --exclude list fails silently when it drifts. This does not.
+      - name: Guard against dangerous scripts
+        run: bash legacy/deploy/scripts/check-forbidden-files.sh legacy
+
+      - name: Shellcheck deploy scripts
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+          shellcheck -S warning legacy/deploy/*.sh legacy/deploy/scripts/*.sh
+
+      - name: Validate nginx configs
+        run: |
+          docker run --rm \
+            -v "$PWD/legacy/deploy:/cfg:ro" \
+            -v "$PWD/legacy/deploy/scripts/check-nginx-configs.sh:/check.sh:ro" \
+            nginx:1.24-alpine sh /check.sh
+
+  # ---------------------------------------------------------------------
+  deploy-staging:
+    name: Deploy to staging
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/legacy'
+    runs-on: ubuntu-latest
+    environment:
+      name: legacy-staging
+      url: https://staging.wdbpi.pcsiot.com/
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          # Pinned host key. Never StrictHostKeyChecking=no on a deploy path.
+          printf '%s\n' "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Rsync to staging
+        run: |
+          rsync -az --delete --delay-updates \
+            --exclude-from=legacy/deploy/rsync-exclude.txt \
+            -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes" \
+            legacy/ \
+            "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:wdbpi-staging/"
+
+      - name: Smoke test
+        env:
+          BASIC: ${{ secrets.STAGING_BASIC_AUTH }}
+        run: bash legacy/deploy/scripts/smoke-test.sh https://staging.wdbpi.pcsiot.com "$BASIC"
+
+  # ---------------------------------------------------------------------
+  deploy-production:
+    name: Deploy to production
+    needs: validate
+    # Manual only. A push to `legacy` never reaches production on its own.
+    if: github.event_name == 'workflow_dispatch' && inputs.promote_to_production
+    runs-on: ubuntu-latest
+    environment:
+      name: legacy-production
+      url: https://wdbpi.pcsiot.com/
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      # Dry run first: --delete against the live webroot deserves a preview
+      # in the log before anything is written.
+      - name: Preview changes
+        run: |
+          rsync -az --delete --delay-updates --dry-run --itemize-changes \
+            --exclude-from=legacy/deploy/rsync-exclude.txt \
+            -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes" \
+            legacy/ \
+            "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:wdbpi/"
+
+      - name: Rsync to production
+        run: |
+          rsync -az --delete --delay-updates \
+            --exclude-from=legacy/deploy/rsync-exclude.txt \
+            -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes" \
+            legacy/ \
+            "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:wdbpi/"
+
+      - name: Smoke test
+        run: bash legacy/deploy/scripts/smoke-test.sh https://wdbpi.pcsiot.com
+
+      - name: Record deployed commit
+        run: echo "Deployed ${{ github.sha }} to production at $(date -u +%FT%TZ)"

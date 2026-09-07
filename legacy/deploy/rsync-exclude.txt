@@ -1,0 +1,61 @@
+# Files and directories that must never reach a web server.
+# Passed to rsync via --exclude-from. This is the second line of defence;
+# the first is that these scripts are no longer in the repo at all, and the
+# third is the forbidden-file guard in CI (scripts/check-forbidden-files.sh).
+
+# Server-managed. Holds live DB credentials and differs per environment,
+# so a deploy must never overwrite or delete it.
+config.php
+
+# SQL dumps — 21MB and 51MB respectively. Never belong on a web server.
+src/
+Backup/
+
+# Archived/legacy material and runtime state.
+unuse/
+cache/
+logs/
+dev/
+
+# Deployment tooling is not application code.
+deploy/
+
+# Repo metadata and docs.
+.git/
+.gitignore
+.dockerignore
+*.md
+
+# Never ship database dumps or archives of any kind.
+*.sql
+*.sql.gz
+*.tar
+*.tar.gz
+*.zip
+
+# Editor/OS noise.
+*.swp
+.DS_Store
+
+# ── Dangerous maintenance scripts ────────────────────────────────────────
+# Quarantined from production on 2026-09-07 by harden-production.sh. Listed
+# here so that even if one is reintroduced to the repo it cannot be deployed.
+reset.php
+reset_admin_password.php
+reset_officers.php
+setup.php
+run_migration.php
+add_soft_delete_columns.php
+optimize_database.php
+update_parking_db.php
+update_usernames.php
+update_csv_usernames.php
+update_b9_slots_production.php
+cleanup_files.php
+get_schema.php
+dashboard_new.php
+
+# Dev/test-only pages, never deployed.
+compare_parking.php
+test_stats.php
+test_stats_v2.php
