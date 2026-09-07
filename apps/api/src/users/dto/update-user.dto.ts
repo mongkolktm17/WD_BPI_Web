@@ -1,4 +1,4 @@
-import { IsString, IsInt, IsOptional, MinLength } from 'class-validator';
+import { IsString, IsInt, IsOptional, MinLength, MaxLength } from 'class-validator';
 
 export class UpdateUserDto {
   @IsString()
@@ -24,4 +24,9 @@ export class UpdateUserDto {
 
   @IsOptional()
   isActive?: boolean;
+
+  @IsString()
+  @MaxLength(8, { message: 'รหัสพนักงานต้องไม่เกิน 8 ตัวอักษร' })
+  @IsOptional()
+  employeeId?: string;
 }

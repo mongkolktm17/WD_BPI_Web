@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsInt, IsOptional, MinLength } from 'class-validator';
+import { IsNotEmpty, IsString, IsInt, IsOptional, MinLength, MaxLength } from 'class-validator';
 
 export class CreateUserDto {
   @IsString()
@@ -21,4 +21,9 @@ export class CreateUserDto {
   @IsString()
   @IsOptional()
   department?: string;
+
+  @IsString()
+  @MaxLength(8, { message: 'รหัสพนักงานต้องไม่เกิน 8 ตัวอักษร' })
+  @IsOptional()
+  employeeId?: string;
 }

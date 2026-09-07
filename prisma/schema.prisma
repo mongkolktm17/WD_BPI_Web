@@ -38,6 +38,7 @@ model User {
   username   String     @unique @db.VarChar(50)
   password   String     @db.VarChar(255)
   fullName   String     @map("full_name") @db.VarChar(100)
+  employeeId String?    @unique @map("employee_id") @db.VarChar(8)
   roleId     Int        @map("role_id")
   department String?    @db.VarChar(100)
   phone      String?    @db.VarChar(20)
@@ -149,6 +150,9 @@ model CctvReport {
   isDeleted     Boolean   @default(false) @map("is_deleted")
   deletedBy     String?   @map("deleted_by")
   deletedAt     DateTime? @map("deleted_at")
+  updatedBy     String?   @map("updated_by") @db.VarChar(100)
+  updatedAt     DateTime? @map("updated_at") @db.Timestamptz(6)
+  submittedById Int?      @map("submitted_by_id")
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("cctv_reports")
@@ -278,6 +282,9 @@ model CctvInspection {
   isDeleted      Boolean   @default(false) @map("is_deleted")
   deletedBy      String?   @map("deleted_by")
   deletedAt      DateTime? @map("deleted_at")
+  updatedBy      String?   @map("updated_by") @db.VarChar(100)
+  updatedAt      DateTime? @map("updated_at") @db.Timestamptz(6)
+  submittedById  Int?      @map("submitted_by_id")
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("cctv_inspections")
@@ -295,6 +302,9 @@ model GuardCount {
   isDeleted     Boolean   @default(false) @map("is_deleted")
   deletedBy     String?   @map("deleted_by")
   deletedAt     DateTime? @map("deleted_at")
+  updatedBy     String?   @map("updated_by") @db.VarChar(100)
+  updatedAt     DateTime? @map("updated_at") @db.Timestamptz(6)
+  submittedById Int?      @map("submitted_by_id")
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("guard_counts")
@@ -311,6 +321,8 @@ model PatrolReport {
   isDeleted   Boolean   @default(false) @map("is_deleted")
   deletedBy   String?   @map("deleted_by")
   deletedAt   DateTime? @map("deleted_at")
+  updatedBy   String?   @map("updated_by") @db.VarChar(100)
+  updatedAt   DateTime? @map("updated_at") @db.Timestamptz(6)
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("patrol_reports")
@@ -367,6 +379,8 @@ model BuildingReport {
   isDeleted         Boolean   @default(false) @map("is_deleted")
   deletedBy         String?   @map("deleted_by")
   deletedAt         DateTime? @map("deleted_at")
+  updatedBy         String?   @map("updated_by") @db.VarChar(100)
+  updatedAt         DateTime? @map("updated_at") @db.Timestamptz(6)
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("building_reports")
@@ -374,20 +388,22 @@ model BuildingReport {
 
 // 25. Legacy Car Parking Reports Table
 model CarParkingReport {
-  id                   Int      @id @default(autoincrement())
-  inspectionDate       DateTime @map("inspection_date") @db.Date
-  inspectorCode        String   @map("inspector_code") @db.VarChar(255)
-  inspectorName        String   @map("inspector_name") @db.VarChar(255)
-  shift                String   @db.VarChar(50)
-  parkingLot           String   @map("parking_lot") @db.VarChar(255)
-  totalCars            Int      @default(0) @map("total_cars")
-  spareTireStatus      String   @map("spare_tire_status") @db.VarChar(50)
-  licensePlates        String?  @map("license_plates") @db.Text
-  motorcycleParkingLot String?  @map("motorcycle_parking_lot") @db.VarChar(255)
-  motorcycleCount1     Int?     @map("motorcycle_count_1")
-  motorcycleCount2     Int?     @map("motorcycle_count_2")
-  motorcycleCount3     Int?     @map("motorcycle_count_3")
-  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id                   Int       @id @default(autoincrement())
+  inspectionDate       DateTime  @map("inspection_date") @db.Date
+  inspectorCode        String    @map("inspector_code") @db.VarChar(255)
+  inspectorName        String    @map("inspector_name") @db.VarChar(255)
+  shift                String    @db.VarChar(50)
+  parkingLot           String    @map("parking_lot") @db.VarChar(255)
+  totalCars            Int       @default(0) @map("total_cars")
+  spareTireStatus      String    @map("spare_tire_status") @db.VarChar(50)
+  licensePlates        String?   @map("license_plates") @db.Text
+  motorcycleParkingLot String?   @map("motorcycle_parking_lot") @db.VarChar(255)
+  motorcycleCount1     Int?      @map("motorcycle_count_1")
+  motorcycleCount2     Int?      @map("motorcycle_count_2")
+  motorcycleCount3     Int?      @map("motorcycle_count_3")
+  updatedBy            String?   @map("updated_by") @db.VarChar(100)
+  updatedAt            DateTime? @map("updated_at") @db.Timestamptz(6)
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("car_parking_reports")
 }
@@ -406,40 +422,45 @@ model ParkingLotCount {
 
 // 27. Legacy Hand Held Checks Table
 model HandHeldCheckLegacy {
-  id                  Int      @id @default(autoincrement())
-  inspectionDate      DateTime @map("inspection_date") @db.Date
-  building            String   @db.VarChar(255)
-  guardPost           String   @map("guard_post") @db.VarChar(255)
-  inspectorCode       String   @map("inspector_code") @db.VarChar(255)
-  inspectorName       String   @map("inspector_name") @db.VarChar(255)
-  shift               String   @db.VarChar(50)
-  batteryStatus       String   @map("battery_status") @db.VarChar(255)
-  ledStatus           String   @map("led_status") @db.VarChar(255)
-  detectionTestStatus String   @map("detection_test_status") @db.VarChar(255)
-  alarmStatus         String   @map("alarm_status") @db.VarChar(255)
-  remarks             String?  @db.Text
-  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id                  Int       @id @default(autoincrement())
+  inspectionDate      DateTime  @map("inspection_date") @db.Date
+  building            String    @db.VarChar(255)
+  guardPost           String    @map("guard_post") @db.VarChar(255)
+  inspectorCode       String    @map("inspector_code") @db.VarChar(255)
+  inspectorName       String    @map("inspector_name") @db.VarChar(255)
+  shift               String    @db.VarChar(50)
+  batteryStatus       String    @map("battery_status") @db.VarChar(255)
+  ledStatus           String    @map("led_status") @db.VarChar(255)
+  detectionTestStatus String    @map("detection_test_status") @db.VarChar(255)
+  alarmStatus         String    @map("alarm_status") @db.VarChar(255)
+  remarks             String?   @db.Text
+  updatedBy           String?   @map("updated_by") @db.VarChar(100)
+  updatedAt           DateTime? @map("updated_at") @db.Timestamptz(6)
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("hand_held_checks")
 }
 
 // 28. Legacy Metal Detector Checks Table
 model MetalDetectorCheckLegacy {
-  id             Int      @id @default(autoincrement())
-  inspectionDate DateTime @map("inspection_date") @db.Date
-  shift          String   @db.VarChar(50)
-  employeeId     String   @map("employee_id") @db.VarChar(255)
-  employeeName   String   @map("employee_name") @db.VarChar(255)
-  building       String   @db.VarChar(255)
-  guardPost      String   @map("guard_post") @db.VarChar(255)
-  scannerBrand   String   @map("scanner_brand") @db.VarChar(255)
-  zone1Status    String   @map("zone1_status") @db.VarChar(255)
-  zone2Status    String   @map("zone2_status") @db.VarChar(255)
-  zone3Status    String   @map("zone3_status") @db.VarChar(255)
-  zone4Status    String   @map("zone4_status") @db.VarChar(255)
-  zone5Status    String   @map("zone5_status") @db.VarChar(255)
-  zone6Status    String   @map("zone6_status") @db.VarChar(255)
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id             Int       @id @default(autoincrement())
+  inspectionDate DateTime  @map("inspection_date") @db.Date
+  shift          String    @db.VarChar(50)
+  employeeId     String    @map("employee_id") @db.VarChar(255)
+  employeeName   String    @map("employee_name") @db.VarChar(255)
+  building       String    @db.VarChar(255)
+  guardPost      String    @map("guard_post") @db.VarChar(255)
+  scannerBrand   String    @map("scanner_brand") @db.VarChar(255)
+  zone1Status    String    @map("zone1_status") @db.VarChar(255)
+  zone2Status    String    @map("zone2_status") @db.VarChar(255)
+  zone3Status    String    @map("zone3_status") @db.VarChar(255)
+  zone4Status    String    @map("zone4_status") @db.VarChar(255)
+  zone5Status    String    @map("zone5_status") @db.VarChar(255)
+  zone6Status    String    @map("zone6_status") @db.VarChar(255)
+  updatedBy      String?   @map("updated_by") @db.VarChar(100)
+  updatedAt      DateTime? @map("updated_at") @db.Timestamptz(6)
+  submittedById  Int?      @map("submitted_by_id")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("metal_detector_checks")
 }
@@ -491,15 +512,17 @@ model NvrStatusReportDetail {
 
 // 33. Legacy CCTV Angle Reports Table
 model CctvAngleReport {
-  id               Int      @id @default(autoincrement())
-  reportDate       DateTime @map("report_date") @db.Date
-  building         String   @db.VarChar(255)
-  nvr              Int      @map("nvr")
-  totalCameras     Int      @map("total_cameras")
-  correctCameras   Int      @map("correct_cameras")
-  incorrectCameras Int      @map("incorrect_cameras")
-  checkedBy        String   @map("checked_by") @db.VarChar(255)
-  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id               Int       @id @default(autoincrement())
+  reportDate       DateTime  @map("report_date") @db.Date
+  building         String    @db.VarChar(255)
+  nvr              Int       @map("nvr")
+  totalCameras     Int       @map("total_cameras")
+  correctCameras   Int       @map("correct_cameras")
+  incorrectCameras Int       @map("incorrect_cameras")
+  checkedBy        String    @map("checked_by") @db.VarChar(255)
+  updatedBy        String?   @map("updated_by") @db.VarChar(100)
+  updatedAt        DateTime? @map("updated_at") @db.Timestamptz(6)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("cctv_angle_reports")
 }
@@ -526,6 +549,7 @@ model PatrolCheckLegacy {
   inspectorName  String   @map("inspector_name") @db.VarChar(255)
   patrolTime     String   @map("patrol_time") @db.VarChar(50)
   building       String   @db.VarChar(255)
+  submittedById  Int?     @map("submitted_by_id")
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("patrol_checks")

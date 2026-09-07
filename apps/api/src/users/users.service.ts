@@ -14,6 +14,7 @@ export class UsersService {
         id: true,
         username: true,
         fullName: true,
+        employeeId: true,
         roleId: true,
         department: true,
         isActive: true,
@@ -34,6 +35,7 @@ export class UsersService {
         id: true,
         username: true,
         fullName: true,
+        employeeId: true,
         roleId: true,
         department: true,
         isActive: true,
@@ -56,6 +58,13 @@ export class UsersService {
       throw new BadRequestException('มีชื่อผู้ใช้นี้อยู่แล้ว');
     }
 
+    if (dto.employeeId) {
+      const dupEmployee = await this.prisma.user.findFirst({
+        where: { employeeId: dto.employeeId },
+      });
+      if (dupEmployee) throw new BadRequestException('มีรหัสพนักงานนี้อยู่แล้ว');
+    }
+
     const hashedPassword = await bcrypt.hash(dto.password, 10);
 
     return this.prisma.user.create({
@@ -63,6 +72,7 @@ export class UsersService {
         username: dto.username,
         password: hashedPassword,
         fullName: dto.fullName,
+        employeeId: dto.employeeId ?? null,
         roleId: dto.roleId,
         department: dto.department,
       },
@@ -70,6 +80,7 @@ export class UsersService {
         id: true,
         username: true,
         fullName: true,
+        employeeId: true,
         roleId: true,
         department: true,
         isActive: true,
@@ -89,12 +100,20 @@ export class UsersService {
       if (existing) throw new BadRequestException('มีชื่อผู้ใช้นี้อยู่แล้ว');
     }
 
+    if (dto.employeeId && dto.employeeId !== user.employeeId) {
+      const dupEmployee = await this.prisma.user.findFirst({
+        where: { employeeId: dto.employeeId, NOT: { id } },
+      });
+      if (dupEmployee) throw new BadRequestException('มีรหัสพนักงานนี้อยู่แล้ว');
+    }
+
     const updateData: any = {};
     if (dto.username) updateData.username = dto.username;
     if (dto.password) updateData.password = await bcrypt.hash(dto.password, 10);
     if (dto.fullName) updateData.fullName = dto.fullName;
     if (dto.roleId) updateData.roleId = dto.roleId;
     if (dto.department !== undefined) updateData.department = dto.department;
+    if (dto.employeeId !== undefined) updateData.employeeId = dto.employeeId || null;
     if (dto.isActive !== undefined) updateData.isActive = dto.isActive;
 
     return this.prisma.user.update({
@@ -104,6 +123,7 @@ export class UsersService {
         id: true,
         username: true,
         fullName: true,
+        employeeId: true,
         roleId: true,
         department: true,
         isActive: true,

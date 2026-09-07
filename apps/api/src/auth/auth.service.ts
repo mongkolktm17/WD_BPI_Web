@@ -42,6 +42,7 @@ export class AuthService {
       sub: user.id,
       username: user.username,
       fullName: user.fullName,
+      employeeId: user.employeeId,
       roleId: user.roleId,
       roleName: user.role.roleName,
     };
@@ -54,6 +55,7 @@ export class AuthService {
         id: user.id,
         username: user.username,
         fullName: user.fullName,
+        employeeId: user.employeeId,
         department: user.department,
         role: {
           id: user.role.id,
