@@ -8,6 +8,11 @@
  * 3. Do NOT commit config.php to Git (it's in .gitignore)
  */
 
+// Session/cookie hardening and the CSRF + login-throttle helpers.
+// MUST be required before session_start() — the cookie flags it sets are
+// only honoured while no session is active.
+require_once __DIR__ . '/security_bootstrap.php';
+
 // Start session
 session_start();
 

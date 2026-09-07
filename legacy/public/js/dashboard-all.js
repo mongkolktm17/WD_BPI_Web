@@ -594,10 +594,14 @@ async function fetchCameraStatus() {
 // User & Staff Management
 // ---------------------------------------------------------
 
+let profileCsrfToken = '';
+
 async function loadUserProfile() {
     try {
         const response = await fetch('update_profile.php');
         const result = await response.json();
+
+        if (result.csrf_token) profileCsrfToken = result.csrf_token;
 
         if (result.status === 'success') {
             const data = result.data;
@@ -832,6 +836,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const formData = new FormData();
             formData.append('action', 'update_profile');
+            formData.append('csrf_token', profileCsrfToken);
             formData.append('first_name', firstName);
             formData.append('last_name', lastName);
             formData.append('email', email);
@@ -873,6 +878,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const formData = new FormData();
             formData.append('action', 'change_password');
+            formData.append('csrf_token', profileCsrfToken);
             formData.append('current_password', current);
             formData.append('new_password', newPw);
             formData.append('confirm_password', confirmPw);

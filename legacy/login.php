@@ -16,22 +16,30 @@ $username_err = $password_err = $login_err = "";
 // Only process the form if it was submitted via POST.
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
+    // --- 0. Brute-force throttle (10 failures per IP per 15 minutes) ---
+    $throttle_key = 'login:' . security_client_ip();
+    $retry_after = security_login_retry_after($throttle_key);
+    if ($retry_after > 0) {
+        $login_err = "พยายามเข้าสู่ระบบผิดหลายครั้งเกินไป กรุณาลองใหม่ในอีก "
+            . ceil($retry_after / 60) . " นาที";
+    }
+
     // --- 1. Input Validation ---
-    if (empty(trim($_POST["username"]))) {
+    if ($retry_after === 0 && empty(trim($_POST["username"]))) {
         $username_err = "กรุณากรอกชื่อผู้ใช้";
     } else {
         $username = trim($_POST["username"]);
     }
 
-    if (empty(trim($_POST["password"]))) {
+    if ($retry_after === 0 && empty(trim($_POST["password"]))) {
         $password_err = "กรุณากรอกรหัสผ่าน";
-    } else {
+    } elseif ($retry_after === 0) {
         $password = trim($_POST["password"]);
     }
 
     // --- 2. Database Verification ---
     // Proceed only if there are no validation errors.
-    if (empty($username_err) && empty($password_err)) {
+    if ($retry_after === 0 && empty($username_err) && empty($password_err)) {
 
         // Prepare a select statement to get user details including name and employee ID.
         $sql = "SELECT id, username, password, user_type, role_id, first_name, last_name, employee_id FROM users WHERE username = ?";
@@ -49,6 +57,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     if (password_verify($password, $row['password'])) {
 
                         // --- 4. Session Creation ---
+                        // New session id on privilege change, so a session id
+                        // planted before login cannot be reused afterwards.
+                        session_regenerate_id(true);
+                        security_login_clear($throttle_key);
+
                         // Store all necessary user data in the session.
                         $_SESSION["loggedin"] = true;
                         $_SESSION["id"] = $row['id'];
@@ -83,10 +96,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         exit; // Crucial to exit after a header redirect.
 
                     } else {
-                        $login_err = "รหัสผ่านไม่ถูกต้อง";
+                        security_login_record_failure($throttle_key);
+                        $login_err = "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง";
                     }
                 } else {
-                    $login_err = "ไม่พบชื่อผู้ใช้นี้ในระบบ";
+                    // Same message as a bad password: revealing which half was
+                    // wrong lets an attacker enumerate valid usernames.
+                    security_login_record_failure($throttle_key);
+                    $login_err = "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง";
                 }
             } else {
                 $login_err = "เกิดข้อผิดพลาดบางอย่าง กรุณาลองใหม่อีกครั้งในภายหลัง";

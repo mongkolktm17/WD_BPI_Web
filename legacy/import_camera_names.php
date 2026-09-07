@@ -1,5 +1,7 @@
 <?php
-require_once 'config.php';
+// Admin gate. This page destroys and rebuilds cctv_camera_names, so it must
+// never be reachable unauthenticated.
+require_once "check_permissions.php";
 
 echo "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Import Camera Names</title>";
 echo "<style>body{font-family:Arial,sans-serif;padding:20px;background:#f5f5f5}";
@@ -8,6 +10,20 @@ echo ".error{color:red;padding:10px;background:#ffebee;margin:5px 0;border-radiu
 echo ".info{color:blue;padding:10px;background:#e3f2fd;margin:5px 0;border-radius:5px}";
 echo "h1{color:#333}</style></head><body>";
 echo "<h1>🎥 Import Camera Names from CSV Files</h1>";
+
+// Destructive from here on: require an explicit confirmation rather than
+// truncating on page load.
+if (($_GET['confirm'] ?? '') !== 'yes') {
+    $count = 0;
+    if ($res = $conn->query("SELECT COUNT(*) AS n FROM cctv_camera_names")) {
+        $count = (int) $res->fetch_assoc()['n'];
+    }
+    echo "<div class='error'><strong>Warning:</strong> this will delete all "
+       . $count . " existing camera name rows and re-import them from CSV.</div>";
+    echo "<p><a class='info' href='?confirm=yes'>Yes, re-import camera names</a></p>";
+    echo "</body></html>";
+    exit;
+}
 
 // Clear existing camera names
 $conn->query("TRUNCATE TABLE cctv_camera_names");

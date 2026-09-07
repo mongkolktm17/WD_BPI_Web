@@ -11,6 +11,9 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 $user_id = $_SESSION["id"];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // State-changing request: require the token issued by the GET branch.
+    security_csrf_require();
+
     $action = $_POST['action'] ?? '';
 
     if ($action === 'update_profile') {
@@ -101,7 +104,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $row['phone'] = '';
         $row['department'] = 'security';
         $row['last_login'] = date('Y-m-d H:i:s'); // Use current time as placeholder
-        echo json_encode(['status' => 'success', 'data' => $row]);
+        echo json_encode([
+            'status' => 'success',
+            'data' => $row,
+            'csrf_token' => security_csrf_token(),
+        ]);
     } else {
         echo json_encode(['status' => 'error', 'message' => 'User not found']);
     }

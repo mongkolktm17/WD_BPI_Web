@@ -1,10 +1,18 @@
 <?php
 require_once 'config.php';
 
+header('Content-Type: application/json');
+
+// Authentication gate. This endpoint writes to cctv_angle_reports and was
+// previously reachable unauthenticated, so anyone could inject CCTV reports.
+if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'message' => 'Not logged in.']);
+    exit;
+}
+
 // Get the posted data
 $data = json_decode(file_get_contents("php://input"));
-
-header('Content-Type: application/json');
 
 if (!$data) {
     echo json_encode(['success' => false, 'message' => 'No data received.']);
