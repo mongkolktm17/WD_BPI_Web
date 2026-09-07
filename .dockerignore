@@ -24,7 +24,4 @@ report_assets
 scripts
 .unuse
 .agent
-legacy/Backup
-legacy/logs
-legacy/*.sql
 tmp

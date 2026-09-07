@@ -1,15 +1,15 @@
 name: Legacy PHP - Staging & Production
 
-# The legacy PHP app deploys from the `legacy` branch. The Next.js monorepo
+# The legacy PHP app deploys from the `legacy-php` branch. The Next.js monorepo
 # keeps its own pipeline in deploy.yml on `main`; the two never overlap.
 on:
   push:
-    branches: [ legacy ]
+    branches: [ legacy-php ]
     paths:
       - 'legacy/**'
       - '.github/workflows/deploy-legacy.yml'
   pull_request:
-    branches: [ legacy ]
+    branches: [ legacy-php ]
     paths:
       - 'legacy/**'
   workflow_dispatch:
@@ -73,7 +73,7 @@ jobs:
   deploy-staging:
     name: Deploy to staging
     needs: validate
-    if: github.event_name == 'push' && github.ref == 'refs/heads/legacy'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/legacy-php'
     runs-on: ubuntu-latest
     environment:
       name: legacy-staging
@@ -107,7 +107,7 @@ jobs:
   deploy-production:
     name: Deploy to production
     needs: validate
-    # Manual only. A push to `legacy` never reaches production on its own.
+    # Manual only. A push to `legacy-php` never reaches production on its own.
     if: github.event_name == 'workflow_dispatch' && inputs.promote_to_production
     runs-on: ubuntu-latest
     environment:

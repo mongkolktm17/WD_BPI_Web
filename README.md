@@ -8,7 +8,6 @@
 [![React](https://img.shields.io/badge/React-19.0-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
 [![NestJS](https://img.shields.io/badge/NestJS-11.0-E0234E?style=for-the-badge&logo=nestjs)](https://nestjs.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18.0-336791?style=for-the-badge&logo=postgresql)](https://www.postgresql.org/)
-[![PHP](https://img.shields.io/badge/PHP-8.2-777BB4?style=for-the-badge&logo=php&logoColor=white)](legacy/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker)](docker-compose.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
@@ -57,14 +56,16 @@
 
 ## 🏛️ System Architecture
 
-This repository is structured as a **Modern Monorepo** powered by Turborepo, while preserving the legacy PHP/MySQL service for backward compatibility:
+This repository is structured as a **Modern Monorepo** powered by Turborepo.
+
+> The original PHP/MySQL system lives on the **`legacy-php`** branch, which has its own
+> deployment pipeline (`.github/workflows/deploy-legacy.yml`).
 
 ```text
 wdbpi/
 ├── apps/
 │   ├── web/               # Next.js 16 (App Router) + React 19 + TailwindCSS v4
 │   └── api/               # NestJS 11 + Prisma ORM 7 + PostgreSQL + Redis Cache
-├── legacy/                # PHP 8.2 + MySQL (Original Core System)
 │   ├── dashboard.php      # Legacy Dashboard View
 │   ├── guard_duty_log.php # Enhanced Shift-Separated Guard Duty Log
 │   └── get_security_status.php

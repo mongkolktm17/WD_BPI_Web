@@ -63,7 +63,6 @@ services:
           cpus: '0.5'
     volumes:
       - ./report_assets:/app/report_assets:ro
-      - ./legacy:/app/legacy:ro
       - ./tmp:/app/tmp
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4000/api/health"]
@@ -123,35 +122,6 @@ services:
           memory: 256M
           cpus: '0.25'
 
-  # ============================================================
-  # LEGACY SYSTEM (PHP + MySQL)
-  # ============================================================
-  legacy:
-    build:
-      context: .
-      dockerfile: docker/php.Dockerfile
-      target: production
-    restart: unless-stopped
-    logging: *default-logging
-    environment:
-      - DB_SERVER=mysql
-      - DB_USERNAME=${MYSQL_USER:-wdbpi_legacy}
-      - DB_PASSWORD=${MYSQL_PASSWORD:?MYSQL_PASSWORD is required - set it in .env}
-      - DB_NAME=${MYSQL_DATABASE:-wdbpi_legacy}
-      - TZ=Asia/Bangkok
-    depends_on:
-      mysql:
-        condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-          cpus: '0.5'
-    volumes:
-      - ./legacy:/var/www/html
-      - ./docker/php/config.docker.php:/var/www/html/config.php:ro
-      - ./apps/web/public/report_assets:/var/www/html/report_assets:ro
-
   mysql:
     image: mysql:8.4
     container_name: wdbpi_mysql
@@ -167,7 +137,6 @@ services:
       TZ: Asia/Bangkok
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./legacy/src/wddump.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
     command: >
       --character-set-server=utf8mb4
       --collation-server=utf8mb4_unicode_ci
@@ -201,7 +170,6 @@ services:
     depends_on:
       - web
       - api
-      - legacy
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1/"]
       interval: 30s
