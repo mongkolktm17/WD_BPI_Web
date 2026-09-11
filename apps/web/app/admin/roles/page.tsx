@@ -35,6 +35,7 @@ const AVAILABLE_PAGES: Record<string, string> = {
   patrol_checklist: 'รายการตรวจตรา',
   report_page: 'ศูนย์รายงาน',
   report_visual: 'รายงานกราฟิก',
+  officers: 'จัดการเจ้าหน้าที่รักษาความปลอดภัย (Officers)',
 };
 
 export default function ManageRolesPage() {

@@ -136,6 +136,18 @@ export class CctvController {
   // ─── Camera Checks ────────────────────────────────────────────
 
   @RequirePermission('cctv_angle_check:read')
+  @Get('camera-checks/rounds')
+  async findAllCameraCheckRounds(@Query() query: { dateFrom?: string; dateTo?: string; limit?: string }) {
+    return this.cctvService.findAllCameraCheckRounds({ ...query, limit: query.limit ? parseInt(query.limit) : undefined });
+  }
+
+  @RequirePermission('cctv_angle_check:delete')
+  @Delete('camera-checks/rounds/:roundKey')
+  async removeCameraCheckRound(@Param('roundKey') roundKey: string, @Request() req: any) {
+    return this.cctvService.removeCameraCheckRound(roundKey, req.user?.username);
+  }
+
+  @RequirePermission('cctv_angle_check:read')
   @Get('camera-checks')
   async findAllCameraChecks(@Query() query: { cameraId?: string; dateFrom?: string; dateTo?: string; limit?: string }) {
     return this.cctvService.findAllCameraChecks({ ...query, limit: query.limit ? parseInt(query.limit) : undefined });
@@ -246,6 +258,24 @@ export class CctvController {
   }
 
   // ─── NVR Recordings ───────────────────────────────────────────
+
+  @RequirePermission('nvr_recording:read')
+  @Get('nvr-recordings/rounds')
+  async findAllNvrRecordingRounds(@Query() query: { dateFrom?: string; dateTo?: string; limit?: string }) {
+    return this.cctvService.findAllNvrRecordingRounds({ ...query, limit: query.limit ? parseInt(query.limit) : undefined });
+  }
+
+  @RequirePermission('nvr_recording:delete')
+  @Delete('nvr-recordings/rounds/:roundId')
+  async removeNvrRecordingRound(@Param('roundId') roundId: string) {
+    return this.cctvService.removeNvrRecordingRound(roundId);
+  }
+
+  @RequirePermission('nvr_recording:write')
+  @Put('nvr-recordings/rounds/:roundId')
+  async updateNvrRecordingRound(@Param('roundId') roundId: string, @Body() body: { days: Record<string, number> }) {
+    return this.cctvService.updateNvrRecordingRound(roundId, body.days || {});
+  }
 
   @RequirePermission('nvr_recording:read')
   @Get('nvr-recordings')

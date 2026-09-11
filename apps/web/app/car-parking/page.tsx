@@ -365,16 +365,20 @@ export default function CarParkingPage() {
           {/* Section 2: Car Parking Lots */}
           <div className="space-y-3 md:space-y-4 pt-4 border-t border-slate-200">
             <h3 className="text-base md:text-lg font-bold text-slate-800">ลานจอดรถยนต์ (จำนวนรถที่จอด)</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3 md:gap-4">
               {CAR_LOTS.map((lot) => (
-                <div key={lot.name} className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                  <div className="text-xs font-semibold text-slate-700">{lot.name}</div>
+                <div key={lot.name} className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5 flex flex-col justify-between">
+                  <div className="text-xs font-semibold text-slate-700 flex justify-between items-center">
+                    <span>{lot.name}</span>
+                    <span className="text-[10px] text-slate-400 bg-slate-200/60 px-1.5 py-0.5 rounded">{lot.short}</span>
+                  </div>
                   <input
                     type="number"
+                    min="0"
                     placeholder="จำนวนคัน"
                     value={carLotCounts[lot.name] || ''}
                     onChange={(e) => setCarLotCounts({ ...carLotCounts, [lot.name]: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    className="w-full px-3 py-2.5 sm:py-1.5 rounded-lg border border-slate-200 text-base sm:text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   />
                 </div>
               ))}
@@ -384,16 +388,20 @@ export default function CarParkingPage() {
           {/* Section 3: Motorcycle Parking Lots */}
           <div className="space-y-3 md:space-y-4 pt-4 border-t border-slate-200">
             <h3 className="text-base md:text-lg font-bold text-slate-800">ลานจอดรถจักรยานยนต์ (จำนวนรถที่จอด)</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 md:gap-4">
               {MOTORCYCLE_LOTS.map((lot) => (
-                <div key={lot.name} className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                  <div className="text-xs font-semibold text-slate-700">{lot.name}</div>
+                <div key={lot.name} className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5 flex flex-col justify-between">
+                  <div className="text-xs font-semibold text-slate-700 flex justify-between items-center">
+                    <span>{lot.name}</span>
+                    <span className="text-[10px] text-slate-400 bg-slate-200/60 px-1.5 py-0.5 rounded">{lot.short}</span>
+                  </div>
                   <input
                     type="number"
+                    min="0"
                     placeholder="จำนวนคัน"
                     value={motoLotCounts[lot.name] || ''}
                     onChange={(e) => setMotoLotCounts({ ...motoLotCounts, [lot.name]: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    className="w-full px-3 py-2.5 sm:py-1.5 rounded-lg border border-slate-200 text-base sm:text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   />
                 </div>
               ))}
@@ -407,7 +415,7 @@ export default function CarParkingPage() {
               value={spareTireStatus}
               onChange={setSpareTireStatus}
               label="การตรวจเช็คยางอะไหล่ / อุปกรณ์ *"
-              className="max-w-md"
+              className="max-w-md w-full"
             />
 
             <div>
@@ -419,14 +427,14 @@ export default function CarParkingPage() {
                     placeholder={`ป้ายทะเบียนคันที่ ${idx + 1}`}
                     value={plate}
                     onChange={(e) => handlePlateChange(idx, e.target.value)}
-                    className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-base sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   />
                 </div>
               ))}
               <button
                 type="button"
                 onClick={handleAddPlate}
-                className="text-xs text-blue-600 hover:text-blue-800 font-semibold underline mt-1"
+                className="text-xs text-blue-600 hover:text-blue-800 font-semibold underline mt-1 py-1 inline-block"
               >
                 + เพิ่มป้ายทะเบียน
               </button>
@@ -434,12 +442,12 @@ export default function CarParkingPage() {
           </div>
 
           {/* Submit */}
-          <div className="pt-4 flex justify-center gap-3">
+          <div className="pt-4 flex flex-col sm:flex-row justify-center gap-2.5 sm:gap-3">
             {editingId !== null && (
               <button
                 type="button"
                 onClick={handleCancelEdit}
-                className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 md:py-3.5 px-6 md:px-10 rounded-full shadow-lg transition-transform active:scale-95 text-sm md:text-base"
+                className="w-full sm:w-auto bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 md:py-3.5 px-6 md:px-10 rounded-xl sm:rounded-full shadow transition-transform active:scale-95 text-sm md:text-base min-h-[44px] flex items-center justify-center"
               >
                 ✕ ยกเลิกการแก้ไข
               </button>
@@ -447,7 +455,7 @@ export default function CarParkingPage() {
             <button
               type="submit"
               disabled={loading}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 md:py-3.5 px-6 md:px-10 rounded-full shadow-lg transition-transform active:scale-95 text-sm md:text-base disabled:opacity-50"
+              className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 md:py-3.5 px-6 md:px-10 rounded-xl sm:rounded-full shadow-lg transition-transform active:scale-95 text-sm md:text-base disabled:opacity-50 min-h-[44px] flex items-center justify-center"
             >
               {loading ? 'กำลังบันทึก...' : editingId !== null ? '💾 บันทึกการแก้ไข' : '💾 บันทึกรายงานการตรวจเช็ค'}
             </button>
@@ -689,8 +697,8 @@ export default function CarParkingPage() {
             <div className="text-center py-8 text-slate-400 text-sm">ไม่พบข้อมูลประวัติการรายงาน</div>
           ) : (
             <>
-            <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="w-full text-left border-collapse bg-white text-xs">
+            <div className="overflow-x-auto mobile-table-scroll rounded-xl border border-slate-200">
+              <table className="w-full text-left border-collapse bg-white text-xs min-w-[700px]">
                 <thead className="bg-slate-50 text-slate-700 uppercase font-semibold border-b border-slate-200">
                   <tr>
                     <th className="py-3 px-2 text-center whitespace-nowrap">วันที่</th>

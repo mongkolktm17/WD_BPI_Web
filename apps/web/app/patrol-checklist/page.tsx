@@ -68,10 +68,10 @@ function ToggleGroup({ label, value, options, onChange }: { label: string; value
   return (
     <div>
       <label className="block text-sm font-medium text-slate-700 mb-2">{label} <span className="text-rose-500">*</span></label>
-      <div className="flex gap-2 flex-wrap">
+      <div className="grid grid-cols-2 sm:flex gap-2 flex-wrap">
         {options.map((opt) => (
           <button key={opt.val} type="button" onClick={() => onChange(opt.val)}
-            className={`px-4 py-2.5 border-2 rounded-xl font-medium text-sm transition-all ${value === opt.val ? opt.color : 'border-slate-200 text-slate-600 hover:border-slate-300 bg-white'}`}>
+            className={`px-4 py-3 sm:py-2.5 min-h-[44px] flex items-center justify-center border-2 rounded-xl font-medium text-sm transition-all ${value === opt.val ? opt.color : 'border-slate-200 text-slate-600 hover:border-slate-300 bg-white'}`}>
             {value === opt.val && <span className="mr-1">✓</span>}{opt.label}
           </button>
         ))}
@@ -470,16 +470,16 @@ export default function PatrolChecklistPage() {
 
 function ToggleField({ field, value, onChange }: { field: { key: string; label: string; pass: string; fail: string }; value: string; onChange: (v: string) => void }) {
   return (
-    <div className="py-1.5">
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-slate-700 flex-1">{field.label}</span>
-        <div className="flex gap-1.5">
+    <div className="py-2 border-b border-slate-100 last:border-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <span className="text-sm font-medium text-slate-700">{field.label}</span>
+        <div className="flex gap-2 shrink-0">
           <button type="button" onClick={() => onChange(field.pass)}
-            className={`px-3 py-1.5 border rounded-lg font-medium text-xs transition-all ${value === field.pass ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-500 hover:border-emerald-300'}`}>
+            className={`flex-1 sm:flex-initial px-4 py-2 min-h-[40px] sm:min-h-[36px] flex items-center justify-center border rounded-xl font-medium text-xs transition-all ${value === field.pass ? 'border-emerald-500 bg-emerald-50 text-emerald-700 font-bold' : 'border-slate-200 text-slate-500 hover:border-emerald-300 bg-white'}`}>
             {value === field.pass && '✓ '}{field.pass}
           </button>
           <button type="button" onClick={() => onChange(field.fail)}
-            className={`px-3 py-1.5 border rounded-lg font-medium text-xs transition-all ${value === field.fail ? 'border-rose-500 bg-rose-50 text-rose-700' : 'border-slate-200 text-slate-500 hover:border-rose-300'}`}>
+            className={`flex-1 sm:flex-initial px-4 py-2 min-h-[40px] sm:min-h-[36px] flex items-center justify-center border rounded-xl font-medium text-xs transition-all ${value === field.fail ? 'border-rose-500 bg-rose-50 text-rose-700 font-bold' : 'border-slate-200 text-slate-500 hover:border-rose-300 bg-white'}`}>
             {value === field.fail && '✗ '}{field.fail}
           </button>
         </div>

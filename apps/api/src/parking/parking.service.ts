@@ -330,9 +330,23 @@ export class ParkingService {
   }
 
   async remove(id: number, deletedBy?: string) {
-    await this.findOne(id);
-    await this.prisma.carParking.update({ where: { id }, data: { isDeleted: true, deletedBy: deletedBy ?? null, deletedAt: new Date() } });
-    return { message: 'ลบข้อมูลที่จอดรถเรียบร้อยแล้ว' };
+    const existingNew = await this.prisma.carParking.findUnique({ where: { id } });
+    if (existingNew) {
+      await this.prisma.carParking.update({
+        where: { id },
+        data: { isDeleted: true, deletedBy: deletedBy ?? null, deletedAt: new Date() },
+      });
+      return { message: 'ลบข้อมูลที่จอดรถเรียบร้อยแล้ว' };
+    }
+
+    const existingLegacy = await this.prisma.carParkingReport.findUnique({ where: { id } });
+    if (existingLegacy) {
+      await this.prisma.parkingLotCount.deleteMany({ where: { reportId: id } });
+      await this.prisma.carParkingReport.delete({ where: { id } });
+      return { message: 'ลบข้อมูลรายงานที่จอดรถเรียบร้อยแล้ว' };
+    }
+
+    throw new NotFoundException('ไม่พบข้อมูลที่จอดรถ');
   }
 
   async getStatusSummary() {

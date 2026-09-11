@@ -124,6 +124,7 @@ export class RolesService {
       'patrol_checklist',
       'report_page',
       'report_visual',
+      'officers',
     ];
   }
 }

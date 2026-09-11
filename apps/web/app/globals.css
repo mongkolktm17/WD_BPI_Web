@@ -490,3 +490,40 @@ body:has(.login-root-wrapper) {
   50% { stroke-dashoffset: 0; opacity: 1; }
   100% { stroke-dashoffset: -220; opacity: 0.5; }
 }
+
+/* ══════════════ Mobile-Friendly Touch & Form Utilities ══════════════ */
+@media (max-width: 640px) {
+  /* Prevent auto-zoom on iOS Safari when focusing form inputs */
+  input[type="text"],
+  input[type="password"],
+  input[type="date"],
+  input[type="time"],
+  input[type="number"],
+  input[type="email"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* Minimum 44px touch target for interactive elements */
+  .mobile-touch-target {
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Responsive table scroll smoothly with sticky headers if needed */
+  .mobile-table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+  }
+
+  .dropdown-button {
+    min-height: 46px;
+    padding: 10px 16px;
+  }
+}
+

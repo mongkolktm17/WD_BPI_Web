@@ -2,14 +2,12 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { RefreshCw } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { SocHeader } from '@/components/soc/SocHeader';
-import { KpiCard, QuickOverview } from '@/components/soc/KpiCards';
-import { HealthBanner } from '@/components/soc/HealthBanner';
-import { ParkingPanel, buildLotData } from '@/components/soc/ParkingPanel';
+import { ExecutivePersonnelCard } from '@/components/soc/ExecutivePersonnelCard';
 import { SurveillancePanel } from '@/components/soc/SurveillancePanel';
-import { HandheldPanel, WalkthroughPanel } from '@/components/soc/EquipmentPanels';
+import { ParkingPanel, buildLotData } from '@/components/soc/ParkingPanel';
+import { UnifiedScreeningPanel } from '@/components/soc/UnifiedScreeningPanel';
 import { calcHealthScore, formatTimeTH, type ZoneStat } from '@/components/soc/soc-utils';
 
 const EMPTY_CHECK = { pass: 0, fail: 0 };
@@ -22,6 +20,17 @@ const EMPTY_ZONES: ZoneStat[] = [
   { name: 'Zone 6', pass: 0, fail: 0 },
 ];
 
+/**
+ * Executive Single-Screen SOC Command Dashboard
+ * Designed for immediate executive oversight:
+ * - Fits 100% in a single viewport on desktop/laptop (zero scrolling)
+ * - Eliminates redundant metrics across cards
+ * - Categorized into 4 clear strategic pillars:
+ *   1. Security Personnel & Shifts
+ *   2. Surveillance & CCTV Infrastructure
+ *   3. Traffic & Parking Management
+ *   4. Physical Screening & Access Equipment
+ */
 export default function SocDashboard() {
   const router = useRouter();
   const [currentTime, setCurrentTime] = useState('');
@@ -30,11 +39,13 @@ export default function SocDashboard() {
   const [loading, setLoading] = useState(true);
   const [fetchedAt, setFetchedAt] = useState<string | null>(null);
 
+  // Pillar 1: Personnel
   const [dayShift, setDayShift] = useState(0);
   const [nightShift, setNightShift] = useState(0);
   const [dayContract, setDayContract] = useState(0);
   const [nightContract, setNightContract] = useState(0);
 
+  // Pillar 3: Parking
   const [carsToday, setCarsToday] = useState(0);
   const [motoToday, setMotoToday] = useState(0);
   const [carCapacity, setCarCapacity] = useState(1075);
@@ -42,12 +53,14 @@ export default function SocDashboard() {
   const [parkingBreakdown, setParkingBreakdown] = useState<Record<string, number>>({});
   const [motoBreakdown, setMotoBreakdown] = useState<Record<string, number>>({});
 
+  // Pillar 2: Surveillance
   const [cctvOnline, setCctvOnline] = useState(0);
   const [cctvTotal, setCctvTotal] = useState(0);
   const [nvrPassed, setNvrPassed] = useState(0);
   const [nvrTotal, setNvrTotal] = useState(0);
   const [nvrHistory, setNvrHistory] = useState<(number | null)[]>([]);
 
+  // Pillar 4: Screening Equipment
   const [handheldReports, setHandheldReports] = useState(0);
   const [hhBattery, setHhBattery] = useState(EMPTY_CHECK);
   const [hhLed, setHhLed] = useState(EMPTY_CHECK);
@@ -108,14 +121,19 @@ export default function SocDashboard() {
     const tick = () => {
       const now = new Date();
       setCurrentTime(
-        now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) +
+        now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) +
           ' ' +
-          now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }),
+          now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }),
       );
     };
     tick();
     const clock = setInterval(tick, 1000);
-    return () => clearInterval(clock);
+    // Periodic background sync every 60s
+    const poller = setInterval(fetchAllData, 60000);
+    return () => {
+      clearInterval(clock);
+      clearInterval(poller);
+    };
   }, [fetchAllData]);
 
   useEffect(() => {
@@ -144,7 +162,6 @@ export default function SocDashboard() {
   const totalContract = dayContract + nightContract;
   const parkingUsed = carsToday + motoToday;
   const parkingCapacity = carCapacity + motoCapacity;
-  const parkingPct = parkingCapacity > 0 ? Math.round((parkingUsed / parkingCapacity) * 100) : 0;
 
   const hhPass = hhBattery.pass + hhLed.pass + hhDetection.pass + hhAlarm.pass;
   const hhFail = hhBattery.fail + hhLed.fail + hhDetection.fail + hhAlarm.fail;
@@ -169,120 +186,84 @@ export default function SocDashboard() {
   const stamp = fetchedAt ? formatTimeTH(fetchedAt) : null;
 
   return (
-    <div className="soc-root min-h-screen font-sans pb-6">
-      <div className="max-w-[1440px] mx-auto px-3 md:px-4 py-3 space-y-3">
+    <div className="soc-root min-h-screen font-sans p-2.5 md:p-3 flex flex-col justify-between">
+      <div className="max-w-[1600px] w-full mx-auto space-y-2.5 flex-1 flex flex-col justify-between">
+        {/* Executive Header & Quick Actions */}
         <SocHeader
           currentTime={currentTime}
           userName={userName}
           userRole={userRole}
           healthy={operational}
+          healthScore={healthScore}
+          loading={loading}
+          onRefresh={fetchAllData}
           onLogout={handleLogout}
         />
 
-        {/* KPI row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-          <KpiCard
-            icon="sun"
-            labelEn="Day Shift"
-            labelTh="กะกลางวัน"
-            sub="07:00–19:00"
-            value={dayShift}
-            total={dayContract}
-            gradient="from-sky-500 via-blue-500 to-blue-600"
-            barFrom="#34d399"
-            barTo="#10b981"
-          />
-          <KpiCard
-            icon="moon"
-            labelEn="Night Shift"
-            labelTh="กะกลางคืน"
-            sub="19:00–07:00"
-            value={nightShift}
-            total={nightContract}
-            gradient="from-indigo-500 via-indigo-600 to-violet-600"
-            barFrom="#c4b5fd"
-            barTo="#8b5cf6"
-          />
-          <KpiCard
-            icon="users"
-            labelEn="Total Active"
-            labelTh="เจ้าหน้าที่ทั้งหมด"
-            sub="All shifts"
-            value={totalActive}
-            total={totalContract}
-            gradient="from-blue-600 via-sky-500 to-cyan-500"
-            barFrom="#67e8f9"
-            barTo="#06b6d4"
-          />
-          <KpiCard
-            icon="car"
-            labelEn="Parking Occupancy"
-            labelTh="อัตราจอดรถ"
-            sub="Cars + Motorcycles"
-            value={parkingUsed}
-            total={parkingCapacity}
-            gradient="from-teal-500 via-cyan-500 to-sky-600"
-            barFrom="#5eead4"
-            barTo="#14b8a6"
-          />
-        </div>
-
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
-          <div className="xl:col-span-9 grid grid-cols-1 lg:grid-cols-3 gap-3">
-            <HealthBanner score={healthScore} operational={operational} />
-          </div>
-          <div className="xl:col-span-3">
-            <QuickOverview day={dayShift} night={nightShift} total={totalActive} />
-          </div>
-        </div>
-
-        {/* Main content */}
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
-          <div className="xl:col-span-5">
-            <ParkingPanel used={parkingUsed} capacity={parkingCapacity} lots={lots} moto={moto} updatedLabel={stamp} />
-          </div>
-          <div className="xl:col-span-7">
-            <SurveillancePanel
-              cctvOnline={cctvOnline}
-              cctvTotal={cctvTotal}
-              nvrPassed={nvrPassed}
-              nvrTotal={nvrTotal}
-              nvrHistory={nvrHistory}
-              updatedLabel={stamp}
-            />
-          </div>
-        </div>
-
-        {/* Equipment */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-          <HandheldPanel
-            checks={{ battery: hhBattery, led: hhLed, detection: hhDetection, alarm: hhAlarm }}
-            totalReports={handheldReports}
+        {/* Row 1: Core Operations - 3 Strategic Pillars */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-2.5">
+          {/* Pillar 1: Security Personnel */}
+          <ExecutivePersonnelCard
+            dayShift={dayShift}
+            dayContract={dayContract}
+            nightShift={nightShift}
+            nightContract={nightContract}
+            totalActive={totalActive}
+            totalContract={totalContract}
             updatedLabel={stamp}
           />
-          <WalkthroughPanel zones={wtZones} totalReports={wtReports} updatedLabel={stamp} />
+
+          {/* Pillar 2: Surveillance Infrastructure */}
+          <SurveillancePanel
+            cctvOnline={cctvOnline}
+            cctvTotal={cctvTotal}
+            nvrPassed={nvrPassed}
+            nvrTotal={nvrTotal}
+            nvrHistory={nvrHistory}
+            updatedLabel={stamp}
+          />
+
+          {/* Pillar 3: Traffic & Parking */}
+          <ParkingPanel
+            used={parkingUsed}
+            capacity={parkingCapacity}
+            lots={lots}
+            moto={moto}
+            updatedLabel={stamp}
+          />
         </div>
 
-        <div className="flex justify-center pt-1">
-          <button
-            onClick={fetchAllData}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-2xl text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            Refresh Data · รีเฟรชข้อมูล
-          </button>
+        {/* Row 2: Pillar 4 - Access Screening & Facility Security */}
+        <div className="w-full">
+          <UnifiedScreeningPanel
+            handheldChecks={{
+              battery: hhBattery,
+              led: hhLed,
+              detection: hhDetection,
+              alarm: hhAlarm,
+            }}
+            handheldTotalReports={handheldReports}
+            walkthroughZones={wtZones}
+            walkthroughTotalReports={wtReports}
+            updatedLabel={stamp}
+          />
         </div>
 
-        <footer className="pt-3 text-center">
-          <div className="flex items-center justify-center gap-2">
-            <img src="/report_assets/Images/PCS_logo.png" alt="PCS" className="h-7 w-auto opacity-80" />
-            <span className="font-semibold text-slate-500 text-sm">PCS Engineering Solution</span>
+        {/* Compact Status Footer */}
+        <footer className="pt-1 text-[11px] text-slate-400 flex flex-col sm:flex-row items-center justify-between border-t border-slate-200/60 px-2 gap-1">
+          <div className="flex items-center gap-2">
+            <img src="/report_assets/Images/PCS_logo.png" alt="PCS" className="h-5 w-auto opacity-70" />
+            <span className="font-semibold text-slate-500">PCS Security & Facility Management</span>
+            <span className="hidden md:inline">· Western Digital BPI Plant Command Center</span>
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">
-            Last Updated: {stamp ?? '—'} · System Status: {healthScore === null ? 'No Data · ยังไม่มีข้อมูล' : operational ? 'All Systems Operational · ระบบทั้งหมดปกติ' : 'Attention Needed · ต้องการตรวจสอบ'}
-          </p>
-          <p className="text-[11px] text-slate-400">&copy; 2026 PCS Engineering Solution. All rights reserved.</p>
+          <div className="flex items-center gap-3">
+            <span>
+              สถานะระบบ: <strong className={operational ? 'text-emerald-600' : 'text-amber-600'}>
+                {healthScore === null ? 'รอข้อมูล' : operational ? 'ปกติทุกระบบ (Operational)' : 'ต้องการตรวจสอบ (Attention)'}
+              </strong>
+            </span>
+            <span>· ซิงค์ล่าสุด: {stamp ?? '—'}</span>
+          </div>
         </footer>
       </div>
     </div>

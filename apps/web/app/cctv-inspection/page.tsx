@@ -4,8 +4,19 @@ import React, { useState, useEffect } from 'react';
 import AnimatedDropdown from '@/components/AnimatedDropdown';
 import MicButton from '@/components/MicButton';
 import { apiFetch } from '@/lib/api';
-import { Calendar, Clock, MapPin, User, RefreshCw, Camera } from 'lucide-react';
+import { Calendar, Clock, MapPin, User, RefreshCw, Camera, Trash2, X, Eye } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
+
+interface CctvInspectionItem {
+  id: number;
+  inspectionDate: string;
+  inspectorName: string;
+  totalChecked: number;
+  totalPassed: number;
+  totalFailed: number;
+  summary: string;
+  createdAt?: string;
+}
 
 export default function CctvInspectionPage() {
   const [inspectionDate, setInspectionDate] = useState('');
@@ -24,8 +35,40 @@ export default function CctvInspectionPage() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const [history, setHistory] = useState<CctvInspectionItem[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [selectedReport, setSelectedReport] = useState<CctvInspectionItem | null>(null);
+
+  const fetchHistory = async () => {
+    setHistoryLoading(true);
+    try {
+      const res = await apiFetch<any>('/api/cctv/inspections?limit=20');
+      const list = res?.data ?? res;
+      if (Array.isArray(list)) {
+        setHistory(list);
+      }
+    } catch (err) {
+      console.error('Failed to load cctv inspections:', err);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('ยืนยันการลบรายงานตรวจเช็คห้อง CCTV นี้?')) return;
+    try {
+      await apiFetch(`/api/cctv/inspections/${id}`, { method: 'DELETE' });
+      setMessage('ลบรายงานเรียบร้อยแล้ว');
+      if (selectedReport?.id === id) setSelectedReport(null);
+      fetchHistory();
+    } catch (err: any) {
+      setMessage(err?.message || 'เกิดข้อผิดพลาดในการลบข้อมูล');
+    }
+  };
+
   useEffect(() => {
     setInspectionDate(new Date().toISOString().split('T')[0]);
+    fetchHistory();
     apiFetch<any>('/api/auth/me')
       .then(async (data) => {
         const d = data?.data ?? data;
@@ -89,6 +132,7 @@ export default function CctvInspectionPage() {
         }),
       });
       setMessage('ส่งรายงานการตรวจเช็คเรียบร้อยแล้ว');
+      fetchHistory();
     } catch (err: any) {
       setMessage(err?.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
     } finally {
@@ -195,11 +239,183 @@ export default function CctvInspectionPage() {
           </div>
 
           <div className="pt-4 flex justify-center">
-            <button type="submit" disabled={loading} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 md:py-3.5 px-6 md:px-10 rounded-full shadow-lg transition-transform active:scale-95 text-sm md:text-base disabled:opacity-50">
+            <button type="submit" disabled={loading} className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-6 md:px-10 rounded-xl sm:rounded-full shadow-lg transition-transform active:scale-95 text-sm md:text-base disabled:opacity-50 min-h-[44px] flex items-center justify-center">
               {loading ? 'กำลังบันทึก...' : '📊 ส่งรายงานตรวจเช็คห้อง CCTV'}
             </button>
           </div>
         </form>
+
+        {/* History Section */}
+        <div className="bg-white rounded-2xl shadow-xl border border-slate-200/60 p-4 md:p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <Clock className="w-5 h-5 text-emerald-600" />
+              ประวัติการตรวจเช็คห้อง CCTV
+            </h2>
+            <button
+              type="button"
+              onClick={fetchHistory}
+              disabled={historyLoading}
+              className="p-2 text-slate-500 hover:text-emerald-600 hover:bg-slate-50 rounded-lg transition-colors"
+              title="รีเฟรชข้อมูล"
+            >
+              <RefreshCw className={`w-4 h-4 ${historyLoading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+
+          {historyLoading && history.length === 0 ? (
+            <div className="text-center py-8 text-slate-400">กำลังโหลดข้อมูล...</div>
+          ) : history.length === 0 ? (
+            <div className="text-center py-8 text-slate-400">ไม่มีข้อมูลประวัติการตรวจเช็ค</div>
+          ) : (
+            <div className="overflow-x-auto mobile-table-scroll">
+              <table className="w-full text-sm min-w-[600px]">
+                <thead>
+                  <tr className="border-b border-slate-200">
+                    <th className="text-left py-3 px-3 font-semibold text-slate-600">วันที่</th>
+                    <th className="text-left py-3 px-3 font-semibold text-slate-600">ผู้ตรวจ</th>
+                    <th className="text-left py-3 px-3 font-semibold text-slate-600">สถานะ</th>
+                    <th className="text-left py-3 px-3 font-semibold text-slate-600">ผลการตรวจ</th>
+                    <th className="text-left py-3 px-3 font-semibold text-slate-600">สรุป</th>
+                    <th className="text-right py-3 px-3 font-semibold text-slate-600">จัดการ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.map((item) => (
+                    <tr
+                      key={item.id}
+                      className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors"
+                      onClick={() => setSelectedReport(item)}
+                    >
+                      <td className="py-3 px-3 text-slate-700 whitespace-nowrap">
+                        {item.inspectionDate ? new Date(item.inspectionDate).toLocaleDateString('th-TH') : '-'}
+                      </td>
+                      <td className="py-3 px-3 text-slate-700 font-medium whitespace-nowrap">
+                        {item.inspectorName || '-'}
+                      </td>
+                      <td className="py-3 px-3 whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                            item.totalFailed === 0
+                              ? 'bg-emerald-50 text-emerald-700'
+                              : 'bg-rose-50 text-rose-700'
+                          }`}
+                        >
+                          {item.totalFailed === 0 ? '✓ ปกติทั้งหมด' : `✗ ผิดปกติ ${item.totalFailed} รายการ`}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 text-slate-600 text-xs whitespace-nowrap">
+                        ผ่าน {item.totalPassed}/{item.totalChecked}
+                      </td>
+                      <td className="py-3 px-3 text-slate-600 max-w-xs truncate text-xs">
+                        {item.summary || '-'}
+                      </td>
+                      <td className="py-3 px-3 text-right whitespace-nowrap">
+                        <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            title="ดูรายละเอียด"
+                            onClick={() => setSelectedReport(item)}
+                            className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            title="ลบ"
+                            onClick={() => handleDelete(item.id)}
+                            className="p-1.5 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Detail Modal */}
+        {selectedReport && (
+          <div
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={() => setSelectedReport(null)}
+          >
+            <div
+              className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-bold text-slate-800">รายละเอียดการตรวจเช็คห้อง CCTV</h3>
+                  <button
+                    onClick={() => setSelectedReport(null)}
+                    className="p-1 hover:bg-slate-100 rounded-lg text-slate-500"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-xs text-slate-500">วันที่ตรวจเช็ค</p>
+                      <p className="text-sm font-medium text-slate-800">
+                        {selectedReport.inspectionDate
+                          ? new Date(selectedReport.inspectionDate).toLocaleDateString('th-TH')
+                          : '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500">ผู้ตรวจ</p>
+                      <p className="text-sm font-medium text-slate-800">{selectedReport.inspectorName || '-'}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-xs text-slate-500">สถานะโดยรวม</p>
+                      <span
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold mt-1 ${
+                          selectedReport.totalFailed === 0
+                            ? 'bg-emerald-50 text-emerald-700'
+                            : 'bg-rose-50 text-rose-700'
+                        }`}
+                      >
+                        {selectedReport.totalFailed === 0 ? '✓ ปกติทั้งหมด' : `✗ ผิดปกติ ${selectedReport.totalFailed} รายการ`}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500">สถิติการตรวจ</p>
+                      <p className="text-sm font-medium text-slate-800 mt-1">
+                        ผ่าน {selectedReport.totalPassed} จาก {selectedReport.totalChecked} รายการ
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-slate-500 mb-1">สรุปรายละเอียดการตรวจเช็ค</p>
+                    <div className="p-3 bg-slate-50 rounded-xl text-sm text-slate-700 whitespace-pre-wrap border border-slate-100">
+                      {selectedReport.summary || '-'}
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedReport(null)}
+                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-medium"
+                    >
+                      ปิด
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>

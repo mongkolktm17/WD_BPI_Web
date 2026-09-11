@@ -11,6 +11,12 @@ const GUARD_POSTS = [
   'Exit inspection', 'FA Lab', 'RCSC', '6/1', '6/2', 'Gate 2 B3',
 ];
 
+const isStatusPass = (status: any) => {
+  if (!status) return false;
+  const s = String(status).toLowerCase().trim();
+  return s === 'normal' || s === 'pass' || s === 'ปกติ' || s === 'พร้อมใช้งาน' || s === 'ผ่าน';
+};
+
 export default function HandheldDetectorPage() {
   const [inspectionDate, setInspectionDate] = useState('');
   const [building, setBuilding] = useState('');
@@ -418,12 +424,12 @@ export default function HandheldDetectorPage() {
           </div>
 
           {/* Submit */}
-          <div className="text-center pt-4 flex justify-center gap-3 flex-wrap">
+          <div className="text-center pt-4 flex flex-col sm:flex-row justify-center gap-2.5 sm:gap-3">
             {editingId && (
               <button
                 type="button"
                 onClick={handleCancelEdit}
-                className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-4 px-8 rounded-3xl text-lg shadow-lg transition-transform active:scale-95"
+                className="w-full sm:w-auto bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3.5 px-8 rounded-xl sm:rounded-full text-base shadow transition-transform active:scale-95 min-h-[44px] flex items-center justify-center"
               >
                 ยกเลิก
               </button>
@@ -431,7 +437,7 @@ export default function HandheldDetectorPage() {
             <button
               type="submit"
               disabled={loading}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 px-12 rounded-3xl text-lg shadow-lg transition-transform active:scale-95 disabled:opacity-50"
+              className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-12 rounded-xl sm:rounded-full text-base shadow-lg transition-transform active:scale-95 disabled:opacity-50 min-h-[44px] flex items-center justify-center"
             >
               {loading ? 'กำลังบันทึก...' : editingId ? '💾 บันทึกการแก้ไข' : 'ส่งรายงาน'}
             </button>
@@ -451,8 +457,8 @@ export default function HandheldDetectorPage() {
           ) : history.length === 0 ? (
             <div className="text-center py-8 text-slate-400">ไม่มีข้อมูลย้อนหลัง</div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+            <div className="overflow-x-auto mobile-table-scroll">
+              <table className="w-full text-sm min-w-[650px]">
                 <thead>
                   <tr className="border-b border-slate-200">
                     <th className="text-left py-3 px-3 font-semibold text-slate-600">วันที่</th>
@@ -469,8 +475,8 @@ export default function HandheldDetectorPage() {
                         {item.checkDate ? new Date(item.checkDate).toLocaleDateString('th-TH') : '-'}
                       </td>
                       <td className="py-3 px-3">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${item.status === 'normal' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
-                          {item.status === 'normal' ? '✓ ผ่าน' : '✗ ไม่ผ่าน'}
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${isStatusPass(item.status) ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+                          {isStatusPass(item.status) ? '✓ ผ่าน' : '✗ ไม่ผ่าน'}
                         </span>
                       </td>
                       <td className="py-3 px-3 text-slate-700">{item.inspector || '-'}</td>
@@ -570,8 +576,8 @@ export default function HandheldDetectorPage() {
                         )}
                         <div>
                           <p className="text-xs text-slate-500">สถานะ</p>
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${selectedReport.status === 'normal' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
-                            {selectedReport.status === 'normal' ? '✓ ผ่าน' : '✗ ไม่ผ่าน'}
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${isStatusPass(selectedReport.status) ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+                            {isStatusPass(selectedReport.status) ? '✓ ผ่าน' : '✗ ไม่ผ่าน'}
                           </span>
                         </div>
                         <div>
@@ -590,8 +596,8 @@ export default function HandheldDetectorPage() {
                           </div>
                           <div>
                             <p className="text-xs text-slate-500">สถานะ</p>
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${selectedReport.status === 'normal' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
-                              {selectedReport.status === 'normal' ? '✓ ผ่าน' : '✗ ไม่ผ่าน'}
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${isStatusPass(selectedReport.status) ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+                              {isStatusPass(selectedReport.status) ? '✓ ผ่าน' : '✗ ไม่ผ่าน'}
                             </span>
                           </div>
                         </div>

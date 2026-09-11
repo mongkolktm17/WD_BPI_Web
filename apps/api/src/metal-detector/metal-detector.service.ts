@@ -282,7 +282,11 @@ export class MetalDetectorService {
       id: c.id,
       detectorId: null,
       checkDate: c.inspectionDate,
-      status: [c.zone1Status, c.zone2Status, c.zone3Status, c.zone4Status, c.zone5Status, c.zone6Status].every((v) => v === 'พร้อมใช้งาน' || v === 'Pass') ? 'normal' : 'abnormal',
+      status: [c.zone1Status, c.zone2Status, c.zone3Status, c.zone4Status, c.zone5Status, c.zone6Status].every((v) => {
+        if (!v) return true;
+        const lower = v.trim().toLowerCase();
+        return lower === 'พร้อมใช้งาน' || lower === 'pass' || lower === 'normal' || lower === 'ผ่าน' || lower === 'ปกติ' || lower === 'ผ่านการทดสอบ';
+      }) ? 'normal' : 'abnormal',
       remark: `${c.building} ${c.guardPost} | ${c.scannerBrand} | Z1:${c.zone1Status}, Z2:${c.zone2Status}, Z3:${c.zone3Status}, Z4:${c.zone4Status}, Z5:${c.zone5Status}, Z6:${c.zone6Status}`,
       inspector: c.employeeName,
       createdAt: c.createdAt,

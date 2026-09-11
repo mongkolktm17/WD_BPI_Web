@@ -516,8 +516,8 @@ export default function CctvReportPage() {
             </div>
 
             {/* Compact History Table */}
-            <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="w-full text-left border-collapse table-auto text-xs">
+            <div className="overflow-x-auto mobile-table-scroll rounded-xl border border-slate-200">
+              <table className="w-full text-left border-collapse table-auto text-xs min-w-[750px]">
                 <thead className="bg-slate-100/80 text-slate-700 uppercase text-[10px] font-bold tracking-wider border-b border-slate-200 sticky top-0 z-10">
                   <tr>
                     <th className="py-2.5 px-3 text-center whitespace-nowrap">วันที่</th>
@@ -910,7 +910,7 @@ export default function CctvReportPage() {
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                   <div className="relative flex-1 sm:w-60">
                     <User className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
@@ -918,14 +918,14 @@ export default function CctvReportPage() {
                       value={reporterName}
                       onChange={(e) => setReporterName(e.target.value)}
                       placeholder="ชื่อผู้ตรวจสอบ..."
-                      className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-800 text-xs font-medium focus:ring-1 focus:ring-slate-900 focus:outline-none"
+                      className="w-full pl-8 pr-3 py-2.5 sm:py-1.5 rounded-lg border border-slate-200 bg-white text-slate-800 text-xs font-medium focus:ring-1 focus:ring-slate-900 focus:outline-none min-h-[40px] sm:min-h-0"
                     />
                   </div>
                   <button
                     type="button"
                     onClick={handleSubmitReport}
                     disabled={submitting}
-                    className="inline-flex items-center justify-center gap-1.5 px-5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-sm transition-all disabled:opacity-50 flex-shrink-0"
+                    className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 sm:py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-sm transition-all disabled:opacity-50 flex-shrink-0 min-h-[44px] sm:min-h-0"
                   >
                     <Send className="w-3.5 h-3.5" />
                     {submitting ? 'กำลังบันทึก...' : 'ส่งรายงาน'}

@@ -363,8 +363,8 @@ export default function ReportPage() {
             </button>
           </div>
 
-          <div className="flex flex-wrap gap-3 items-end mb-6 bg-slate-50/50 p-4 rounded-2xl border border-slate-200/50">
-            <div className="flex-1 min-w-[200px]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6 bg-slate-50/50 p-3 sm:p-4 rounded-2xl border border-slate-200/50">
+            <div>
               <AnimatedDropdown
                 options={REPORT_TYPE_OPTIONS}
                 value={filterType}
@@ -372,7 +372,7 @@ export default function ReportPage() {
                 label="ประเภทรายงาน"
               />
             </div>
-            <div className="flex-1 min-w-[150px] relative">
+            <div className="relative">
               <label className="block text-xs font-semibold text-slate-500 mb-1 ml-1">ผู้รายงาน (ชื่อ/รหัส)</label>
               <input
                 type="text"
@@ -380,7 +380,7 @@ export default function ReportPage() {
                 value={filterSubmitter}
                 onChange={(e) => handleSubmitterChange(e.target.value)}
                 placeholder="ค้นหา..."
-                className="w-full bg-white/80 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400 transition-all"
+                className="w-full bg-white/80 border border-slate-200 rounded-xl px-3 py-2.5 sm:py-2 text-base sm:text-sm outline-none focus:ring-2 focus:ring-blue-400 transition-all"
               />
               <datalist id="submitter-suggestions">
                 {suggestions.map((s, i) => (
@@ -388,34 +388,36 @@ export default function ReportPage() {
                 ))}
               </datalist>
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 mb-1 ml-1">ตั้งแต่วันที่</label>
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
-                className="bg-white/80 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400 transition-all"
-              />
+            <div className="grid grid-cols-2 gap-2 sm:col-span-2 lg:col-span-2">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1 ml-1">ตั้งแต่วันที่</label>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
+                  className="w-full bg-white/80 border border-slate-200 rounded-xl px-3 py-2 sm:py-2 text-base sm:text-sm outline-none focus:ring-2 focus:ring-blue-400 transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1 ml-1">ถึงวันที่</label>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
+                  className="w-full bg-white/80 border border-slate-200 rounded-xl px-3 py-2 sm:py-2 text-base sm:text-sm outline-none focus:ring-2 focus:ring-blue-400 transition-all"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 mb-1 ml-1">ถึงวันที่</label>
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
-                className="bg-white/80 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400 transition-all"
-              />
-            </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 sm:col-span-2 lg:col-span-4 pt-1">
               <button
                 onClick={() => { setPage(1); fetchAllReports(); }}
-                className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95"
+                className="flex-1 sm:flex-initial bg-blue-500 hover:bg-blue-600 text-white font-bold py-2.5 px-6 rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95 min-h-[44px] flex items-center justify-center"
               >
                 กรองข้อมูล
               </button>
               <button
                 onClick={handleClearFilters}
-                className="bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold py-2 px-4 rounded-xl transition-all active:scale-95 text-center flex items-center gap-1"
+                className="bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold py-2.5 px-4 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-1 min-h-[44px]"
               >
                 <X className="w-3.5 h-3.5" />
                 ล้าง

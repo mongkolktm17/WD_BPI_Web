@@ -413,6 +413,98 @@ export class CctvService {
     });
   }
 
+  async findAllCameraCheckRounds(query?: { dateFrom?: string; dateTo?: string; limit?: number }) {
+    const limit = query?.limit || 50;
+    const checks = await this.prisma.cameraCheck.findMany({
+      where: { isDeleted: false },
+      include: { camera: { include: { building: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 2000,
+    });
+
+    // Group checks into rounds by checkDate + building + NVR + checkedBy
+    const roundMap: Record<string, any> = {};
+
+    for (const c of checks) {
+      const dateStr = c.checkDate ? new Date(c.checkDate).toISOString().split('T')[0] : '';
+      const bldg = c.camera?.building?.buildingCode || (c.remark?.match(/Building\s+([A-Z0-9]+)/i)?.[1]) || 'B2';
+      const nvr = (c.remark?.match(/NVR[-\s]*(\d+)/i)?.[0]) || 'NVR-1';
+      const checkedBy = c.checkedBy || 'เจ้าหน้าที่';
+      const roundKey = `${dateStr}_${bldg}_${nvr}_${checkedBy}`;
+
+      if (!roundMap[roundKey]) {
+        roundMap[roundKey] = {
+          id: roundKey,
+          roundKey,
+          checkDate: c.checkDate,
+          building: bldg,
+          nvr,
+          checkedBy,
+          createdAt: c.createdAt,
+          totalCameras: 0,
+          passedCameras: 0,
+          failedCameras: 0,
+          status: 'pass',
+          cameras: [],
+        };
+      }
+
+      const isPass = c.status === 'pass' || c.status === 'normal' || c.status === 'correct';
+      roundMap[roundKey].totalCameras += 1;
+      if (isPass) {
+        roundMap[roundKey].passedCameras += 1;
+      } else {
+        roundMap[roundKey].failedCameras += 1;
+        roundMap[roundKey].status = 'fail';
+      }
+
+      roundMap[roundKey].cameras.push({
+        id: c.id,
+        cameraId: c.cameraId,
+        cameraName: c.camera?.cameraName || `Camera ${c.camera?.cameraNo || c.id}`,
+        cameraNo: c.camera?.cameraNo || '',
+        status: c.status,
+        isPass,
+        remark: c.remark,
+      });
+    }
+
+    return Object.values(roundMap)
+      .sort((a: any, b: any) => new Date(b.createdAt || b.checkDate).getTime() - new Date(a.createdAt || a.checkDate).getTime())
+      .slice(0, limit);
+  }
+
+  async removeCameraCheckRound(roundKey: string, deletedBy?: string) {
+    // roundKey is dateStr_bldg_nvr_checkedBy
+    const parts = roundKey.split('_');
+    if (parts.length < 4) {
+      throw new BadRequestException('รหัสรอบไม่ถูกต้อง');
+    }
+    const [dateStr, bldg, nvr, ...checkedByParts] = parts;
+    const checkedBy = checkedByParts.join('_');
+
+    const checks = await this.prisma.cameraCheck.findMany({
+      where: {
+        isDeleted: false,
+        checkDate: new Date(dateStr),
+        checkedBy,
+        remark: { contains: nvr },
+      },
+    });
+
+    if (checks.length === 0) {
+      return { message: 'ไม่พบรายการที่ต้องการลบ', count: 0 };
+    }
+
+    const ids = checks.map((c) => c.id);
+    await this.prisma.cameraCheck.updateMany({
+      where: { id: { in: ids } },
+      data: { isDeleted: true, deletedBy: deletedBy ?? null, deletedAt: new Date() },
+    });
+
+    return { message: `ลบรายงานการตรวจสอบมุมกล้องรอบ ${roundKey} เรียบร้อยแล้ว`, count: ids.length };
+  }
+
   async createCameraCheck(dto: CreateCameraCheckDto & { buildingName?: string }) {
     let cameraId = dto.cameraId;
     let camera = cameraId ? await this.prisma.camera.findUnique({ where: { id: cameraId } }) : null;
@@ -707,6 +799,189 @@ export class CctvService {
     await this.findOneNvrRecording(id);
     await this.prisma.nvrRecordingDay.delete({ where: { id } });
     return { message: 'ลบข้อมูลการบันทึก NVR เรียบร้อยแล้ว' };
+  }
+
+  async findAllNvrRecordingRounds(query?: { dateFrom?: string; dateTo?: string; limit?: number }) {
+    const limit = query?.limit || 50;
+
+    // 1. Fetch from legacy reports & details (grouped by submission_id)
+    const legacyRounds = await this.prisma.$queryRawUnsafe<any[]>(`
+      SELECT 
+        r.submission_id AS id,
+        r.submission_id AS "submissionId",
+        MIN(r.report_time) AS "reportTime",
+        DATE(MIN(r.report_time))::text AS "recordDate",
+        COALESCE(MAX(u.full_name), MAX(u.username), 'System Admin') AS "submittedBy",
+        MAX(r.submitted_by_id) AS "submittedById",
+        COUNT(d.id)::int AS "totalNvrs",
+        SUM(CASE WHEN d.recording_days >= 62 THEN 1 ELSE 0 END)::int AS "passedNvrs",
+        SUM(CASE WHEN d.recording_days < 62 THEN 1 ELSE 0 END)::int AS "failedNvrs",
+        json_agg(
+          json_build_object(
+            'building', r.building,
+            'nvrName', d.nvr_name,
+            'daysRecorded', d.recording_days,
+            'targetDays', d.target_days,
+            'status', CASE WHEN d.recording_days >= 62 THEN 'pass' ELSE 'fail' END
+          )
+        ) AS nvrs
+      FROM nvr_recording_reports r
+      LEFT JOIN nvr_recording_details d ON r.id = d.report_id
+      LEFT JOIN users u ON r.submitted_by_id = u.id
+      WHERE r.submission_id IS NOT NULL
+      GROUP BY r.submission_id
+      ORDER BY MIN(r.report_time) DESC
+      LIMIT ${limit}
+    `);
+
+    const formattedLegacy = legacyRounds.map((row) => {
+      const nvrsObj: Record<string, any> = {};
+      const nvrsList: any[] = row.nvrs || [];
+      for (const item of nvrsList) {
+        if (!item || !item.nvrName) continue;
+        const b = (item.building || 'B2').toUpperCase();
+        const key = `${b}_${item.nvrName}`;
+        nvrsObj[key] = item;
+      }
+
+      return {
+        id: row.id,
+        submissionId: row.submissionId,
+        reportTime: row.reportTime,
+        recordDate: row.recordDate,
+        submittedBy: row.submittedBy,
+        submittedById: row.submittedById,
+        totalNvrs: row.totalNvrs || Object.keys(nvrsObj).length,
+        passedNvrs: row.passedNvrs || 0,
+        failedNvrs: row.failedNvrs || 0,
+        isAllPassed: (row.failedNvrs || 0) === 0,
+        nvrs: nvrsObj,
+        _legacy: true,
+      };
+    });
+
+    // 2. Fetch from new nvr_recording_days grouped by round (date_trunc minute or date)
+    const newDays = await this.prisma.nvrRecordingDay.findMany({
+      include: { nvr: { include: { building: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 2000,
+    });
+
+    const newRoundMap: Record<string, any> = {};
+    for (const d of newDays) {
+      const timeKey = d.createdAt ? new Date(d.createdAt).toISOString().slice(0, 16) : d.recordDate.toISOString().split('T')[0];
+      const roundId = `round_${timeKey.replace(/[:\-T]/g, '')}`;
+
+      if (!newRoundMap[roundId]) {
+        newRoundMap[roundId] = {
+          id: roundId,
+          submissionId: roundId,
+          reportTime: d.createdAt,
+          recordDate: d.recordDate ? new Date(d.recordDate).toISOString().split('T')[0] : '',
+          submittedBy: d.remark?.split('|')?.[0]?.trim() || 'System Admin',
+          totalNvrs: 0,
+          passedNvrs: 0,
+          failedNvrs: 0,
+          isAllPassed: true,
+          nvrs: {},
+          _legacy: false,
+        };
+      }
+
+      const b = (d.nvr.building?.buildingCode || 'B2').toUpperCase();
+      const key = `${b}_${d.nvr.nvrName}`;
+      const isPass = d.daysRecorded >= 62;
+
+      newRoundMap[roundId].totalNvrs += 1;
+      if (isPass) newRoundMap[roundId].passedNvrs += 1;
+      else {
+        newRoundMap[roundId].failedNvrs += 1;
+        newRoundMap[roundId].isAllPassed = false;
+      }
+
+      newRoundMap[roundId].nvrs[key] = {
+        id: d.id,
+        nvrId: d.nvrId,
+        building: b,
+        nvrName: d.nvr.nvrName,
+        daysRecorded: d.daysRecorded,
+        targetDays: 62,
+        status: isPass ? 'pass' : 'fail',
+      };
+    }
+
+    const newRounds = Object.values(newRoundMap);
+
+    // Merge legacy and new rounds sorted by reportTime desc
+    const combined = [...formattedLegacy, ...newRounds]
+      .sort((a, b) => new Date(b.reportTime).getTime() - new Date(a.reportTime).getTime())
+      .slice(0, limit);
+
+    return combined;
+  }
+
+  async removeNvrRecordingRound(roundId: string) {
+    if (roundId.startsWith('sub_')) {
+      const reports = await this.prisma.nvrRecordingReport.findMany({
+        where: { submissionId: roundId },
+      });
+      const reportIds = reports.map((r) => r.id);
+      if (reportIds.length > 0) {
+        await this.prisma.nvrRecordingDetail.deleteMany({
+          where: { reportId: { in: reportIds } },
+        });
+        await this.prisma.nvrRecordingReport.deleteMany({
+          where: { submissionId: roundId },
+        });
+      }
+      return { message: `ลบรายงานรอบ ${roundId} เรียบร้อยแล้ว` };
+    }
+
+    if (roundId.startsWith('round_')) {
+      // Find rows within date/time range
+      const timeStr = roundId.replace('round_', '');
+      const year = timeStr.slice(0, 4);
+      const month = timeStr.slice(4, 6);
+      const day = timeStr.slice(6, 8);
+      const hour = timeStr.slice(8, 10);
+      const minute = timeStr.slice(10, 12);
+      const dt = new Date(`${year}-${month}-${day}T${hour}:${minute}:00Z`);
+
+      if (!isNaN(dt.getTime())) {
+        const start = new Date(dt.getTime() - 60000);
+        const end = new Date(dt.getTime() + 60000);
+        await this.prisma.nvrRecordingDay.deleteMany({
+          where: { createdAt: { gte: start, lte: end } },
+        });
+      }
+      return { message: `ลบรายงานรอบ ${roundId} เรียบร้อยแล้ว` };
+    }
+
+    throw new BadRequestException('รหัสรอบไม่ถูกต้อง');
+  }
+
+  async updateNvrRecordingRound(roundId: string, daysData: Record<string, number>) {
+    if (roundId.startsWith('sub_')) {
+      const reports = await this.prisma.nvrRecordingReport.findMany({
+        where: { submissionId: roundId },
+      });
+      for (const r of reports) {
+        const details = await this.prisma.nvrRecordingDetail.findMany({ where: { reportId: r.id } });
+        for (const d of details) {
+          const key = `${r.building}_${d.nvrName}`;
+          if (daysData[key] !== undefined) {
+            const days = Number(daysData[key]);
+            await this.prisma.nvrRecordingDetail.update({
+              where: { id: d.id },
+              data: { recordingDays: days },
+            });
+          }
+        }
+      }
+      return { message: `อัปเดตรายงานรอบ ${roundId} เรียบร้อยแล้ว` };
+    }
+
+    return { message: 'อัปเดตเรียบร้อยแล้ว' };
   }
 
   // ─── Buildings ────────────────────────────────────────────────

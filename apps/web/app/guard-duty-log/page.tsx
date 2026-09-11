@@ -456,17 +456,17 @@ export default function GuardDutyLogPage() {
             </div>
           </div>
 
-          <div className="pt-2 flex justify-center gap-3 flex-wrap">
+          <div className="pt-2 flex flex-col sm:flex-row justify-center gap-2.5 sm:gap-3">
             <button
               type="submit"
               disabled={loading}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 md:py-3.5 px-8 md:px-12 rounded-full shadow-lg transition-transform active:scale-95 text-sm md:text-base flex items-center gap-2"
+              className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-8 md:px-12 rounded-xl sm:rounded-full shadow-lg transition-transform active:scale-95 text-sm md:text-base flex items-center justify-center gap-2 min-h-[44px]"
             >
               {loading ? 'กำลังบันทึก...' : editingId !== null ? '💾 บันทึกการแก้ไข (PUT)' : `💾 บันทึกจำนวน รปภ. (${selectedShift === 'morning' ? 'กะเช้า' : selectedShift === 'evening' ? 'กะดึก' : 'ทั้งสองกะ'})`}
             </button>
             {editingId !== null && (
               <button type="button" onClick={handleCancelEdit}
-                className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 px-8 rounded-full shadow transition-colors text-sm md:text-base inline-flex items-center gap-2">
+                className="w-full sm:w-auto bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3.5 px-8 rounded-xl sm:rounded-full shadow transition-colors text-sm md:text-base inline-flex items-center justify-center gap-2 min-h-[44px]">
                 <X className="w-4 h-4" />ยกเลิกการแก้ไข
               </button>
             )}

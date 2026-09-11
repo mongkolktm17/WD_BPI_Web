@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/api';
 import MicButton from '@/components/MicButton';
-import { RefreshCw, Camera, Eye, Edit, Building2, Cctv, ChevronDown, Upload } from 'lucide-react';
+import { RefreshCw, Camera, Eye, Edit, Building2, Cctv, ChevronDown, Upload, Trash2, X } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 
 interface ImageMapResponse {
@@ -27,6 +27,31 @@ interface CameraCheckRecord {
   checkedBy: string | null;
   createdAt: string;
   camera: CameraRecord;
+}
+
+interface CameraCheckRoundCamera {
+  id: number;
+  cameraId: number;
+  cameraName: string;
+  cameraNo: string;
+  status: string;
+  isPass: boolean;
+  remark: string;
+}
+
+interface CameraCheckRoundReport {
+  id: string;
+  roundKey: string;
+  checkDate: string;
+  building: string;
+  nvr: string;
+  checkedBy: string;
+  createdAt: string;
+  totalCameras: number;
+  passedCameras: number;
+  failedCameras: number;
+  status: string;
+  cameras: CameraCheckRoundCamera[];
 }
 
 const BUILDING_META: Record<string, { label: string; color: string; gradient: string; shadow: string }> = {
@@ -278,8 +303,9 @@ export default function CctvAngleCheckPage() {
   const [loadingImages, setLoadingImages] = useState(true);
   const [cameras, setCameras] = useState<CameraRecord[]>([]);
   const [channelStatuses, setChannelStatuses] = useState<Record<number, 'correct' | 'incorrect'>>({});
-  const [viewReports, setViewReports] = useState<CameraCheckRecord[]>([]);
+  const [viewReports, setViewReports] = useState<CameraCheckRoundReport[]>([]);
   const [loadingReports, setLoadingReports] = useState(false);
+  const [activeViewRound, setActiveViewRound] = useState<CameraCheckRoundReport | null>(null);
   const [buildings, setBuildings] = useState<any[]>([]);
   const [channelRemarks, setChannelRemarks] = useState<Record<number, string>>({});
   const [selectedChannel, setSelectedChannel] = useState<number | null>(null);
@@ -335,14 +361,26 @@ export default function CctvAngleCheckPage() {
     if (mode !== 'view') return;
     setLoadingReports(true);
     try {
-      const res = await apiFetch<{ success: boolean; data: CameraCheckRecord[] }>(`/api/cctv/camera-checks?limit=200`);
-      setViewReports(res.data || []);
+      const res = await apiFetch<any>(`/api/cctv/camera-checks/rounds?limit=100`);
+      const data = res?.data ?? res ?? [];
+      setViewReports(Array.isArray(data) ? data : []);
     } catch {
       setViewReports([]);
     } finally {
       setLoadingReports(false);
     }
   }, [mode]);
+
+  const handleDeleteRound = async (roundKey: string) => {
+    if (!confirm('ยืนยันการลบผลการตรวจสอบมุมกล้องรอบนี้ทั้งหมด?')) return;
+    try {
+      await apiFetch(`/api/cctv/camera-checks/rounds/${encodeURIComponent(roundKey)}`, { method: 'DELETE' });
+      setMessage('✅ ลบรายการรอบเรียบร้อยแล้ว');
+      fetchReports();
+    } catch {
+      setMessage('เกิดข้อผิดพลาดในการลบข้อมูล');
+    }
+  };
 
   useEffect(() => { fetchBuildings(); }, [fetchBuildings]);
   useEffect(() => { fetchImageMap(); setChannelStatuses({}); }, [fetchImageMap]);
@@ -453,7 +491,7 @@ export default function CctvAngleCheckPage() {
     const statuses: Record<number, 'correct' | 'incorrect'> = {};
     const imageMapLocal: Record<string, string> = {};
     viewReports.forEach(r => {
-      const ch = getChannelFromRemark(r.remark);
+      const ch = getChannelFromRemark((r as any).remark || '');
       if (ch) {
         statuses[ch] = r.status === 'pass' || r.status === 'normal' || r.status === 'correct' ? 'correct' : 'incorrect';
         const imgKey = `${selectedBuilding}-${nvrNum}-${ch}`;
@@ -493,12 +531,20 @@ export default function CctvAngleCheckPage() {
         )}
 
         {mode === 'view' ? (
-          /* VIEW MODE */
+          /* VIEW MODE - ROUND BASED */
           <div className="space-y-4">
             <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
-              <h3 className="text-base md:text-lg font-bold text-slate-800 border-b border-slate-200 pb-2 mb-4">
-                📋 รายงานตรวจสอบมุมกล้องย้อนหลัง
-              </h3>
+              <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-4 flex-wrap gap-2">
+                <div>
+                  <h3 className="text-base md:text-lg font-bold text-slate-800">
+                    📋 รายงานตรวจสอบมุมกล้องย้อนหลัง (สรุปรวมตามรอบรายงาน)
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    แสดงผล 1 แถวต่อ 1 รอบตรวจมุมกล้อง สามารถคลิกไอคอนดวงตาเพื่อดูและตรวจเช็คภาพกล้องรายตัวได้
+                  </p>
+                </div>
+              </div>
+
               {loadingReports ? (
                 <div className="flex items-center justify-center py-12">
                   <RefreshCw className="w-5 h-5 text-blue-500 animate-spin mr-2" />
@@ -507,32 +553,156 @@ export default function CctvAngleCheckPage() {
               ) : viewReports.length === 0 ? (
                 <div className="text-center py-12 text-slate-400 text-sm">ไม่พบรายการตรวจสอบมุมกล้อง</div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                <div className="overflow-x-auto mobile-table-scroll rounded-xl border border-slate-200">
+                  <table className="w-full text-sm min-w-[650px]">
                     <thead>
-                      <tr className="border-b border-slate-200">
-                        <th className="text-left py-2 px-3 font-semibold text-slate-600">วันที่</th>
-                        <th className="text-left py-2 px-3 font-semibold text-slate-600">กล้อง</th>
-                        <th className="text-left py-2 px-3 font-semibold text-slate-600">สถานะ</th>
-                        <th className="text-left py-2 px-3 font-semibold text-slate-600">หมายเหตุ</th>
-                        <th className="text-left py-2 px-3 font-semibold text-slate-600">ชื่อผู้ที่ส่งรายงาน</th>
+                      <tr className="bg-slate-100 text-slate-600 text-xs uppercase border-b border-slate-200">
+                        <th className="text-left py-3 px-4 font-semibold">วันที่</th>
+                        <th className="text-left py-3 px-3 font-semibold">อาคาร</th>
+                        <th className="text-left py-3 px-3 font-semibold">NVR</th>
+                        <th className="text-center py-3 px-3 font-semibold">ผลการตรวจ</th>
+                        <th className="text-left py-3 px-4 font-semibold">ผู้ตรวจ</th>
+                        <th className="text-center py-3 px-3 font-semibold">จัดการ</th>
                       </tr>
                     </thead>
-                    <tbody>
-                      {viewReports.map((r) => (
-                        <tr key={r.id} className="border-b border-slate-100 hover:bg-slate-50">
-                          <td className="py-2 px-3 text-slate-700">{new Date(r.checkDate).toLocaleDateString('th-TH')}</td>
-                          <td className="py-2 px-3 text-slate-700">{r.camera.cameraName || `Camera ${r.camera.cameraNo}`}</td>
-                          <td className="py-2 px-3">{getStatusBadge(r.status)}</td>
-                          <td className="py-2 px-3 text-slate-600 max-w-xs truncate">{r.remark}</td>
-                          <td className="py-2 px-3 text-slate-700 font-medium">{r.checkedBy || '-'}</td>
-                        </tr>
-                      ))}
+                    <tbody className="divide-y divide-slate-100">
+                      {viewReports.map((rnd) => {
+                        const isAllPass = rnd.failedCameras === 0;
+                        return (
+                          <tr key={rnd.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="py-3 px-4 text-slate-700 font-medium">
+                              {rnd.checkDate ? new Date(rnd.checkDate).toLocaleDateString('th-TH') : '-'}
+                            </td>
+                            <td className="py-3 px-3 font-bold text-blue-600">{rnd.building}</td>
+                            <td className="py-3 px-3 font-semibold text-slate-700">{rnd.nvr}</td>
+                            <td className="py-3 px-3 text-center">
+                              <span
+                                className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                                  isAllPass
+                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                    : 'bg-rose-100 text-rose-800 border border-rose-200'
+                                }`}
+                              >
+                                {isAllPass ? '✓' : '✕'} ถูกต้อง {rnd.passedCameras}/{rnd.totalCameras} กล้อง
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-slate-700">{rnd.checkedBy || '-'}</td>
+                            <td className="py-3 px-3 text-center">
+                              <div className="flex items-center justify-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveViewRound(rnd)}
+                                  title="ดูรายละเอียดกล้องทุกตัวในรอบนี้"
+                                  className="p-1.5 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteRound(rnd.roundKey)}
+                                  title="ลบทั้งรอบนี้"
+                                  className="p-1.5 text-rose-600 hover:bg-rose-100 rounded-lg transition-colors"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
               )}
             </div>
+
+            {/* Modal: View Cameras for Round */}
+            {activeViewRound && (
+              <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3 md:p-4 animate-fade-in">
+                <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
+                  <div className="p-4 md:p-6 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+                    <div>
+                      <h3 className="text-base md:text-xl font-bold text-slate-800 flex items-center gap-2">
+                        <Camera className="w-5 h-5 text-blue-600" />
+                        ผลการตรวจมุมกล้อง: อาคาร {activeViewRound.building} {activeViewRound.nvr}
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-1">
+                        วันที่: {new Date(activeViewRound.checkDate).toLocaleDateString('th-TH')} | ผู้ตรวจ:{' '}
+                        <span className="font-semibold text-slate-700">{activeViewRound.checkedBy}</span> | ผ่าน{' '}
+                        <span className="font-bold text-emerald-600">
+                          {activeViewRound.passedCameras}/{activeViewRound.totalCameras}
+                        </span>{' '}
+                        กล้อง
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setActiveViewRound(null)}
+                      className="p-2 hover:bg-slate-200 rounded-full text-slate-500 transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <div className="p-4 md:p-6 overflow-y-auto space-y-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                      {activeViewRound.cameras.map((cam, idx) => {
+                        const chMatch = cam.remark?.match(/CH-(\d+)/i) || cam.cameraNo?.match(/(\d+)$/);
+                        const ch = chMatch ? parseInt(chMatch[1], 10) : idx + 1;
+                        const nvrDigits = activeViewRound.nvr.replace(/\D/g, '');
+                        const imgKey = `${activeViewRound.building}-${nvrDigits}-${ch}`;
+                        const imgSrc = imageMap[imgKey];
+
+                        return (
+                          <div
+                            key={cam.id}
+                            className={`p-2.5 rounded-2xl border flex flex-col items-center justify-between gap-1.5 ${
+                              cam.isPass ? 'bg-slate-50 border-slate-200' : 'bg-rose-50 border-rose-300 shadow-sm'
+                            }`}
+                          >
+                            <div className="w-full flex justify-between items-center text-[11px]">
+                              <span className="font-bold text-slate-800">CH-{ch < 10 ? `0${ch}` : ch}</span>
+                              <span
+                                className={`px-2 py-0.5 rounded-full font-bold ${
+                                  cam.isPass ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                                }`}
+                              >
+                                {cam.isPass ? '✓ ปกติ' : '✕ ผิดมุม'}
+                              </span>
+                            </div>
+
+                            <div className="w-full aspect-video bg-slate-200 rounded-xl overflow-hidden flex items-center justify-center relative">
+                              {imgSrc ? (
+                                <img
+                                  src={imgSrc}
+                                  alt={`CH-${ch}`}
+                                  className="w-full h-full object-cover"
+                                  loading="lazy"
+                                />
+                              ) : (
+                                <Camera className="w-6 h-6 text-slate-400" />
+                              )}
+                            </div>
+
+                            <div className="w-full text-[10px] text-slate-500 truncate text-center" title={cam.cameraName}>
+                              {cam.cameraName || `Camera ${ch}`}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="p-4 md:p-6 border-t border-slate-200 bg-slate-50 flex justify-end">
+                    <button
+                      onClick={() => setActiveViewRound(null)}
+                      className="px-6 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs md:text-sm"
+                    >
+                      ปิดหน้าต่าง
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           /* CREATE MODE */
@@ -552,7 +722,7 @@ export default function CctvAngleCheckPage() {
                 <Building2 className="w-4 h-4 text-slate-500" />
                 <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">เลือกอาคาร</span>
               </div>
-              <div className="flex gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                 {Object.entries(BUILDING_META).map(([bldg, meta]) => {
                   const isActive = selectedBuilding === bldg;
                   const totalCameras = (NVR_CAMERA_CONFIG[bldg] || []).reduce((a, b) => a + b, 0);
@@ -660,7 +830,7 @@ export default function CctvAngleCheckPage() {
                   <span className="text-slate-400 text-sm">กำลังโหลดภาพ...</span>
                 </div>
               ) : (
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 md:gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2 md:gap-3">
                   {Array.from({ length: channelCount }, (_, i) => i + 1).map((ch) => {
                     const isCorrect = (channelStatuses[ch] || 'correct') === 'correct';
                     const imgKey = `${selectedBuilding}-${nvrNum}-${ch}`;
@@ -702,7 +872,7 @@ export default function CctvAngleCheckPage() {
               )}
 
               <div className="pt-4 md:pt-6 flex justify-center">
-                <button onClick={handleSave} disabled={loading} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 md:py-3.5 px-6 md:px-10 rounded-full shadow-lg transition-transform active:scale-95 disabled:opacity-50 text-sm md:text-base">
+                <button onClick={handleSave} disabled={loading} className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-8 md:px-12 rounded-xl sm:rounded-full shadow-lg transition-transform active:scale-95 disabled:opacity-50 text-sm md:text-base min-h-[44px] flex items-center justify-center">
                   {loading ? 'กำลังบันทึก...' : '💾 บันทึกผลการตรวจมุมกล้อง'}
                 </button>
               </div>
