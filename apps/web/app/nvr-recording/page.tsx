@@ -15,8 +15,11 @@ interface NvrDevice {
 
 interface Building {
   id: number;
-  name: string;
-  code: string;
+  buildingName?: string;
+  buildingCode?: string;
+  name?: string;
+  code?: string;
+  description?: string;
 }
 
 interface NvrRoundItem {
@@ -115,7 +118,7 @@ export default function NvrRecordingPage() {
 
   const getLatestRecordingDays = (nvr: NvrDevice): number | null => {
     const bldg = buildings.find((b) => b.id === nvr.buildingId);
-    const bCode = (bldg?.code || 'B2').toUpperCase();
+    const bCode = (bldg?.buildingCode || bldg?.code || 'B2').toUpperCase();
     const key = `${bCode}_${nvr.nvrName}`;
     for (const rnd of rounds) {
       if (rnd.nvrs && rnd.nvrs[key] && rnd.nvrs[key].daysRecorded !== undefined) {
@@ -188,7 +191,7 @@ export default function NvrRecordingPage() {
         });
       });
       await Promise.all(batch);
-      setMessage(`บันทึกรายงาน NVR อาคาร ${buildings.find((b) => String(b.id) === selectedBuilding)?.code || ''} เรียบร้อยแล้ว`);
+      setMessage(`บันทึกรายงาน NVR อาคาร ${buildings.find((b) => String(b.id) === selectedBuilding)?.buildingCode || buildings.find((b) => String(b.id) === selectedBuilding)?.code || ''} เรียบร้อยแล้ว`);
       await fetchRounds();
     } catch {
       setMessage('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
@@ -256,19 +259,26 @@ export default function NvrRecordingPage() {
         {/* Building Tabs (For Creation) */}
         <div className="bg-white rounded-2xl p-4 md:p-6 shadow-xl border border-slate-200/60 space-y-4">
           <div className="flex justify-center gap-2 md:gap-4 flex-wrap">
-            {buildings.map((bldg) => (
-              <button
-                key={bldg.id}
-                onClick={() => setSelectedBuilding(String(bldg.id))}
-                className={`px-4 md:px-6 py-2 md:py-3 rounded-2xl font-bold transition-all text-sm md:text-base ${
-                  selectedBuilding === String(bldg.id)
-                    ? 'bg-blue-600 text-white shadow-lg scale-105'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
-              >
-                🏢 อาคาร {bldg.code || bldg.name}
-              </button>
-            ))}
+            {buildings.map((bldg) => {
+              const bCode = bldg.buildingCode || bldg.code || '';
+              const bName = bldg.buildingName || bldg.name || `อาคาร ${bCode}`;
+              const displayText = bName.includes(bCode) ? bName : `${bName} (${bCode})`;
+
+              return (
+                <button
+                  key={bldg.id}
+                  onClick={() => setSelectedBuilding(String(bldg.id))}
+                  className={`px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-bold transition-all text-sm md:text-base flex items-center gap-2 shadow-sm ${
+                    selectedBuilding === String(bldg.id)
+                      ? 'bg-blue-600 text-white shadow-lg scale-105 ring-2 ring-blue-400/50'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  <span className="text-lg">🏢</span>
+                  <span>{displayText}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -277,8 +287,18 @@ export default function NvrRecordingPage() {
           onSubmit={handleSubmit}
           className="bg-white rounded-2xl p-4 md:p-6 shadow-xl border border-slate-200/60 space-y-4 md:space-y-6"
         >
-          <h3 className="text-base md:text-xl font-bold text-slate-800 border-b border-slate-200 pb-2 md:pb-3">
-            📋 บันทึกจำนวนวันย้อนหลัง - อาคาร {buildings.find((b) => String(b.id) === selectedBuilding)?.code || ''} (เกณฑ์มาตรฐาน ≥62 วัน)
+          <h3 className="text-base md:text-xl font-bold text-slate-800 border-b border-slate-200 pb-2 md:pb-3 flex items-center gap-2">
+            <span>📋 บันทึกจำนวนวันย้อนหลัง -</span>
+            <span className="text-blue-600">
+              {(() => {
+                const currentBldg = buildings.find((b) => String(b.id) === selectedBuilding);
+                if (!currentBldg) return '';
+                const code = currentBldg.buildingCode || currentBldg.code || '';
+                const name = currentBldg.buildingName || currentBldg.name || `อาคาร ${code}`;
+                return name.includes(code) ? name : `${name} (${code})`;
+              })()}
+            </span>
+            <span className="text-slate-500 font-normal text-xs md:text-sm">(เกณฑ์มาตรฐาน ≥62 วัน)</span>
           </h3>
 
           {filteredNvrs.length === 0 ? (

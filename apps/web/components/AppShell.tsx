@@ -20,8 +20,15 @@ import {
   ChevronDown,
   Menu,
   X,
+  FileSpreadsheet,
+  Sparkles,
+  Play,
+  Pause,
+  RotateCw,
+  Layers,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
+import { useSite } from '@/lib/SiteContext';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -32,10 +39,24 @@ export function AppShell({ children }: AppShellProps) {
   const [currentTime, setCurrentTime] = useState<string>('');
   const [userName, setUserName] = useState('Admin User');
   const [userRole, setUserRole] = useState('Administrator');
+  const currentPathname = usePathname() || '';
   const [pathname, setPathname] = useState('');
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [siteDropdownOpen, setSiteDropdownOpen] = useState(false);
   const navRef = useRef<HTMLDivElement>(null);
+
+  const effectivePathname = currentPathname || pathname;
+
+  const {
+    currentSite,
+    sites,
+    switchSite,
+    isExecutive,
+    autoRotate,
+    toggleRotation,
+    timeLeft,
+  } = useSite();
 
   useEffect(() => {
     setMounted(true);
@@ -59,7 +80,9 @@ export function AppShell({ children }: AppShellProps) {
   }, []);
 
   useEffect(() => {
-    if (!mounted || pathname === '/login' || pathname === '/' || pathname === '/dashboard') return;
+    if (!mounted || effectivePathname === '/login' || effectivePathname === '/' || effectivePathname === '/dashboard') return;
+    const token = localStorage.getItem('token');
+    if (!token) return;
     apiFetch<{ first_name?: string; last_name?: string; name?: string; role?: string; role_name?: string }>('/api/auth/me')
       .then((data) => {
         const name = data.name || [data.first_name, data.last_name].filter(Boolean).join(' ');
@@ -67,7 +90,7 @@ export function AppShell({ children }: AppShellProps) {
         if (data.role_name || data.role) setUserRole(data.role_name || data.role || 'Administrator');
       })
       .catch(() => {});
-  }, [mounted, pathname]);
+  }, [mounted, effectivePathname]);
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -84,7 +107,7 @@ export function AppShell({ children }: AppShellProps) {
   useEffect(() => {
     setMobileMenuOpen(false);
     setActiveDropdown(null);
-  }, [pathname]);
+  }, [effectivePathname]);
 
   const handleLogout = async () => {
     try {
@@ -96,7 +119,7 @@ export function AppShell({ children }: AppShellProps) {
     }
   };
 
-  if (!mounted || pathname === '/login' || pathname === '/' || pathname === '/dashboard') {
+  if (!mounted || effectivePathname === '/login' || effectivePathname === '/' || effectivePathname === '/dashboard') {
     return <>{children}</>;
   }
 
@@ -138,6 +161,15 @@ export function AppShell({ children }: AppShellProps) {
       ],
     },
     {
+      label: 'แบบฟอร์ม',
+      icon: FileSpreadsheet,
+      items: [
+        { name: 'คลังแบบฟอร์ม (Templates)', href: '/admin/forms', icon: FileSpreadsheet },
+        { name: 'สร้างฟอร์มใหม่ (Builder)', href: '/admin/forms/builder', icon: Sparkles },
+        { name: 'รายการส่งฟอร์ม (Submissions)', href: '/forms/submissions', icon: FileText },
+      ],
+    },
+    {
       label: 'สถิติ',
       icon: FileText,
       items: [
@@ -150,6 +182,7 @@ export function AppShell({ children }: AppShellProps) {
       icon: Settings,
       items: [
         { name: 'โปรไฟล์ส่วนตัว', href: '/profile', icon: UserCircle },
+        { name: 'จัดการสาขา (BPI & PRB)', href: '/admin/sites', icon: Building2 },
         { name: 'จัดการผู้ใช้', href: '/admin/users', icon: Users },
         { name: 'กำหนดสิทธิ์ (Roles)', href: '/admin/roles', icon: ShieldCheck },
         { name: 'ตั้งค่าระบบ & นำเข้า DB', href: '/admin/settings', icon: Settings },
@@ -177,13 +210,86 @@ export function AppShell({ children }: AppShellProps) {
                   Security System Dashboard
                 </h1>
                 <p className="hidden sm:block text-[11px] md:text-xs font-semibold text-sky-600 leading-tight">
-                  BPI Western Digital Storage Technologies (Thailand) Ltd.
+                  {currentSite.name} ({currentSite.nameEn || 'Western Digital Thailand'})
                 </p>
               </div>
             </div>
 
             {/* Right Action Bar */}
-            <div className="flex items-center gap-2 md:gap-3">
+            <div className="flex items-center gap-2 md:gap-2.5">
+              {/* Site Selector Dropdown Pill */}
+              <div className="relative">
+                <button
+                  onClick={() => isExecutive && setSiteDropdownOpen(!siteDropdownOpen)}
+                  disabled={!isExecutive}
+                  className={`flex items-center gap-1.5 px-2.5 md:px-3 py-1.5 rounded-xl border text-xs font-bold transition-all shadow-2xs ${
+                    currentSite.code === 'BPI'
+                      ? 'bg-blue-50/90 text-blue-950 border-blue-200 hover:bg-blue-100/80'
+                      : 'bg-emerald-50/90 text-emerald-950 border-emerald-200 hover:bg-emerald-100/80'
+                  } ${isExecutive ? 'cursor-pointer' : 'cursor-default'}`}
+                  title={isExecutive ? 'คลิกเพื่อสลับสาขา' : 'สาขาที่สังกัด'}
+                >
+                  <Building2 className={`w-3.5 h-3.5 ${currentSite.code === 'BPI' ? 'text-blue-600' : 'text-emerald-600'}`} />
+                  <span className="hidden sm:inline">{currentSite.name}</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded font-black bg-white border border-current/20">
+                    {currentSite.code}
+                  </span>
+                  {isExecutive && <ChevronDown className="w-3 h-3 opacity-60" />}
+                </button>
+
+                {siteDropdownOpen && isExecutive && (
+                  <div className="absolute right-0 mt-1.5 w-60 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in slide-in-from-top-1">
+                    <div className="px-3 py-1.5 text-[11px] font-semibold text-slate-400 border-b border-slate-100 flex items-center justify-between">
+                      <span>เลือกสาขา (Site Switcher)</span>
+                      <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.2 rounded font-mono">Executive</span>
+                    </div>
+                    {sites.map((s) => (
+                      <button
+                        key={s.id}
+                        onClick={() => {
+                          switchSite(s.id);
+                          setSiteDropdownOpen(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 flex items-center justify-between text-xs font-medium hover:bg-slate-50 transition-colors ${
+                          currentSite.id === s.id ? 'bg-blue-50/80 text-blue-900 font-bold' : 'text-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className={`w-2 h-2 rounded-full ${s.code === 'BPI' ? 'bg-blue-600' : 'bg-emerald-600'}`} />
+                          <span>{s.name}</span>
+                        </div>
+                        <span className="text-[10px] text-slate-400 font-mono uppercase">{s.code}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* 15-Second Auto Rotation Control (Executive Only) */}
+              {isExecutive && (
+                <button
+                  onClick={toggleRotation}
+                  className={`hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-all shadow-2xs ${
+                    autoRotate
+                      ? 'bg-amber-50 text-amber-900 border-amber-300 ring-2 ring-amber-400/20 animate-pulse'
+                      : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                  }`}
+                  title={autoRotate ? `กำลังสลับอัตโนมัติ (เหลือ ${timeLeft}s) - คลิกเพื่อหยุดชั่วคราว` : 'เปิดโหมดสลับหน้าจออัตโนมัติทุก 15 วินาที'}
+                >
+                  {autoRotate ? (
+                    <>
+                      <Pause className="w-3.5 h-3.5 text-amber-600" />
+                      <span className="text-amber-900">สลับใน {timeLeft}s</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-3.5 h-3.5 text-slate-500" />
+                      <span>สลับอัตโนมัติ 15s</span>
+                    </>
+                  )}
+                </button>
+              )}
+
               {/* Live Clock */}
               <div className="hidden xl:flex items-center gap-2 bg-slate-100/80 rounded-xl px-3 py-1.5 text-xs font-semibold text-blue-900 border border-slate-200/60">
                 <Clock className="w-3.5 h-3.5 text-blue-600 animate-pulse" />

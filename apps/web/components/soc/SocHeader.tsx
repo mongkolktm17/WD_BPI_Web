@@ -11,6 +11,8 @@ interface SocHeaderProps {
   healthy: boolean;
   healthScore?: number | null;
   loading?: boolean;
+  siteName?: string;
+  siteCode?: string;
   onRefresh?: () => void;
   onLogout: () => void;
 }
@@ -27,6 +29,8 @@ export function SocHeader({
   healthy,
   healthScore,
   loading = false,
+  siteName,
+  siteCode,
   onRefresh,
   onLogout,
 }: SocHeaderProps) {
@@ -46,8 +50,12 @@ export function SocHeader({
               / ศูนย์ปฏิบัติการรักษาความปลอดภัย
             </span>
           </h1>
-          <p className="text-[10px] text-slate-500 leading-tight truncate">
-            Western Digital Storage Technologies (Thailand) · BPI Plant
+          <p className="text-[10px] text-slate-500 leading-tight truncate flex items-center gap-1.5">
+            <span>Western Digital Storage Technologies (Thailand)</span>
+            <span>·</span>
+            <span className="font-bold text-slate-700 bg-slate-100 px-1.5 py-0.2 rounded font-sans">
+              {siteName || 'BPI Plant (บางปะอิน)'}
+            </span>
           </p>
         </div>
       </div>

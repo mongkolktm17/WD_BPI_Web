@@ -9,6 +9,9 @@ import { SurveillancePanel } from '@/components/soc/SurveillancePanel';
 import { ParkingPanel, buildLotData } from '@/components/soc/ParkingPanel';
 import { UnifiedScreeningPanel } from '@/components/soc/UnifiedScreeningPanel';
 import { calcHealthScore, formatTimeTH, type ZoneStat } from '@/components/soc/soc-utils';
+import { useSite } from '@/lib/SiteContext';
+import { ExecutiveRotatingBar } from '@/components/soc/ExecutiveRotatingBar';
+import { ExecutiveDualView } from '@/components/soc/ExecutiveDualView';
 
 const EMPTY_CHECK = { pass: 0, fail: 0 };
 const EMPTY_ZONES: ZoneStat[] = [
@@ -22,17 +25,16 @@ const EMPTY_ZONES: ZoneStat[] = [
 
 /**
  * Executive Single-Screen SOC Command Dashboard
- * Designed for immediate executive oversight:
- * - Fits 100% in a single viewport on desktop/laptop (zero scrolling)
- * - Eliminates redundant metrics across cards
- * - Categorized into 4 clear strategic pillars:
- *   1. Security Personnel & Shifts
- *   2. Surveillance & CCTV Infrastructure
- *   3. Traffic & Parking Management
- *   4. Physical Screening & Access Equipment
+ * Supports:
+ * - Multi-site switching (Bang Pa-in BPI & Prachinburi PRB)
+ * - 15-second automatic carousel rotation for Corporate Executives
+ * - Dual-View comparison side-by-side mode
  */
 export default function SocDashboard() {
   const router = useRouter();
+  const { currentSite, currentSiteId, switchSite } = useSite();
+  const [isDualView, setIsDualView] = useState(false);
+
   const [currentTime, setCurrentTime] = useState('');
   const [userName, setUserName] = useState('System Admin');
   const [userRole, setUserRole] = useState('Administrator');
@@ -73,7 +75,7 @@ export default function SocDashboard() {
   const fetchAllData = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await apiFetch<any>('/api/stats/dashboard');
+      const res = await apiFetch<any>(`/api/stats/dashboard?site_id=${currentSiteId}`);
       if (res) {
         const d = res?.data ?? res;
 
@@ -114,7 +116,7 @@ export default function SocDashboard() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentSiteId]);
 
   useEffect(() => {
     fetchAllData();
@@ -188,6 +190,9 @@ export default function SocDashboard() {
   return (
     <div className="soc-root min-h-screen font-sans p-2.5 md:p-3 flex flex-col justify-between">
       <div className="max-w-[1600px] w-full mx-auto space-y-2.5 flex-1 flex flex-col justify-between">
+        {/* Executive 15-Second Carousel Control Bar */}
+        <ExecutiveRotatingBar isDualView={isDualView} setIsDualView={setIsDualView} />
+
         {/* Executive Header & Quick Actions */}
         <SocHeader
           currentTime={currentTime}
@@ -196,65 +201,80 @@ export default function SocDashboard() {
           healthy={operational}
           healthScore={healthScore}
           loading={loading}
+          siteName={`${currentSite.name} (${currentSite.code})`}
+          siteCode={currentSite.code}
           onRefresh={fetchAllData}
           onLogout={handleLogout}
         />
 
-        {/* Row 1: Core Operations - 3 Strategic Pillars */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-2.5">
-          {/* Pillar 1: Security Personnel */}
-          <ExecutivePersonnelCard
-            dayShift={dayShift}
-            dayContract={dayContract}
-            nightShift={nightShift}
-            nightContract={nightContract}
-            totalActive={totalActive}
-            totalContract={totalContract}
-            updatedLabel={stamp}
-          />
-
-          {/* Pillar 2: Surveillance Infrastructure */}
-          <SurveillancePanel
-            cctvOnline={cctvOnline}
-            cctvTotal={cctvTotal}
-            nvrPassed={nvrPassed}
-            nvrTotal={nvrTotal}
-            nvrHistory={nvrHistory}
-            updatedLabel={stamp}
-          />
-
-          {/* Pillar 3: Traffic & Parking */}
-          <ParkingPanel
-            used={parkingUsed}
-            capacity={parkingCapacity}
-            lots={lots}
-            moto={moto}
-            updatedLabel={stamp}
-          />
-        </div>
-
-        {/* Row 2: Pillar 4 - Access Screening & Facility Security */}
-        <div className="w-full">
-          <UnifiedScreeningPanel
-            handheldChecks={{
-              battery: hhBattery,
-              led: hhLed,
-              detection: hhDetection,
-              alarm: hhAlarm,
+        {isDualView ? (
+          /* Dual Comparison View (Split Screen BPI & PRB) */
+          <ExecutiveDualView
+            onSelectSite={(id) => {
+              switchSite(id);
+              setIsDualView(false);
             }}
-            handheldTotalReports={handheldReports}
-            walkthroughZones={wtZones}
-            walkthroughTotalReports={wtReports}
-            updatedLabel={stamp}
           />
-        </div>
+        ) : (
+          /* Single Site 4 Strategic Pillars */
+          <div key={currentSite.code} className="space-y-2.5 transition-all duration-300 animate-in fade-in">
+            {/* Row 1: Core Operations - 3 Strategic Pillars */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-2.5">
+              {/* Pillar 1: Security Personnel */}
+              <ExecutivePersonnelCard
+                dayShift={dayShift}
+                dayContract={dayContract}
+                nightShift={nightShift}
+                nightContract={nightContract}
+                totalActive={totalActive}
+                totalContract={totalContract}
+                updatedLabel={stamp}
+              />
+
+              {/* Pillar 2: Surveillance Infrastructure */}
+              <SurveillancePanel
+                cctvOnline={cctvOnline}
+                cctvTotal={cctvTotal}
+                nvrPassed={nvrPassed}
+                nvrTotal={nvrTotal}
+                nvrHistory={nvrHistory}
+                updatedLabel={stamp}
+              />
+
+              {/* Pillar 3: Traffic & Parking */}
+              <ParkingPanel
+                used={parkingUsed}
+                capacity={parkingCapacity}
+                lots={lots}
+                moto={moto}
+                updatedLabel={stamp}
+              />
+            </div>
+
+            {/* Row 2: Pillar 4 - Access Screening & Facility Security */}
+            <div className="w-full">
+              <UnifiedScreeningPanel
+                handheldChecks={{
+                  battery: hhBattery,
+                  led: hhLed,
+                  detection: hhDetection,
+                  alarm: hhAlarm,
+                }}
+                handheldTotalReports={handheldReports}
+                walkthroughZones={wtZones}
+                walkthroughTotalReports={wtReports}
+                updatedLabel={stamp}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Compact Status Footer */}
         <footer className="pt-1 text-[11px] text-slate-400 flex flex-col sm:flex-row items-center justify-between border-t border-slate-200/60 px-2 gap-1">
           <div className="flex items-center gap-2">
             <img src="/report_assets/Images/PCS_logo.png" alt="PCS" className="h-5 w-auto opacity-70" />
             <span className="font-semibold text-slate-500">PCS Security & Facility Management</span>
-            <span className="hidden md:inline">· Western Digital BPI Plant Command Center</span>
+            <span className="hidden md:inline">· Western Digital {currentSite.code} Plant ({currentSite.name})</span>
           </div>
           <div className="flex items-center gap-3">
             <span>

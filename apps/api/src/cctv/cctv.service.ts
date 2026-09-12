@@ -43,7 +43,13 @@ export class CctvService {
     { building: 'B9', nvrName: 'NVR-1', area: 'ทุกพื้นที่ของอาคาร 8 + แนวถนนทางเข้าซอย 2', channels: 41, driveCapacity: '8 TB (7ลูก) 4 TB (1ลูก)', totalCapacityTb: 54.580, targetDays: 62 },
   ];
 
+  private cameraNamesCache: Record<string, string> | null = null;
+
   loadCameraNames(): Record<string, string> {
+    if (this.cameraNamesCache) {
+      return this.cameraNamesCache;
+    }
+
     const cameraNames: Record<string, string> = {};
     const baseCandidates = [
       path.join(process.cwd(), 'report_assets', 'CCTV'),
@@ -59,7 +65,10 @@ export class CctvService {
       }
     }
 
-    if (!baseDir) return cameraNames;
+    if (!baseDir) {
+      this.cameraNamesCache = cameraNames;
+      return cameraNames;
+    }
 
     const csvFiles = [
       { bldg: 'B2', nvr: 'NVR-1', file: 'B2/B2_NVR1.csv' },
@@ -106,6 +115,7 @@ export class CctvService {
         // silent fallback
       }
     }
+    this.cameraNamesCache = cameraNames;
     return cameraNames;
   }
 
@@ -163,37 +173,16 @@ export class CctvService {
   async createReport(dto: any) {
     // Supports both legacy format and modern DTO format
     const building = dto.building || (dto.stats?.building) || 'B2';
-    const reportDate = dto.reportDate ? new Date(dto.reportDate) : new Date();
-    
-    let totalNormal = dto.totalNormal ?? 0;
-    let totalAbnormal = dto.totalAbnormal ?? 0;
-    let nvrStatsList: any[] = [];
-
-    if (dto.stats) {
-      totalNormal = dto.stats.online ?? 0;
-      totalAbnormal = dto.stats.offline ?? 0;
-      if (dto.stats.nvrStats) {
-        nvrStatsList = Object.entries(dto.stats.nvrStats).map(([nvrName, nvrData]: [string, any]) => ({
-          nvrName,
-          onlineChannels: nvrData.online_channels ?? nvrData.onlineChannels ?? 0,
-          totalChannels: nvrData.total_channels ?? nvrData.totalChannels ?? 0,
-          channelStatuses: dto.stats.fullChannelStatusByNVR?.[nvrName] || null,
-        }));
-      }
-    } else if (Array.isArray(dto.details)) {
-      nvrStatsList = dto.details;
-      totalNormal = nvrStatsList.reduce((sum, d) => sum + (d.onlineChannels ?? d.online ?? 0), 0);
-      const totalAll = nvrStatsList.reduce((sum, d) => sum + (d.totalChannels ?? d.total ?? 0), 0);
-      totalAbnormal = totalAll - totalNormal;
-    }
+    const nvrStatsList = dto.nvrStats || dto.details || [];
 
     const report = await this.prisma.cctvReport.create({
       data: {
-        reportDate,
-        totalNormal,
-        totalAbnormal,
+        siteId: dto.siteId || 1,
+        reportDate: dto.reportDate ? new Date(dto.reportDate) : new Date(),
+        totalNormal: dto.totalNormal ?? dto.stats?.online ?? 0,
+        totalAbnormal: dto.totalAbnormal ?? dto.stats?.offline ?? 0,
         reporterName: dto.reporterName || dto.username || 'System Admin',
-        remark: dto.remark || `Building ${building}`,
+        remark: dto.remark || dto.remarks || dto.summary || `Building ${building}`,
       },
     });
 
@@ -226,9 +215,28 @@ export class CctvService {
       take: limit,
     });
 
+    const reportIds = reports.map((r) => r.id);
+    let allDetails: any[] = [];
+    if (reportIds.length > 0) {
+      allDetails = await this.prisma.cctvReportDetail.findMany({
+        where: { reportId: { in: reportIds } },
+      });
+    }
+
+    // Group details by reportId
+    const detailsByReportId = new Map<number, any[]>();
+    for (const d of allDetails) {
+      const list = detailsByReportId.get(d.reportId);
+      if (list) {
+        list.push(d);
+      } else {
+        detailsByReportId.set(d.reportId, [d]);
+      }
+    }
+
     const result = [];
     for (const r of reports) {
-      const details = await this.prisma.cctvReportDetail.findMany({ where: { reportId: r.id } });
+      const details = detailsByReportId.get(r.id) || [];
       const detailsMap: Record<string, any> = {};
 
       // Detect building from remark or matching NVR names

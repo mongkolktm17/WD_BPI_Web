@@ -32,22 +32,57 @@ model RolePermission {
   @@map("role_permissions")
 }
 
-// 3. Users Table
+// 3. Sites Table
+model Site {
+  id          Int              @id @default(autoincrement())
+  code        String           @unique @db.VarChar(20)
+  name        String           @db.VarChar(100)
+  nameEn      String?          @map("name_en") @db.VarChar(100)
+  description String?          @db.Text
+  address     String?          @db.Text
+  isActive    Boolean          @default(true) @map("is_active")
+  configJson  Json?            @map("config_json")
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  userSites   UserSite[]
+  formTemplates FormTemplate[]
+  formSubmissions FormSubmission[]
+
+  @@map("sites")
+}
+
+// 4. User Sites Table (Many-to-Many)
+model UserSite {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  siteId    Int      @map("site_id")
+  isPrimary Boolean  @default(false) @map("is_primary")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, siteId])
+  @@map("user_sites")
+}
+
+// 5. Users Table
 model User {
-  id         Int        @id @default(autoincrement())
-  username   String     @unique @db.VarChar(50)
-  password   String     @db.VarChar(255)
-  fullName   String     @map("full_name") @db.VarChar(100)
-  employeeId String?    @unique @map("employee_id") @db.VarChar(8)
-  roleId     Int        @map("role_id")
-  department String?    @db.VarChar(100)
-  phone      String?    @db.VarChar(20)
-  email      String?    @db.VarChar(100)
-  isActive   Boolean    @default(true) @map("is_active")
-  lastLogin  DateTime?  @map("last_login") @db.Timestamptz(6)
-  createdAt  DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  role       Role       @relation(fields: [roleId], references: [id])
-  auditLogs  AuditLog[]
+  id            Int        @id @default(autoincrement())
+  username      String     @unique @db.VarChar(50)
+  password      String     @db.VarChar(255)
+  fullName      String     @map("full_name") @db.VarChar(100)
+  employeeId    String?    @unique @map("employee_id") @db.VarChar(8)
+  roleId        Int        @map("role_id")
+  defaultSiteId Int?       @default(1) @map("default_site_id")
+  department    String?    @db.VarChar(100)
+  phone         String?    @db.VarChar(20)
+  email         String?    @db.VarChar(100)
+  isActive      Boolean    @default(true) @map("is_active")
+  lastLogin     DateTime?  @map("last_login") @db.Timestamptz(6)
+  createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  role          Role       @relation(fields: [roleId], references: [id])
+  auditLogs     AuditLog[]
+  userSites     UserSite[]
 
   @@map("users")
 }
@@ -64,6 +99,7 @@ model Officer {
   siteLocation String?  @map("site_location") @db.VarChar(100)
   shift        String?  @db.VarChar(20)
   status       String   @default("active") @db.VarChar(20)
+  siteId       Int      @default(1) @map("site_id")
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("officers")
@@ -75,6 +111,7 @@ model Building {
   buildingCode String      @unique @map("building_code") @db.VarChar(20)
   buildingName String      @map("building_name") @db.VarChar(100)
   description  String?     @db.Text
+  siteId       Int         @default(1) @map("site_id")
   cameras      Camera[]
   nvrDevices   NvrDevice[]
 
@@ -89,6 +126,7 @@ model Camera {
   cameraName String        @map("camera_name") @db.VarChar(100)
   location   String?       @db.VarChar(200)
   status     String        @default("normal") @db.VarChar(20)
+  siteId     Int           @default(1) @map("site_id")
   building   Building      @relation(fields: [buildingId], references: [id])
   checks     CameraCheck[]
 
@@ -119,6 +157,7 @@ model NvrDevice {
   nvrName       String            @map("nvr_name") @db.VarChar(100)
   ipAddress     String?           @map("ip_address") @db.VarChar(45)
   totalChannels Int               @default(16) @map("total_channels")
+  siteId        Int               @default(1) @map("site_id")
   building      Building          @relation(fields: [buildingId], references: [id])
   recordings    NvrRecordingDay[]
 
@@ -153,6 +192,7 @@ model CctvReport {
   updatedBy     String?   @map("updated_by") @db.VarChar(100)
   updatedAt     DateTime? @map("updated_at") @db.Timestamptz(6)
   submittedById Int?      @map("submitted_by_id")
+  siteId        Int       @default(1) @map("site_id")
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("cctv_reports")
@@ -180,6 +220,7 @@ model CarParking {
   motorcycleCount1     Int?      @default(0) @map("motorcycle_count_1")
   motorcycleCount2     Int?      @default(0) @map("motorcycle_count_2")
   motorcycleCount3     Int?      @default(0) @map("motorcycle_count_3")
+  siteId               Int       @default(1) @map("site_id")
   isDeleted            Boolean   @default(false) @map("is_deleted")
   deletedBy            String?   @map("deleted_by")
   deletedAt            DateTime? @map("deleted_at")
@@ -196,6 +237,7 @@ model GuardDutyLog {
   guardName String   @map("guard_name") @db.VarChar(100)
   dutyPost  String   @map("duty_post") @db.VarChar(100)
   eventLog  String   @map("event_log") @db.Text
+  siteId    Int      @default(1) @map("site_id")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("guard_duty_logs")
@@ -208,6 +250,7 @@ model HandheldEquipment {
   deviceName String          @map("device_name") @db.VarChar(100)
   status     String          @default("normal") @db.VarChar(20)
   location   String?         @db.VarChar(100)
+  siteId     Int             @default(1) @map("site_id")
   checks     HandheldCheck[]
 
   @@map("handheld_equipment")
@@ -236,6 +279,7 @@ model WalkthroughDetector {
   detectorCode String             @unique @map("detector_code") @db.VarChar(50)
   location     String             @db.VarChar(100)
   status       String             @default("normal") @db.VarChar(20)
+  siteId       Int                @default(1) @map("site_id")
   checks       WalkthroughCheck[]
 
   @@map("walkthrough_detectors")
@@ -264,6 +308,7 @@ model MetalDetector {
   deviceCode String    @unique @map("device_code") @db.VarChar(50)
   location   String    @db.VarChar(100)
   status     String    @default("normal") @db.VarChar(20)
+  siteId     Int       @default(1) @map("site_id")
   lastCheck  DateTime? @map("last_check") @db.Date
   createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
@@ -279,6 +324,7 @@ model CctvInspection {
   totalPassed    Int       @map("total_passed")
   totalFailed    Int       @map("total_failed")
   summary        String?   @db.Text
+  siteId         Int       @default(1) @map("site_id")
   isDeleted      Boolean   @default(false) @map("is_deleted")
   deletedBy      String?   @map("deleted_by")
   deletedAt      DateTime? @map("deleted_at")
@@ -299,6 +345,7 @@ model GuardCount {
   presentGuards Int       @map("present_guards")
   absentGuards  Int       @map("absent_guards")
   remark        String?   @db.Text
+  siteId        Int       @default(1) @map("site_id")
   isDeleted     Boolean   @default(false) @map("is_deleted")
   deletedBy     String?   @map("deleted_by")
   deletedAt     DateTime? @map("deleted_at")
@@ -318,6 +365,7 @@ model PatrolReport {
   officerName String    @map("officer_name") @db.VarChar(100)
   status      String    @db.VarChar(20)
   notes       String?   @db.Text
+  siteId      Int       @default(1) @map("site_id")
   isDeleted   Boolean   @default(false) @map("is_deleted")
   deletedBy   String?   @map("deleted_by")
   deletedAt   DateTime? @map("deleted_at")
@@ -376,6 +424,7 @@ model BuildingReport {
   incidentReport    String    @map("incident_report") @db.Text
   specialIncident   String?   @map("special_incident") @db.Text
   emergencyIncident String?   @map("emergency_incident") @db.Text
+  siteId            Int       @default(1) @map("site_id")
   isDeleted         Boolean   @default(false) @map("is_deleted")
   deletedBy         String?   @map("deleted_by")
   deletedAt         DateTime? @map("deleted_at")
@@ -553,4 +602,51 @@ model PatrolCheckLegacy {
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("patrol_checks")
+}
+
+// 36. Form Templates Table
+model FormTemplate {
+  id           Int              @id @default(autoincrement())
+  code         String           @unique @db.VarChar(50)
+  title        String           @db.VarChar(200)
+  description  String?          @db.Text
+  category     String           @db.VarChar(50)
+  siteId       Int?             @map("site_id")
+  clonedFromId Int?             @map("cloned_from_id")
+  version      Int              @default(1)
+  isPublished  Boolean          @default(false) @map("is_published")
+  allowedRoles Json             @default("[]") @map("allowed_roles")
+  schemaJson   Json             @map("schema_json")
+  createdById  Int?             @map("created_by_id")
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  site         Site?            @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  clonedFrom   FormTemplate?    @relation("FormClones", fields: [clonedFromId], references: [id])
+  clones       FormTemplate[]   @relation("FormClones")
+  submissions  FormSubmission[]
+
+  @@map("form_templates")
+}
+
+// 37. Form Submissions Table
+model FormSubmission {
+  id              Int          @id @default(autoincrement())
+  templateId      Int          @map("template_id")
+  templateVersion Int          @default(1) @map("template_version")
+  siteId          Int          @map("site_id")
+  submittedById   Int          @map("submitted_by_id")
+  status          String       @default("submitted") @db.VarChar(20)
+  dataJson        Json         @map("data_json")
+  attachmentsJson Json?        @map("attachments_json")
+  notes           String?      @db.Text
+  approvedById    Int?         @map("approved_by_id")
+  approvedAt      DateTime?    @map("approved_at") @db.Timestamptz(6)
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  template        FormTemplate @relation(fields: [templateId], references: [id])
+  site            Site         @relation(fields: [siteId], references: [id])
+
+  @@map("form_submissions")
 }

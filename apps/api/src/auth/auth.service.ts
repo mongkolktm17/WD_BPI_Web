@@ -38,6 +38,23 @@ export class AuthService {
       data: { lastLogin: new Date() },
     });
 
+    const isExecutive =
+      user.roleId === 1 ||
+      user.roleId === 6 ||
+      user.role.roleName.includes('ผู้บริหาร') ||
+      user.role.roleName.includes('Admin');
+
+    const allSites = await this.prisma.site.findMany({
+      where: { isActive: true },
+      select: { id: true, code: true, name: true, nameEn: true },
+      orderBy: { id: 'asc' },
+    });
+
+    const currentSiteId = user.defaultSiteId || 1;
+    const assignedSites = isExecutive
+      ? allSites
+      : allSites.filter((s) => s.id === currentSiteId);
+
     const payload = {
       sub: user.id,
       username: user.username,
@@ -45,6 +62,8 @@ export class AuthService {
       employeeId: user.employeeId,
       roleId: user.roleId,
       roleName: user.role.roleName,
+      defaultSiteId: currentSiteId,
+      isExecutive,
     };
 
     const token = this.jwtService.sign(payload);
@@ -57,6 +76,9 @@ export class AuthService {
         fullName: user.fullName,
         employeeId: user.employeeId,
         department: user.department,
+        defaultSiteId: currentSiteId,
+        isExecutive,
+        assignedSites,
         role: {
           id: user.role.id,
           name: user.role.roleName,
@@ -109,13 +131,34 @@ export class AuthService {
       throw new UnauthorizedException('ไม่พบข้อมูลผู้ใช้');
     }
 
+    const isExecutive =
+      user.roleId === 1 ||
+      user.roleId === 6 ||
+      user.role.roleName.includes('ผู้บริหาร') ||
+      user.role.roleName.includes('Admin');
+
+    const allSites = await this.prisma.site.findMany({
+      where: { isActive: true },
+      select: { id: true, code: true, name: true, nameEn: true },
+      orderBy: { id: 'asc' },
+    });
+
+    const currentSiteId = user.defaultSiteId || 1;
+    const assignedSites = isExecutive
+      ? allSites
+      : allSites.filter((s) => s.id === currentSiteId);
+
     return {
       id: user.id,
       username: user.username,
       fullName: user.fullName,
+      employeeId: user.employeeId,
       department: user.department,
       phone: user.phone,
       email: user.email,
+      defaultSiteId: currentSiteId,
+      isExecutive,
+      assignedSites,
       role: {
         id: user.role.id,
         name: user.role.roleName,

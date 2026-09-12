@@ -23,15 +23,17 @@ export class PermissionGuard implements CanActivate {
     const user = request.user;
     if (!user) return false;
 
-    // Admin role (id=1) bypasses all permission checks
-    if (user.roleId === 1 || user.role?.roleName === 'Admin') return true;
+    // Admin (id=1) and Corporate Executive (id=6) bypass all module checks
+    if (user.roleId === 1 || user.roleId === 6 || user.role?.roleName?.includes('Admin') || user.role?.roleName?.includes('Corporate')) return true;
 
     const [moduleName, action] = requiredPermission.split(':');
 
     const permission = await this.prisma.rolePermission.findFirst({
       where: {
         roleId: user.roleId,
-        moduleName,
+        moduleName: {
+          in: [moduleName, `${moduleName}.php`],
+        },
       },
     });
 

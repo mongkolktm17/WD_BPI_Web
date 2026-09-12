@@ -13,8 +13,13 @@ export class StatsController {
   }
 
   @Get('dashboard')
-  async getDashboardData() {
-    return this.statsService.getDashboardData();
+  async getDashboardData(@Query('site_id') siteId?: string) {
+    return this.statsService.getDashboardData(siteId ? Number(siteId) : 1);
+  }
+
+  @Get('executive')
+  async getExecutiveOverview() {
+    return this.statsService.getExecutiveOverview();
   }
 
   @Get('visual')

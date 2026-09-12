@@ -118,14 +118,13 @@ export default function CctvReportPage() {
         setReportHistory(history);
       }
 
-      // Initialize channels for default building
-      initializeChannelsForBuilding(currentBuilding, configs, history);
+      // Channels will be initialized on demand when switching to the 'monitor' tab
     } catch (err) {
       console.error('Failed to load CCTV data:', err);
     } finally {
       setLoading(false);
     }
-  }, [currentBuilding]);
+  }, []);
 
   useEffect(() => {
     try {
@@ -140,7 +139,14 @@ export default function CctvReportPage() {
       setReporterName('System Admin');
     }
     fetchConfigAndHistory();
-  }, []);
+  }, [fetchConfigAndHistory]);
+
+  // When switching to 'monitor' tab, initialize channels if not yet initialized
+  useEffect(() => {
+    if (activeTab === 'monitor') {
+      initializeChannelsForBuilding(currentBuilding);
+    }
+  }, [activeTab, currentBuilding]);
 
   // 2. Initialize Channels for a selected building
   const initializeChannelsForBuilding = (
@@ -538,7 +544,23 @@ export default function CctvReportPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                  {paginatedHistory.length > 0 ? (
+                  {loading ? (
+                    Array.from({ length: 6 }).map((_, idx) => (
+                      <tr key={`skeleton-${idx}`} className="animate-pulse">
+                        <td className="py-2.5 px-3 text-center"><div className="h-3.5 bg-slate-200 rounded w-16 mx-auto"></div></td>
+                        <td className="py-2.5 px-2 text-center"><div className="h-3.5 bg-slate-100 rounded w-10 mx-auto"></div></td>
+                        <td className="py-2.5 px-2 text-center"><div className="h-4 bg-slate-200 rounded w-8 mx-auto"></div></td>
+                        <td className="py-2.5 px-3"><div className="h-3.5 bg-slate-200 rounded w-24"></div></td>
+                        <td className="py-2.5 px-3 text-center"><div className="h-3.5 bg-slate-200 rounded w-14 mx-auto"></div></td>
+                        <td className="py-2.5 px-2 text-center"><div className="h-3.5 bg-slate-200 rounded w-10 mx-auto"></div></td>
+                        {allNvrs.map((nvr) => (
+                          <td key={`sk-${nvr.building}-${nvr.nvrName}`} className="py-2 px-1 text-center">
+                            <div className="h-3 bg-slate-100 rounded w-6 mx-auto"></div>
+                          </td>
+                        ))}
+                      </tr>
+                    ))
+                  ) : paginatedHistory.length > 0 ? (
                     paginatedHistory.map((row) => {
                       const dt = new Date(row.report_time);
                       const dateStr = dt.toLocaleDateString('th-TH');

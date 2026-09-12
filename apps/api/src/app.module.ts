@@ -19,13 +19,15 @@ import { UsersModule } from './users/users.module';
 import { SystemModule } from './system/system.module';
 import { LegacyModule } from './legacy/legacy.module';
 import { MetricsModule } from './metrics/metrics.module';
+import { SitesModule } from './sites/sites.module';
+import { DynamicFormsModule } from './dynamic-forms/dynamic-forms.module';
 import { HealthController } from './health.controller';
 
 @Module({
   imports: [
     ThrottlerModule.forRoot([{
       ttl: 60000,
-      limit: 100,
+      limit: 1000,
     }]),
     PrismaModule,
     RedisModule,
@@ -43,6 +45,8 @@ import { HealthController } from './health.controller';
     SystemModule,
     LegacyModule,
     MetricsModule,
+    SitesModule,
+    DynamicFormsModule,
   ],
   controllers: [HealthController],
   providers: [

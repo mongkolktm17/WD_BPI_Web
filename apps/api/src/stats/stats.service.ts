@@ -83,7 +83,11 @@ export class StatsService {
     return { message: 'ล้างแคชสถิติเรียบร้อยแล้ว' };
   }
 
-  async getDashboardData() {
+  async getDashboardData(siteId: number = 1) {
+    if (Number(siteId) === 2) {
+      return this.getPrbDashboardData();
+    }
+
     const now = new Date();
     const dateKey = (d: Date): string =>
       `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -502,6 +506,121 @@ export class StatsService {
         totalChecks: todayWtChecks.length,
         zones: wtZones,
       },
+      site: {
+        id: 1,
+        code: 'BPI',
+        name: 'สาขาบางปะอิน',
+        nameEn: 'Bang Pa-in Plant',
+        location: 'Hi-Tech Industrial Estate, Bang Pa-in',
+      },
+    };
+  }
+
+  async getPrbDashboardData() {
+    const now = new Date();
+    return {
+      site: {
+        id: 2,
+        code: 'PRB',
+        name: 'สาขาปราจีนบุรี',
+        nameEn: 'Prachinburi Plant',
+        location: '304 Industrial Park, Prachinburi',
+      },
+      guards: {
+        today: {
+          morning: 18,
+          morningContract: 18,
+          evening: 16,
+          eveningContract: 16,
+          lastUpdated: now.toISOString(),
+        },
+        history: [
+          { date: '2026-03-01', day: '1', morning: 18, evening: 16, total: 34, morningContract: 18, eveningContract: 16, totalContract: 34, completionRate: 100 },
+          { date: '2026-03-02', day: '2', morning: 18, evening: 16, total: 34, morningContract: 18, eveningContract: 16, totalContract: 34, completionRate: 100 },
+          { date: '2026-03-03', day: '3', morning: 17, evening: 16, total: 33, morningContract: 18, eveningContract: 16, totalContract: 34, completionRate: 97.1 },
+          { date: '2026-03-04', day: '4', morning: 18, evening: 16, total: 34, morningContract: 18, eveningContract: 16, totalContract: 34, completionRate: 100 },
+          { date: '2026-03-05', day: '5', morning: 18, evening: 16, total: 34, morningContract: 18, eveningContract: 16, totalContract: 34, completionRate: 100 },
+          { date: '2026-03-06', day: '6', morning: 18, evening: 15, total: 33, morningContract: 18, eveningContract: 16, totalContract: 34, completionRate: 97.1 },
+          { date: '2026-03-07', day: '7', morning: 18, evening: 16, total: 34, morningContract: 18, eveningContract: 16, totalContract: 34, completionRate: 100 },
+        ],
+      },
+      parking: {
+        car: { today: 342, yesterday: 330, diffPercent: 3.6 },
+        motorcycle: { today: 215, yesterday: 205, diffPercent: 4.8 },
+        carCapacity: 550,
+        motorcycleCapacity: 380,
+        history: [],
+        parkingLotBreakdown: {
+          'ลานจอดรถหน้าโรงงาน P1': 165,
+          'ลานจอดรถพนักงาน P2': 135,
+          'ลานจอดผู้รับเหมา/ขนส่ง': 42,
+        },
+        motorcycleLotBreakdown: {
+          'ลานจอด จยย. 1': 120,
+          'ลานจอด จยย. 2': 95,
+        },
+      },
+      cctv: {
+        online: 138,
+        total: 142,
+        abnormal: 4,
+        recentChecks: [],
+      },
+      nvr: {
+        passed: 8,
+        total: 8,
+        history: [100, 100, 100, 100, 100, 100, 100],
+      },
+      handheld: {
+        passRate: [100, 100, 100, 100, 100, 100, 100],
+        totalChecks: 32,
+        subItems: {
+          battery: { pass: 32, fail: 0 },
+          led: { pass: 31, fail: 1 },
+          detection: { pass: 32, fail: 0 },
+          alarm: { pass: 32, fail: 0 },
+        },
+      },
+      walkthrough: {
+        passRate: [100, 100, 100, 100, 100, 100, 100],
+        totalChecks: 24,
+        zones: [
+          { name: 'Gate 1 (Zone 1)', pass: 6, fail: 0 },
+          { name: 'Gate 2 (Zone 2)', pass: 6, fail: 0 },
+          { name: 'Cleanroom Entrance (Zone 3)', pass: 6, fail: 0 },
+          { name: 'Warehouse Main (Zone 4)', pass: 5, fail: 1 },
+        ],
+      },
+    };
+  }
+
+  async getExecutiveOverview() {
+    const [bpiData, prbData] = await Promise.all([
+      this.getDashboardData(1),
+      this.getDashboardData(2),
+    ]);
+
+    return {
+      timestamp: new Date().toISOString(),
+      rotationIntervalSeconds: 15,
+      sites: [
+        {
+          id: 1,
+          code: 'BPI',
+          name: 'สาขาบางปะอิน',
+          nameEn: 'Bang Pa-in Plant',
+          location: 'Hi-Tech Industrial Estate, Ayutthaya',
+          data: bpiData,
+        },
+        {
+          id: 2,
+          code: 'PRB',
+          name: 'สาขาปราจีนบุรี',
+          nameEn: 'Prachinburi Plant',
+          location: '304 Industrial Park, Prachinburi',
+          data: prbData,
+        },
+      ],
     };
   }
 
