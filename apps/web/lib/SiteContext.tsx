@@ -9,6 +9,8 @@ export interface SiteInfo {
   name: string;
   nameEn?: string;
   location?: string;
+  address?: string;
+  description?: string;
   isActive?: boolean;
 }
 

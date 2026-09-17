@@ -138,7 +138,6 @@ export class StatsService {
       nvrRecordings,
       handheldChecks,
       walkthroughChecks,
-      walkthroughDetectors,
     ] = await Promise.all([
       // Guard counts for last 7 days
       this.prisma.guardCount.findMany({
@@ -242,7 +241,6 @@ export class StatsService {
         guardDayMap[key].evening = gc.presentGuards - m;
       }
     }
-    const todayGuards = guardDayMap[dateKey(todayStart)] || { morning: mActual, evening: eActual };
     const yesterdayGuards = guardDayMap[dateKey(yesterdayStart)] || { morning: 0, evening: 0 };
     
     // Carry forward history
@@ -629,7 +627,7 @@ export class StatsService {
     const now = new Date();
     let startDate: Date;
     let endDate: Date;
-    let dates: string[] = [];
+    const dates: string[] = [];
     let isYearRange = range === 'year';
 
     // 1. Determine Date Range

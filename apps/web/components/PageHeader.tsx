@@ -7,6 +7,7 @@ import { ArrowLeft } from 'lucide-react';
 interface PageHeaderProps {
   title: string;
   subtitle?: string;
+  badge?: string;
   icon?: React.ReactNode;
   backHref?: string;
   backLabel?: string;
@@ -16,6 +17,7 @@ interface PageHeaderProps {
 export default function PageHeader({
   title,
   subtitle,
+  badge,
   icon,
   backHref = '/report-page',
   backLabel = '← กลับ',
@@ -30,7 +32,14 @@ export default function PageHeader({
           </div>
         )}
         <div>
-          <h1 className="text-lg md:text-2xl font-bold text-slate-800 leading-tight">{title}</h1>
+          <h1 className="text-lg md:text-2xl font-bold text-slate-800 leading-tight flex items-center gap-2 flex-wrap">
+            {title}
+            {badge && (
+              <span className="text-[10px] md:text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 whitespace-nowrap">
+                {badge}
+              </span>
+            )}
+          </h1>
           {subtitle && <p className="text-slate-500 text-xs md:text-sm">{subtitle}</p>}
         </div>
       </div>

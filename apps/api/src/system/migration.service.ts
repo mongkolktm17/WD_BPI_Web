@@ -276,7 +276,7 @@ export class MigrationService {
         for (const tbl of tablesToTruncate) {
           try {
             await this.prisma.$executeRawUnsafe(`TRUNCATE TABLE "${tbl}" CASCADE;`);
-          } catch (e: any) {
+          } catch {
             // Ignore if table doesn't exist
           }
         }
@@ -409,7 +409,7 @@ export class MigrationService {
                   );
                   officerCount++;
                 }
-              } catch (e: any) {
+              } catch {
                 // Ignore single duplicate errors
               }
             }
@@ -991,7 +991,7 @@ export class MigrationService {
             `SELECT setval(pg_get_serial_sequence('${tbl}', 'id'), COALESCE((SELECT MAX(id) FROM "${tbl}"), 1));`
           );
           seqSynced++;
-        } catch (e) {
+        } catch {
           // Ignore tables without serial id sequence
         }
       }
@@ -1032,7 +1032,7 @@ export class MigrationService {
           // If hash matches legacy format ($2y$)
           bcryptValid = adminUser.password.startsWith('$2y$') || adminUser.password.startsWith('$2a$') || adminUser.password.startsWith('$2b$');
         }
-      } catch (e) {
+      } catch {
         bcryptValid = adminUser.password.startsWith('$2y$') || adminUser.password.startsWith('$2b$');
       }
     }
@@ -1183,7 +1183,7 @@ export class MigrationService {
         writeDetails['building_reports_sequence'] = true;
         await this.prisma.buildingReport.delete({ where: { id: testReport.id } });
       }
-    } catch (e) {
+    } catch {
       writeDetails['building_reports_sequence'] = false;
       writePassed = false;
     }
@@ -1204,7 +1204,7 @@ export class MigrationService {
         writeDetails['car_parkings_sequence'] = true;
         await this.prisma.carParking.delete({ where: { id: testParking.id } });
       }
-    } catch (e) {
+    } catch {
       writeDetails['car_parkings_sequence'] = false;
       writePassed = false;
     }

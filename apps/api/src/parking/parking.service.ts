@@ -296,7 +296,7 @@ export class ParkingService {
       const total = merged.length;
       const data = merged.slice(offset, offset + limit);
       return { data, total, limit, offset };
-    } catch (e) {
+    } catch {
       // Fallback raw query if isDeleted column missing or other error
       const raw = await this.prisma.$queryRawUnsafe<any[]>(`SELECT id, record_date as "recordDate", slot_no as "slotNo", car_license as "carLicense", driver_name as "driverName", status, lot_counts as "lotCounts", total_cars as "totalCars", inspector_code as "inspectorCode", inspector_name as "inspectorName", shift, parking_lot as "parkingLot", spare_tire_status as "spareTireStatus", license_plates as "licensePlates", motorcycle_parking_lot as "motorcycleParkingLot", motorcycle_count_1 as "motorcycleCount1", motorcycle_count_2 as "motorcycleCount2", motorcycle_count_3 as "motorcycleCount3", created_at as "createdAt" FROM car_parkings ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`);
       return { data: raw, total: raw.length, limit, offset };

@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsOptional, IsDateString } from 'class-validator';
+import { IsNotEmpty, IsString, IsDateString } from 'class-validator';
 
 export class CreateDutyLogDto {
   @IsDateString({}, { message: 'กรุณาระบุวันที่' })

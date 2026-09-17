@@ -1,6 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateCctvReportDto } from './dto/create-cctv-report.dto';
 import { UpdateCctvReportDto } from './dto/update-cctv-report.dto';
 import { CreateCameraDto } from './dto/create-camera.dto';
 import { UpdateCameraDto } from './dto/update-camera.dto';
@@ -111,7 +110,7 @@ export class CctvService {
             }
           }
         }
-      } catch (err) {
+      } catch {
         // silent fallback
       }
     }
@@ -488,7 +487,7 @@ export class CctvService {
     if (parts.length < 4) {
       throw new BadRequestException('รหัสรอบไม่ถูกต้อง');
     }
-    const [dateStr, bldg, nvr, ...checkedByParts] = parts;
+    const [dateStr, , nvr, ...checkedByParts] = parts;
     const checkedBy = checkedByParts.join('_');
 
     const checks = await this.prisma.cameraCheck.findMany({

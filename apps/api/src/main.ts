@@ -5,6 +5,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import * as express from 'express';
 import { join } from 'path';
 import helmet from 'helmet';
 
@@ -22,7 +23,7 @@ async function bootstrap() {
   app.useGlobalFilters(new HttpExceptionFilter());
 
   // Serve static CCTV images
-  app.use('/cctv-images', require('express').static(join(process.cwd(), 'report_assets', 'Images')));
+  app.use('/cctv-images', express.static(join(process.cwd(), 'report_assets', 'Images')));
 
   // Global prefix
   app.setGlobalPrefix('api');

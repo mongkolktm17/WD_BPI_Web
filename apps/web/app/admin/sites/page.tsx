@@ -20,7 +20,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
-import { useSite, Site } from '@/lib/SiteContext';
+import { useSite, SiteInfo as Site } from '@/lib/SiteContext';
 
 export default function SitesManagementPage() {
   const router = useRouter();
@@ -89,7 +89,7 @@ export default function SitesManagementPage() {
   };
 
   const handleSwitchAndGo = (site: Site) => {
-    switchSite(site);
+    switchSite(site.id);
     router.push('/dashboard');
   };
 
