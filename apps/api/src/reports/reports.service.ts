@@ -285,6 +285,16 @@ export class ReportsService {
       `);
     }
 
+    if (type === 'all' || type === 'radio_inspection') {
+      reportQueries.push(`
+        SELECT id, created_at AS submission_time, 'ตรวจวิทยุสื่อสาร' AS report_type, 'radio_inspection' AS type_key,
+          CONCAT('อยู่: ', total_present, '/', total_checked, ' | พร้อมใช้: ', total_working, ' | ผิดปกติ: ', total_failed) AS details,
+          inspector_name AS submitted_by, 'radio/inspections' AS api_path,
+          NULL AS employee_code
+        FROM radio_inspections WHERE (is_deleted = false OR is_deleted IS NULL)
+      `);
+    }
+
     if (reportQueries.length === 0) {
       return { data: [], total: 0, page, limit };
     }

@@ -629,7 +629,67 @@ model FormTemplate {
   @@map("form_templates")
 }
 
-// 37. Form Submissions Table
+// 38. Radio Equipment Master Table (imported from legacy Excel: รายการวิทยุ)
+model RadioEquipment {
+  id                Int              @id @default(autoincrement())
+  assetNumber       String           @unique @map("asset_number") @db.VarChar(50)
+  assetName         String           @map("asset_name") @db.VarChar(200)
+  brand             String?          @db.VarChar(100)
+  model             String?          @db.VarChar(100)
+  serialNumber      String?          @map("serial_number") @db.VarChar(100)
+  location          String?          @db.VarChar(200)
+  referenceImageUrl String?          @map("reference_image_url") @db.VarChar(500)
+  status            String           @default("active") @db.VarChar(20)
+  siteId            Int              @default(1) @map("site_id")
+  isDeleted         Boolean          @default(false) @map("is_deleted")
+  createdAt         DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  inspections       RadioInspectionItem[]
+
+  @@map("radio_equipments")
+}
+
+// 39. Radio Inspection Header Table (one record per inspection round, whole lot)
+model RadioInspection {
+  id             Int                   @id @default(autoincrement())
+  inspectionDate DateTime              @map("inspection_date") @db.Date
+  shift          String                @db.VarChar(50)
+  inspectorName  String                @map("inspector_name") @db.VarChar(100)
+  totalChecked   Int                   @map("total_checked")
+  totalPresent   Int                   @default(0) @map("total_present")
+  totalWorking   Int                   @default(0) @map("total_working")
+  totalFailed    Int                   @default(0) @map("total_failed")
+  summary        String?               @db.Text
+  siteId         Int                   @default(1) @map("site_id")
+  isDeleted      Boolean               @default(false) @map("is_deleted")
+  deletedBy      String?               @map("deleted_by")
+  deletedAt      DateTime?             @map("deleted_at")
+  updatedBy      String?               @map("updated_by") @db.VarChar(100)
+  updatedAt      DateTime?             @map("updated_at") @db.Timestamptz(6)
+  submittedById  Int?                  @map("submitted_by_id")
+  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  items          RadioInspectionItem[]
+
+  @@map("radio_inspections")
+}
+
+// 40. Radio Inspection Item Table (one row per radio per round)
+model RadioInspectionItem {
+  id           Int             @id @default(autoincrement())
+  inspectionId Int             @map("inspection_id")
+  equipmentId  Int             @map("equipment_id")
+  isPresent    Boolean         @default(true) @map("is_present")
+  isWorking    Boolean         @default(true) @map("is_working")
+  remark       String?         @db.Text
+  photoUrl     String?         @map("photo_url") @db.Text
+  createdAt    DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  inspection   RadioInspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  equipment    RadioEquipment  @relation(fields: [equipmentId], references: [id])
+
+  @@map("radio_inspection_items")
+}
+
+// 41. Form Submissions Table
 model FormSubmission {
   id              Int          @id @default(autoincrement())
   templateId      Int          @map("template_id")

@@ -13,6 +13,7 @@ import { CctvModule } from './cctv/cctv.module';
 import { ParkingModule } from './parking/parking.module';
 import { GuardsModule } from './guards/guards.module';
 import { MetalDetectorModule } from './metal-detector/metal-detector.module';
+import { RadioModule } from './radio/radio.module';
 import { PatrolModule } from './patrol/patrol.module';
 import { ReportsModule } from './reports/reports.module';
 import { UsersModule } from './users/users.module';
@@ -39,6 +40,7 @@ import { HealthController } from './health.controller';
     ParkingModule,
     GuardsModule,
     MetalDetectorModule,
+    RadioModule,
     PatrolModule,
     ReportsModule,
     UsersModule,

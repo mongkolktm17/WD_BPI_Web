@@ -32,6 +32,7 @@ const AVAILABLE_PAGES: Record<string, string> = {
   guard_duty_log: 'บันทึกเวร',
   metal_detector: 'ตรวจจับโลหะ (Handheld)',
   walkthrough_detector: 'ตรวจจับโลหะ (Walkthrough)',
+  radio_inspection: 'ตรวจวิทยุสื่อสาร',
   patrol_checklist: 'รายการตรวจตรา',
   report_page: 'ศูนย์รายงาน',
   report_visual: 'รายงานกราฟิก',

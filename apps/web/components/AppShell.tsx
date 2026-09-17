@@ -158,6 +158,7 @@ export function AppShell({ children }: AppShellProps) {
         { name: 'ระบบบันทึก NVR', href: '/nvr-recording', icon: Radio },
         { name: 'Walkthrough Detector', href: '/walkthrough-detector', icon: Radio },
         { name: 'Hand-Held Detector', href: '/handheld-detector', icon: Radio },
+        { name: 'ตรวจวิทยุสื่อสาร', href: '/radio-inspection', icon: Radio },
       ],
     },
     {

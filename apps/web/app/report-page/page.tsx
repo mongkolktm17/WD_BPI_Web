@@ -20,6 +20,7 @@ const QUICK_LINKS = [
   { name: 'ตรวจ Hand Held', href: '/handheld-detector', icon: Radio, color: 'from-amber-500 to-orange-600', shadow: 'shadow-amber-500/20', permission: 'metal_detector' },
   { name: 'Checklist Patrol', href: '/patrol-checklist', icon: ClipboardList, color: 'from-emerald-500 to-teal-600', shadow: 'shadow-emerald-500/20', permission: 'patrol_checklist' },
   { name: 'ตรวจ Metal Detector', href: '/walkthrough-detector', icon: HardHat, color: 'from-teal-500 to-cyan-600', shadow: 'shadow-teal-500/20', permission: 'walkthrough_detector' },
+  { name: 'ตรวจวิทยุสื่อสาร', href: '/radio-inspection', icon: Radio, color: 'from-orange-500 to-amber-600', shadow: 'shadow-orange-500/20', permission: 'radio_inspection' },
   { name: 'NVR Recording Days', href: '/nvr-recording', icon: FileText, color: 'from-violet-500 to-purple-600', shadow: 'shadow-violet-500/20', permission: 'nvr_recording' },
   { name: 'CCTV Angle Check', href: '/cctv-angle-check', icon: Camera, color: 'from-rose-500 to-pink-600', shadow: 'shadow-rose-500/20', permission: 'cctv_angle_check' },
   { name: 'Guard Duty Log', href: '/guard-duty-log', icon: UserCheck, color: 'from-yellow-500 to-amber-600', shadow: 'shadow-yellow-500/20', permission: 'guard_duty_log' },
@@ -38,6 +39,7 @@ const REPORT_TYPE_OPTIONS = [
   { value: 'cctv_report', label: 'NVR Recording' },
   { value: 'cctv_angle', label: 'CCTV Angle Check' },
   { value: 'metal_detector', label: 'ตรวจ Metal Detector' },
+  { value: 'radio_inspection', label: 'ตรวจวิทยุสื่อสาร' },
 ];
 
 const TYPE_LABEL_MAP: Record<string, string> = {
@@ -50,6 +52,7 @@ const TYPE_LABEL_MAP: Record<string, string> = {
   cctv_report: 'NVR Recording',
   cctv_angle: 'CCTV Angle Check',
   metal_detector: 'ตรวจ Metal Detector',
+  radio_inspection: 'ตรวจวิทยุสื่อสาร',
 };
 
 const TYPE_COLOR_MAP: Record<string, { bg: string; text: string; icon: string }> = {
@@ -62,6 +65,7 @@ const TYPE_COLOR_MAP: Record<string, { bg: string; text: string; icon: string }>
   cctv_report: { bg: 'bg-indigo-100', text: 'text-indigo-700', icon: '📊' },
   cctv_angle: { bg: 'bg-rose-100', text: 'text-rose-700', icon: '🎯' },
   metal_detector: { bg: 'bg-teal-100', text: 'text-teal-700', icon: '🔍' },
+  radio_inspection: { bg: 'bg-orange-100', text: 'text-orange-700', icon: '📻' },
 };
 
 interface ReportItem {
