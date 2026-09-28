@@ -43,6 +43,13 @@ jobs:
       - name: Install Monorepo Dependencies
         run: npm ci
 
+      # Prisma Client must exist before tsc: every API service types
+      # against the generated client (tsc --noEmit fails with
+      # "has no exported member 'PrismaClient'" on a fresh checkout).
+      # generate needs no live database; migrations still run later.
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
       - name: Lint
         run: npm run lint
 
@@ -51,9 +58,8 @@ jobs:
           npm run typecheck --workspace @wdbpi/api
           npm run typecheck --workspace @wdbpi/web
 
-      - name: Generate Prisma Client & Deploy Migrations (test DB)
+      - name: Deploy Migrations (test DB)
         run: |
-          npx prisma generate
           npx prisma migrate deploy
         env:
           DATABASE_URL: postgresql://wdbpi_user:wdbpi_pass@localhost:5432/wdbpi_db_test?schema=public
