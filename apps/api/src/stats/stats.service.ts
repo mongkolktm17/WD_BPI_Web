@@ -461,6 +461,37 @@ export class StatsService {
     for (const v of latestByNvr.values()) { if (v.daysRecorded >= 62) nvrCompliant++; else nvrNonCompliant++; }
     const nvrCompliance = { compliant: nvrCompliant, nonCompliant: nvrNonCompliant, total: latestByNvr.size, targetDays: 62 };
 
+    // ── RADIO (latest inspection round for this site, fallback to latest overall)
+    const siteIdNum = Number(siteId) || 1;
+    let latestRadio = await this.prisma.radioInspection.findFirst({
+      where: { isDeleted: false, siteId: siteIdNum },
+      orderBy: [{ inspectionDate: 'desc' }, { id: 'desc' }],
+      include: { items: { include: { equipment: true } } },
+    });
+    if (!latestRadio) {
+      latestRadio = await this.prisma.radioInspection.findFirst({
+        where: { isDeleted: false },
+        orderBy: [{ inspectionDate: 'desc' }, { id: 'desc' }],
+        include: { items: { include: { equipment: true } } },
+      });
+    }
+    const radioChecked = latestRadio?.totalChecked ?? 0;
+    const radioPresent = latestRadio?.totalPresent ?? 0;
+    const radioWorking = latestRadio?.totalWorking ?? 0;
+    const radioFailed = latestRadio?.totalFailed ?? 0;
+    const radioProblems = (latestRadio?.items ?? [])
+      .filter((it) => !it.isPresent || !it.isWorking)
+      .slice(0, 5)
+      .map((it) => ({
+        assetNumber: it.equipment?.assetNumber ?? `#${it.equipmentId}`,
+        brand: it.equipment?.brand ?? null,
+        status: (!it.isPresent ? 'missing' : 'broken') as 'missing' | 'broken',
+        remark: it.remark ?? null,
+      }));
+    const radioReportCount = await this.prisma.radioInspection.count({
+      where: latestRadio ? { isDeleted: false, siteId: latestRadio.siteId } : { isDeleted: false },
+    });
+
     return {
       guards: {
         today: {
@@ -503,6 +534,20 @@ export class StatsService {
         passRate: wtHistory,
         totalChecks: todayWtChecks.length,
         zones: wtZones,
+      },
+      radio: {
+        hasData: !!latestRadio,
+        checked: radioChecked,
+        present: radioPresent,
+        working: radioWorking,
+        failed: radioFailed,
+        missing: Math.max(0, radioChecked - radioPresent),
+        broken: Math.max(0, radioPresent - radioWorking),
+        totalReports: radioReportCount,
+        shift: latestRadio?.shift ?? null,
+        inspectorName: latestRadio?.inspectorName ?? null,
+        inspectionDate: latestRadio?.inspectionDate ? new Date(latestRadio.inspectionDate).toISOString() : null,
+        problems: radioProblems,
       },
       site: {
         id: 1,
@@ -588,6 +633,20 @@ export class StatsService {
           { name: 'Cleanroom Entrance (Zone 3)', pass: 6, fail: 0 },
           { name: 'Warehouse Main (Zone 4)', pass: 5, fail: 1 },
         ],
+      },
+      radio: {
+        hasData: false,
+        checked: 0,
+        present: 0,
+        working: 0,
+        failed: 0,
+        missing: 0,
+        broken: 0,
+        totalReports: 0,
+        shift: null,
+        inspectorName: null,
+        inspectionDate: null,
+        problems: [],
       },
     };
   }

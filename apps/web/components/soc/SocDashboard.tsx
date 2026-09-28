@@ -8,7 +8,7 @@ import { ExecutivePersonnelCard } from '@/components/soc/ExecutivePersonnelCard'
 import { SurveillancePanel } from '@/components/soc/SurveillancePanel';
 import { ParkingPanel, buildLotData } from '@/components/soc/ParkingPanel';
 import { UnifiedScreeningPanel } from '@/components/soc/UnifiedScreeningPanel';
-import { calcHealthScore, formatTimeTH, type ZoneStat } from '@/components/soc/soc-utils';
+import { calcHealthScore, formatTimeTH, EMPTY_RADIO, type ZoneStat, type RadioSummary } from '@/components/soc/soc-utils';
 import { useSite } from '@/lib/SiteContext';
 import { ExecutiveRotatingBar } from '@/components/soc/ExecutiveRotatingBar';
 import { ExecutiveDualView } from '@/components/soc/ExecutiveDualView';
@@ -72,6 +72,9 @@ export default function SocDashboard() {
   const [wtReports, setWtReports] = useState(0);
   const [wtZones, setWtZones] = useState<ZoneStat[]>(EMPTY_ZONES);
 
+  // Pillar 4: Radio communication
+  const [radio, setRadio] = useState<RadioSummary>(EMPTY_RADIO);
+
   const fetchAllData = useCallback(async () => {
     try {
       setLoading(true);
@@ -108,6 +111,8 @@ export default function SocDashboard() {
 
         setWtReports(d.walkthrough?.totalChecks ?? 0);
         setWtZones(d.walkthrough?.zones ?? EMPTY_ZONES);
+
+        setRadio({ ...EMPTY_RADIO, ...(d.radio ?? {}) });
 
         setFetchedAt(new Date().toISOString());
       }
@@ -179,6 +184,8 @@ export default function SocDashboard() {
     handheldFail: hhFail,
     walkthroughPass: wtPass,
     walkthroughFail: wtFail,
+    radioPass: radio.working,
+    radioFail: radio.failed,
     guardActive: totalActive,
     guardContract: totalContract,
   });
@@ -263,6 +270,7 @@ export default function SocDashboard() {
                 handheldTotalReports={handheldReports}
                 walkthroughZones={wtZones}
                 walkthroughTotalReports={wtReports}
+                radio={radio}
                 updatedLabel={stamp}
               />
             </div>

@@ -11,6 +11,43 @@ export interface CheckStat {
   fail: number;
 }
 
+export interface RadioProblem {
+  assetNumber: string;
+  brand: string | null;
+  status: 'missing' | 'broken';
+  remark: string | null;
+}
+
+export interface RadioSummary {
+  hasData: boolean;
+  checked: number;
+  present: number;
+  working: number;
+  failed: number;
+  missing: number;
+  broken: number;
+  totalReports: number;
+  shift: string | null;
+  inspectorName: string | null;
+  inspectionDate: string | null;
+  problems: RadioProblem[];
+}
+
+export const EMPTY_RADIO: RadioSummary = {
+  hasData: false,
+  checked: 0,
+  present: 0,
+  working: 0,
+  failed: 0,
+  missing: 0,
+  broken: 0,
+  totalReports: 0,
+  shift: null,
+  inspectorName: null,
+  inspectionDate: null,
+  problems: [],
+};
+
 /**
  * Weighted overall system health score (0-100).
  * Components WITHOUT data are excluded and remaining weights renormalized,
@@ -26,6 +63,8 @@ export function calcHealthScore(input: {
   handheldFail: number;
   walkthroughPass: number;
   walkthroughFail: number;
+  radioPass: number;
+  radioFail: number;
   guardActive: number;
   guardContract: number;
 }): number | null {
@@ -41,6 +80,11 @@ export function calcHealthScore(input: {
       ratio: input.walkthroughPass + input.walkthroughFail > 0 ? input.walkthroughPass / (input.walkthroughPass + input.walkthroughFail) : 0,
       weight: 15,
       hasData: input.walkthroughPass + input.walkthroughFail > 0,
+    },
+    {
+      ratio: input.radioPass + input.radioFail > 0 ? input.radioPass / (input.radioPass + input.radioFail) : 0,
+      weight: 10,
+      hasData: input.radioPass + input.radioFail > 0,
     },
     { ratio: input.guardContract > 0 ? input.guardActive / input.guardContract : 0, weight: 15, hasData: input.guardContract > 0 },
   ];

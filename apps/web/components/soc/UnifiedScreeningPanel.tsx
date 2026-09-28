@@ -1,10 +1,11 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import {
-  ScanLine, DoorOpen, BatteryMedium, Lightbulb, Radio, Volume2, Check, X, ShieldCheck,
+  ScanLine, DoorOpen, BatteryMedium, Lightbulb, Radio, RadioTower, Volume2, Check, X, ShieldCheck,
 } from 'lucide-react';
-import type { ZoneStat, CheckStat } from './soc-utils';
+import type { ZoneStat, CheckStat, RadioSummary } from './soc-utils';
 
 interface UnifiedScreeningPanelProps {
   handheldChecks: {
@@ -16,6 +17,7 @@ interface UnifiedScreeningPanelProps {
   handheldTotalReports: number;
   walkthroughZones: ZoneStat[];
   walkthroughTotalReports: number;
+  radio: RadioSummary;
   updatedLabel: string | null;
 }
 
@@ -74,6 +76,7 @@ export function UnifiedScreeningPanel({
   handheldTotalReports,
   walkthroughZones,
   walkthroughTotalReports,
+  radio,
   updatedLabel,
 }: UnifiedScreeningPanelProps) {
   const hhPass =
@@ -94,9 +97,11 @@ export function UnifiedScreeningPanel({
   const wtTotal = wtPass + wtFail;
   const wtPct = wtTotal > 0 ? Math.round((wtPass / wtTotal) * 100) : 100;
 
-  const allPass = hhPass + wtPass;
-  const allFail = hhFail + wtFail;
-  const totalChecks = hhTotal + wtTotal;
+  const radioPct = radio.checked > 0 ? Math.round((radio.working / radio.checked) * 100) : 0;
+
+  const allPass = hhPass + wtPass + (radio.hasData ? radio.working : 0);
+  const allFail = hhFail + wtFail + (radio.hasData ? radio.failed : 0);
+  const totalChecks = hhTotal + wtTotal + (radio.hasData ? radio.checked : 0);
   const overallRate = totalChecks > 0 ? Math.round((allPass / totalChecks) * 100) : 100;
 
   return (
@@ -131,8 +136,8 @@ export function UnifiedScreeningPanel({
           </div>
         </div>
 
-        {/* 2-Column Split: Left = Handheld, Right = Walkthrough */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-2">
+        {/* 3-Column Split: Handheld | Walkthrough | Radio */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-2">
           {/* Left Column: Handheld Metal Detectors */}
           <div className="rounded-xl bg-white/70 border border-slate-200/80 p-2.5 flex flex-col justify-between">
             <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
@@ -233,6 +238,90 @@ export function UnifiedScreeningPanel({
               <span className={wtFail > 0 ? 'text-rose-500 font-bold' : 'text-emerald-600 font-bold'}>
                 {wtFail > 0 ? `พบข้อบกพร่อง ${wtFail} จุด` : 'พร้อมใช้งาน 100%'}
               </span>
+            </div>
+          </div>
+
+          {/* Third Column: Radio Communication */}
+          <div className="rounded-xl bg-white/70 border border-slate-200/80 p-2.5 flex flex-col justify-between md:col-span-2 lg:col-span-1">
+            <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
+              <div className="flex items-center gap-1.5">
+                <RadioTower className="w-4 h-4 text-orange-600" />
+                <span className="text-[11px] font-bold text-slate-800">
+                  Radio · วิทยุสื่อสาร
+                </span>
+              </div>
+              <div className="text-[10px] font-bold text-slate-500">
+                {radio.hasData ? `${radio.working}/${radio.checked} พร้อมใช้ (${radioPct}%)` : 'ยังไม่มีข้อมูล'}
+              </div>
+            </div>
+
+            {radio.hasData ? (
+              <>
+                <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden mt-2">
+                  <div
+                    className="h-full rounded-full bg-orange-500 transition-all duration-700"
+                    style={{ width: `${radioPct}%` }}
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-1.5 mt-2 text-center">
+                  <div className="rounded-lg bg-emerald-50/70 border border-emerald-100 p-1.5">
+                    <div className="text-sm font-black text-emerald-600 tabular-nums">{radio.present}</div>
+                    <div className="text-[9px] font-semibold text-emerald-700">อยู่ครบ</div>
+                  </div>
+                  <div className="rounded-lg bg-amber-50/70 border border-amber-100 p-1.5">
+                    <div className="text-sm font-black text-amber-600 tabular-nums">{radio.missing}</div>
+                    <div className="text-[9px] font-semibold text-amber-700">สูญหาย</div>
+                  </div>
+                  <div className="rounded-lg bg-rose-50/70 border border-rose-100 p-1.5">
+                    <div className="text-sm font-black text-rose-600 tabular-nums">{radio.broken}</div>
+                    <div className="text-[9px] font-semibold text-rose-700">ชำรุด</div>
+                  </div>
+                </div>
+
+                <div className="mt-2 space-y-1">
+                  {radio.problems.length === 0 ? (
+                    <div className="text-[11px] text-emerald-600 font-semibold text-center py-1">
+                      ✓ อยู่ครบพร้อมใช้งานทั้งหมด
+                    </div>
+                  ) : (
+                    radio.problems.map((p) => (
+                      <div
+                        key={p.assetNumber}
+                        className="flex items-center justify-between gap-2 bg-slate-50/80 border border-slate-200/70 rounded-lg px-2 py-1"
+                      >
+                        <div className="min-w-0">
+                          <span className="text-[11px] font-bold text-slate-700">{p.assetNumber}</span>
+                          {p.brand && <span className="text-[9px] text-slate-400 ml-1">{p.brand}</span>}
+                          {p.remark && <div className="text-[9px] text-slate-500 truncate">{p.remark}</div>}
+                        </div>
+                        <span
+                          className={`flex-shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+                            p.status === 'missing' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
+                          }`}
+                        >
+                          {p.status === 'missing' ? 'สูญหาย' : 'ชำรุด'}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-5 text-slate-400 text-[11px]">
+                ยังไม่มีข้อมูลการตรวจวิทยุ
+              </div>
+            )}
+
+            <div className="flex items-center justify-between pt-1.5 mt-1 text-[9px] text-slate-400">
+              <span>
+                {radio.hasData && (radio.shift || radio.inspectorName)
+                  ? `${radio.shift ?? ''} · ${radio.inspectorName ?? ''}`
+                  : `รายงานทั้งหมด: ${radio.totalReports} รายการ`}
+              </span>
+              <Link href="/radio-inspection" className="text-blue-600 font-bold hover:underline">
+                เปิดหน้าตรวจวิทยุ →
+              </Link>
             </div>
           </div>
         </div>
