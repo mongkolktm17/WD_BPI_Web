@@ -72,7 +72,10 @@ services:
       start_period: 15s
 
   postgres:
-    image: postgres:18-alpine
+    build:
+      context: ./docker/postgres
+      dockerfile: Dockerfile
+    image: wdbpi-postgres:18-vector
     container_name: wdbpi_postgres
     restart: unless-stopped
     logging: *default-logging

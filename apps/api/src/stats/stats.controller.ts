@@ -1,11 +1,17 @@
-import { Controller, Get, Post, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Post, UseGuards, Query, Sse, MessageEvent } from '@nestjs/common';
 import { StatsService } from './stats.service';
 import { AuthGuard } from '@nestjs/passport';
+import { Observable } from 'rxjs';
 
 @UseGuards(AuthGuard('jwt'))
 @Controller('stats')
 export class StatsController {
   constructor(private readonly statsService: StatsService) {}
+
+  @Sse('stream')
+  streamTelemetry(): Observable<MessageEvent> {
+    return this.statsService.getTelemetryStream();
+  }
 
   @Get()
   async getStats() {

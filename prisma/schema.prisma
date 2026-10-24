@@ -710,3 +710,66 @@ model FormSubmission {
 
   @@map("form_submissions")
 }
+
+// 42. Factory Context (Multi-Tenant RAG Knowledge Base)
+model FactoryContext {
+  id        Int      @id @default(autoincrement())
+  tenantId  String   @default("wdbpi") @map("tenant_id") @db.VarChar(50)
+  category  String   @db.VarChar(50) // 'building_info' | 'strict_rule' | 'glossary'
+  title     String?  @db.VarChar(200)
+  content   String   @db.Text
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("factory_context")
+}
+
+// 43. AI Automated Reports (Daily / Weekly / Monthly with Human-in-the-Loop)
+model AiReport {
+  id             Int       @id @default(autoincrement())
+  tenantId       String    @default("wdbpi") @map("tenant_id") @db.VarChar(50)
+  reportType     String    @map("report_type") @db.VarChar(20) // 'DAILY' | 'WEEKLY' | 'MONTHLY'
+  reportDate     DateTime  @map("report_date") @db.Date
+  rawMetricsJson Json      @map("raw_metrics_json")
+  aiDraftText    String    @map("ai_draft_text") @db.Text
+  humanFinalText String?   @map("human_final_text") @db.Text
+  status         String    @default("DRAFT") @db.VarChar(20) // 'DRAFT' | 'APPROVED'
+  approvedBy     String?   @map("approved_by") @db.VarChar(100)
+  approvedAt     DateTime? @map("approved_at") @db.Timestamptz(6)
+  embedding      Unsupported("vector(1536)")?
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  feedbacks      AiFeedbackRule[]
+
+  @@map("ai_reports")
+}
+
+// 44. Incident Logs Vector Store
+model IncidentLogVector {
+  id           Int      @id @default(autoincrement())
+  tenantId     String   @default("wdbpi") @map("tenant_id") @db.VarChar(50)
+  incidentDate DateTime @map("incident_date") @db.Date
+  location     String   @db.VarChar(200)
+  description  String   @db.Text
+  embedding    Unsupported("vector(1536)")?
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("incident_logs_vector")
+}
+
+// 45. AI Feedback Rules (Human Corrections to AI operational rules)
+model AiFeedbackRule {
+  id              Int       @id @default(autoincrement())
+  tenantId        String    @default("wdbpi") @map("tenant_id") @db.VarChar(50)
+  reportId        Int?      @map("report_id")
+  rating          String    @db.VarChar(10) // 'UP' | 'DOWN'
+  feedbackComment String?   @map("feedback_comment") @db.Text
+  extractedRule   String?   @map("extracted_rule") @db.Text
+  isActive        Boolean   @default(true) @map("is_active")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  report          AiReport? @relation(fields: [reportId], references: [id], onDelete: SetNull)
+
+  @@map("ai_feedback_rules")
+}
+

@@ -2,8 +2,8 @@ import { IsNotEmpty, IsString, IsInt, IsOptional, IsDateString } from 'class-val
 
 export class CreateCctvReportDto {
   @IsDateString({}, { message: 'กรุณาระบุวันที่รายงาน' })
-  @IsNotEmpty()
-  reportDate: string;
+  @IsOptional()
+  reportDate?: string;
 
   @IsInt()
   @IsOptional()
@@ -20,4 +20,22 @@ export class CreateCctvReportDto {
   @IsString()
   @IsOptional()
   remark?: string;
+
+  @IsString()
+  @IsOptional()
+  building?: string;
+
+  @IsInt()
+  @IsOptional()
+  siteId?: number;
+
+  @IsOptional()
+  stats?: any;
+
+  @IsOptional()
+  nvrStats?: any;
+
+  @IsOptional()
+  details?: any;
 }
+

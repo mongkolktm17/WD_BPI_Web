@@ -3,9 +3,12 @@
 import React, { useState, useEffect } from 'react';
 import AnimatedDropdown from '@/components/AnimatedDropdown';
 import MicButton from '@/components/MicButton';
+import CollapsibleHistory from '@/components/CollapsibleHistory';
 import { apiFetch } from '@/lib/api';
-import { Calendar, Clock, MapPin, User, RefreshCw, Camera, Trash2, X, Eye } from 'lucide-react';
+import { Calendar, Clock, MapPin, User, RefreshCw, Camera, Trash2, X, Eye, Check, Save, RotateCcw, Sparkles, Send } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
+
+const DRAFT_KEY = 'wd_pwa_draft_cctv_inspection';
 
 interface CctvInspectionItem {
   id: number;
@@ -38,6 +41,81 @@ export default function CctvInspectionPage() {
   const [history, setHistory] = useState<CctvInspectionItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [selectedReport, setSelectedReport] = useState<CctvInspectionItem | null>(null);
+  const [hasDraftNotice, setHasDraftNotice] = useState(false);
+  const [lastSavedDraftTime, setLastSavedDraftTime] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d.shift || d.cctvRoom || d.radioStatus) {
+          setHasDraftNotice(true);
+        }
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        const payload = {
+          inspectionDate,
+          shift,
+          cctvRoom,
+          radioStatus,
+          reportBooksStatus,
+          nvrScreenStatus,
+          nvrMachineStatus,
+          keysStatus,
+          accessControlStatus,
+          incidentReportStatus,
+          timestamp: new Date().toISOString(),
+        };
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
+        setLastSavedDraftTime(new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }));
+      } catch {}
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [inspectionDate, shift, cctvRoom, radioStatus, reportBooksStatus, nvrScreenStatus, nvrMachineStatus, keysStatus, accessControlStatus, incidentReportStatus]);
+
+  const handleRestoreDraft = () => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d.inspectionDate) setInspectionDate(d.inspectionDate);
+        if (d.shift) setShift(d.shift);
+        if (d.cctvRoom) setCctvRoom(d.cctvRoom);
+        if (d.radioStatus) setRadioStatus(d.radioStatus);
+        if (d.reportBooksStatus) setReportBooksStatus(d.reportBooksStatus);
+        if (d.nvrScreenStatus) setNvrScreenStatus(d.nvrScreenStatus);
+        if (d.nvrMachineStatus) setNvrMachineStatus(d.nvrMachineStatus);
+        if (d.keysStatus) setKeysStatus(d.keysStatus);
+        if (d.accessControlStatus) setAccessControlStatus(d.accessControlStatus);
+        if (d.incidentReportStatus) setIncidentReportStatus(d.incidentReportStatus);
+        setMessage('กู้คืนข้อมูลร่างล่าสุดเรียบร้อยแล้ว');
+      }
+    } catch {}
+    setHasDraftNotice(false);
+  };
+
+  const handleDiscardDraft = () => {
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch {}
+    setHasDraftNotice(false);
+  };
+
+  const handleCheckAllNormal = () => {
+    setRadioStatus('ปกติ');
+    setReportBooksStatus('ปกติ');
+    setNvrScreenStatus('ปกติ');
+    setNvrMachineStatus('ปกติ');
+    setKeysStatus('ปกติ');
+    setAccessControlStatus('ปกติ');
+    setIncidentReportStatus('ปกติ');
+  };
 
   const fetchHistory = async () => {
     setHistoryLoading(true);
@@ -132,6 +210,7 @@ export default function CctvInspectionPage() {
         }),
       });
       setMessage('ส่งรายงานการตรวจเช็คเรียบร้อยแล้ว');
+      try { localStorage.removeItem(DRAFT_KEY); } catch {}
       fetchHistory();
     } catch (err: any) {
       setMessage(err?.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
@@ -188,7 +267,7 @@ export default function CctvInspectionPage() {
   ];
 
   return (
-    <div className="gradient-bg min-h-screen py-4 md:py-8 px-3 md:px-4 font-sans">
+    <div className="gradient-bg min-h-screen py-4 md:py-8 px-3 md:px-4 font-sans pb-28 md:pb-8">
       <div className="max-w-4xl mx-auto space-y-4 md:space-y-6">
 
         <PageHeader
@@ -196,6 +275,31 @@ export default function CctvInspectionPage() {
           subtitle="CCTV Inspection"
           icon={<Camera className="w-5 h-5 md:w-6 h-6 text-white" />}
         />
+
+        {hasDraftNotice && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-900 shadow-sm animate-fade-in">
+            <div className="flex items-center gap-2">
+              <RotateCcw className="w-4 h-4 text-amber-600 shrink-0" />
+              <span className="text-sm font-medium">พบข้อมูลร่างการตรวจเช็คที่บันทึกค้างไว้ในเครื่องนี้</span>
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <button
+                type="button"
+                onClick={handleRestoreDraft}
+                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors"
+              >
+                กู้คืนข้อมูลร่าง
+              </button>
+              <button
+                type="button"
+                onClick={handleDiscardDraft}
+                className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200 transition-colors"
+              >
+                ละทิ้ง
+              </button>
+            </div>
+          </div>
+        )}
 
         {message && (
           <div className={`p-4 rounded-xl text-center font-medium shadow ${message.includes('เรียบร้อย') ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}`}>
@@ -217,13 +321,42 @@ export default function CctvInspectionPage() {
 
             <div className="md:col-span-2">
               <label className="block text-xs font-medium text-slate-600 mb-1.5">ชื่อ-รหัส ผู้ตรวจ <span className="text-rose-500">*</span></label>
-              <input type="text" value={inspectorName} readOnly className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-100 text-slate-800 text-sm cursor-not-allowed" />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={inspectorName}
+                  onChange={(e) => setInspectorName(e.target.value)}
+                  className="w-full pl-4 pr-10 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  required
+                />
+                <MicButton
+                  onResult={setInspectorName}
+                  currentValue={inspectorName}
+                  mode="replace"
+                  className="top-1/2 -translate-y-1/2 right-2.5"
+                />
+              </div>
             </div>
           </div>
 
           {/* Inspection Items */}
           <div className="pt-4 border-t border-slate-200 space-y-4">
-            <h3 className="text-base md:text-lg font-bold text-slate-800">รายการตรวจเช็คอุปกรณ์ภายในห้อง CCTV</h3>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div>
+                <h3 className="text-base md:text-lg font-bold text-slate-800">รายการตรวจเช็คอุปกรณ์ภายในห้อง CCTV</h3>
+                {lastSavedDraftTime && (
+                  <span className="text-xs text-slate-400">บันทึกร่างอัตโนมัติ {lastSavedDraftTime} น.</span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={handleCheckAllNormal}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-semibold transition-all active:scale-95 self-start sm:self-auto"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                ตั้งค่าผ่านทุกอุปกรณ์ (Check All Normal)
+              </button>
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <AnimatedDropdown options={radioOptions} value={radioStatus} onChange={setRadioStatus} label="1. วิทยุสื่อสารประจำห้อง" />
@@ -238,31 +371,50 @@ export default function CctvInspectionPage() {
             </div>
           </div>
 
-          <div className="pt-4 flex justify-center">
-            <button type="submit" disabled={loading} className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-6 md:px-10 rounded-xl sm:rounded-full shadow-lg transition-transform active:scale-95 text-sm md:text-base disabled:opacity-50 min-h-[44px] flex items-center justify-center">
-              {loading ? 'กำลังบันทึก...' : '📊 ส่งรายงานตรวจเช็คห้อง CCTV'}
+          <div className="pt-4 hidden md:flex justify-center">
+            <button type="submit" disabled={loading} className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-6 md:px-10 rounded-xl sm:rounded-full shadow-lg transition-transform active:scale-95 text-sm md:text-base disabled:opacity-50 min-h-[44px] flex items-center justify-center gap-2">
+              <Send className="w-5 h-5" />
+              <span>{loading ? 'กำลังบันทึก...' : 'ส่งรายงานตรวจเช็คห้อง CCTV'}</span>
             </button>
           </div>
         </form>
 
+        {/* Mobile Sticky Bottom Action Dock */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-2.5 pb-[max(10px,env(safe-area-inset-bottom))] shadow-lg flex items-center justify-between gap-3">
+          <div className="text-xs text-slate-500 truncate">
+            {lastSavedDraftTime ? `ร่างล่าสุด ${lastSavedDraftTime} น.` : 'พร้อมบันทึก'}
+          </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              const form = document.querySelector('form');
+              if (form) form.requestSubmit();
+            }}
+            disabled={loading}
+            className="px-5 py-2.5 bg-emerald-600 active:bg-emerald-700 text-white font-semibold text-sm rounded-xl shadow-md flex items-center gap-2 shrink-0 disabled:opacity-50"
+          >
+            <Send className="w-4 h-4" />
+            <span>{loading ? 'บันทึก...' : 'ส่งรายงาน'}</span>
+          </button>
+        </div>
+
         {/* History Section */}
-        <div className="bg-white rounded-2xl shadow-xl border border-slate-200/60 p-4 md:p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-              <Clock className="w-5 h-5 text-emerald-600" />
-              ประวัติการตรวจเช็คห้อง CCTV
-            </h2>
+        <CollapsibleHistory
+          title="ประวัติการตรวจเช็คห้อง CCTV"
+          count={history.length}
+          defaultOpen={false}
+          headerActions={
             <button
               type="button"
               onClick={fetchHistory}
               disabled={historyLoading}
-              className="p-2 text-slate-500 hover:text-emerald-600 hover:bg-slate-50 rounded-lg transition-colors"
+              className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-slate-100 rounded-lg transition-colors"
               title="รีเฟรชข้อมูล"
             >
               <RefreshCw className={`w-4 h-4 ${historyLoading ? 'animate-spin' : ''}`} />
             </button>
-          </div>
-
+          }
+        >
           {historyLoading && history.length === 0 ? (
             <div className="text-center py-8 text-slate-400">กำลังโหลดข้อมูล...</div>
           ) : history.length === 0 ? (
@@ -301,7 +453,17 @@ export default function CctvInspectionPage() {
                               : 'bg-rose-50 text-rose-700'
                           }`}
                         >
-                          {item.totalFailed === 0 ? '✓ ปกติทั้งหมด' : `✗ ผิดปกติ ${item.totalFailed} รายการ`}
+                          {item.totalFailed === 0 ? (
+                            <>
+                              <Check className="w-3.5 h-3.5" />
+                              <span>ปกติทั้งหมด</span>
+                            </>
+                          ) : (
+                            <>
+                              <X className="w-3.5 h-3.5" />
+                              <span>ผิดปกติ {item.totalFailed} รายการ</span>
+                            </>
+                          )}
                         </span>
                       </td>
                       <td className="py-3 px-3 text-slate-600 text-xs whitespace-nowrap">
@@ -336,7 +498,7 @@ export default function CctvInspectionPage() {
               </table>
             </div>
           )}
-        </div>
+        </CollapsibleHistory>
 
         {/* Detail Modal */}
         {selectedReport && (
@@ -384,7 +546,17 @@ export default function CctvInspectionPage() {
                             : 'bg-rose-50 text-rose-700'
                         }`}
                       >
-                        {selectedReport.totalFailed === 0 ? '✓ ปกติทั้งหมด' : `✗ ผิดปกติ ${selectedReport.totalFailed} รายการ`}
+                        {selectedReport.totalFailed === 0 ? (
+                          <>
+                            <Check className="w-3.5 h-3.5" />
+                            <span>ปกติทั้งหมด</span>
+                          </>
+                        ) : (
+                          <>
+                            <X className="w-3.5 h-3.5" />
+                            <span>ผิดปกติ {selectedReport.totalFailed} รายการ</span>
+                          </>
+                        )}
                       </span>
                     </div>
                     <div>

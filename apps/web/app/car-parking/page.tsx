@@ -1,10 +1,14 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import AnimatedDropdown from '@/components/AnimatedDropdown';
-import { Clock, CheckCircle2, Car, Trash2, Eye, Pencil, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Clock, CheckCircle2, Car, Trash2, Eye, Pencil, ChevronLeft, ChevronRight, X, Save, FileSpreadsheet, Camera, Radio, Sparkles, RotateCcw, Send } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import { apiFetch } from '@/lib/api';
+import { useSite } from '@/lib/SiteContext';
+import { IncidentService } from '@/lib/incident-service';
+import MicButton from '@/components/MicButton';
+import CollapsibleHistory from '@/components/CollapsibleHistory';
 
 const CAR_LOTS = [
   { name: 'ลานรถยนต์ 1 (97 Slot)', capacity: 97, short: 'C1' },
@@ -22,13 +26,32 @@ const MOTORCYCLE_LOTS = [
   { name: 'ลานจอด 3/1 (251 Slot)', capacity: 251, short: 'M3/1' },
 ];
 
+const PARKING_QUICK_PRESETS = [
+  'การจอดรถยนต์และจักรยานยนต์เป็นระเบียบเรียบร้อย',
+  'พื้นที่จอดเพียงพอ ไม่พบรถจอดกีดขวางทางสัญจร',
+  'พบรถจอดไม่ตรงช่อง / ล้ำเส้น 1 คัน',
+  'พบรถเปิดไฟหน้ารถหรือกระจกทิ้งไว้',
+  'ลานจอด 4 แน่นหนามากกว่า 90%',
+];
+
+const DRAFT_KEY = 'wd_pwa_draft_car_parking';
+
 export default function CarParkingPage() {
+  const { currentSite } = useSite();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const [inspectionDate, setInspectionDate] = useState('');
   const [inspectorCode, setInspectorCode] = useState('');
   const [inspectorName, setInspectorName] = useState('');
   const [shift, setShift] = useState('กะเช้า (07.00 - 19.00)');
   const [spareTireStatus, setSpareTireStatus] = useState('ครบถ้วน');
   const [licensePlates, setLicensePlates] = useState(['']);
+  const [parkingNotes, setParkingNotes] = useState('');
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [notifySoc, setNotifySoc] = useState(false);
+
+  const [hasDraftNotice, setHasDraftNotice] = useState(false);
+  const [lastSavedDraftTime, setLastSavedDraftTime] = useState<string | null>(null);
 
   const [carLotCounts, setCarLotCounts] = useState<Record<string, string>>({});
   const [motoLotCounts, setMotoLotCounts] = useState<Record<string, string>>({});
@@ -77,7 +100,65 @@ export default function CarParkingPage() {
       if (u.fullName) setInspectorName(u.fullName);
       else if (u.username) setInspectorName(u.username);
     }).catch(()=>{});
+
+    // Check for draft in localStorage
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      if (saved) {
+        const p = JSON.parse(saved);
+        if (p.carLotCounts || p.motoLotCounts || p.parkingNotes || (p.licensePlates && p.licensePlates.some((l: string) => l.trim()))) {
+          setHasDraftNotice(true);
+          setLastSavedDraftTime(p._savedAt || 'ก่อนหน้านี้');
+        }
+      }
+    } catch {}
   }, []);
+
+  // Debounced auto-save draft
+  useEffect(() => {
+    if (editingId !== null) return;
+    const timer = setTimeout(() => {
+      const hasData = Object.values(carLotCounts).some(v => v) || Object.values(motoLotCounts).some(v => v) || parkingNotes.trim() || licensePlates.some(p => p.trim());
+      if (hasData) {
+        try {
+          const toSave = {
+            carLotCounts,
+            motoLotCounts,
+            spareTireStatus,
+            licensePlates,
+            parkingNotes,
+            _savedAt: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }),
+          };
+          localStorage.setItem(DRAFT_KEY, JSON.stringify(toSave));
+          setLastSavedDraftTime(toSave._savedAt);
+        } catch {}
+      }
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [carLotCounts, motoLotCounts, spareTireStatus, licensePlates, parkingNotes, editingId]);
+
+  const handleRestoreDraft = () => {
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      if (saved) {
+        const p = JSON.parse(saved);
+        if (p.carLotCounts) setCarLotCounts(p.carLotCounts);
+        if (p.motoLotCounts) setMotoLotCounts(p.motoLotCounts);
+        if (p.spareTireStatus) setSpareTireStatus(p.spareTireStatus);
+        if (p.licensePlates) setLicensePlates(p.licensePlates);
+        if (p.parkingNotes) setParkingNotes(p.parkingNotes);
+        setHasDraftNotice(false);
+      }
+    } catch {}
+  };
+
+  const handleDiscardDraft = () => {
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+      setHasDraftNotice(false);
+      setLastSavedDraftTime(null);
+    } catch {}
+  };
 
   useEffect(()=>{ fetchHistory(historyPage); }, [fetchHistory, historyPage]);
 
@@ -202,8 +283,32 @@ export default function CarParkingPage() {
           vehicles,
         }),
       });
+
+      // Real-time SOC Emergency Bridge
+      if (notifySoc) {
+        try {
+          IncidentService.createIncident({
+            siteCode: currentSite?.code || 'BPI',
+            location: 'พื้นที่ลานจอดรถ',
+            incidentType: 'ยานพาหนะ / ลานจอดรถ',
+            severity: 'medium',
+            reportedBy: inspectorName || 'รปภ. ประจำลานจอด',
+            description: `[ตรวจลานจอด] สถานะยาง: ${spareTireStatus} | ${parkingNotes || 'พบสิ่งผิดปกติในพื้นที่ลานจอด'}`,
+          });
+        } catch {}
+      }
+
+      try {
+        localStorage.removeItem(DRAFT_KEY);
+        setHasDraftNotice(false);
+        setLastSavedDraftTime(null);
+      } catch {}
+
       setMessage(`บันทึกรายงานเรียบร้อย` + (plates.length>0? ` (${plates.length} ป้ายทะเบียน)` : ''));
       setLicensePlates(['']);
+      setParkingNotes('');
+      setPhotoPreview(null);
+      setNotifySoc(false);
       fetchHistory(1);
       setHistoryPage(1);
     } catch (err: any) {
@@ -296,7 +401,7 @@ export default function CarParkingPage() {
   const fmtDiff = (d: number) => d > 0 ? `+${d}` : `${d}`;
 
   return (
-    <div className="gradient-bg min-h-screen py-4 md:py-8 px-3 md:px-4 font-sans">
+    <div className="gradient-bg min-h-screen py-4 md:py-8 px-3 md:px-4 font-sans pb-28">
       <div className="max-w-4xl mx-auto space-y-4 md:space-y-6">
 
         <PageHeader
@@ -308,6 +413,41 @@ export default function CarParkingPage() {
         {message && (
           <div className={`p-4 rounded-xl text-center font-medium shadow ${message.includes('เรียบร้อย') ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}`}>
             {message}
+          </div>
+        )}
+
+        {/* Auto-save Draft Notice Banner */}
+        {hasDraftNotice && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center text-amber-700 flex-shrink-0">
+                <RotateCcw className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs sm:text-sm font-bold text-amber-900">
+                  พบข้อมูลฉบับร่างที่บันทึกไว้ ({lastSavedDraftTime})
+                </p>
+                <p className="text-[11px] sm:text-xs text-amber-700">
+                  คุณต้องการกู้คืนข้อมูลการตรวจลานจอดที่กรอกค้างไว้หรือไม่?
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                type="button"
+                onClick={handleRestoreDraft}
+                className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+              >
+                กู้คืนข้อมูล
+              </button>
+              <button
+                type="button"
+                onClick={handleDiscardDraft}
+                className="px-2.5 py-1.5 rounded-lg border border-amber-300 text-amber-800 hover:bg-amber-100/60 text-xs font-semibold transition-all cursor-pointer"
+              >
+                ล้างร่าง
+              </button>
+            </div>
           </div>
         )}
 
@@ -338,26 +478,32 @@ export default function CarParkingPage() {
 
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">รหัสพนักงานผู้ตรวจ <span className="text-rose-500">*</span></label>
-                <input
-                  type="text"
-                  placeholder="เช่น 100892"
-                  value={inspectorCode}
-                  onChange={(e) => setInspectorCode(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="เช่น 100892"
+                    value={inspectorCode}
+                    onChange={(e) => setInspectorCode(e.target.value)}
+                    className="w-full pl-4 pr-10 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    required
+                  />
+                  <MicButton onResult={(v) => setInspectorCode(v)} currentValue={inspectorCode} mode="replace" label="พูดรหัสพนักงาน" />
+                </div>
               </div>
 
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">ชื่อ-นามสกุล ผู้ตรวจ <span className="text-rose-500">*</span></label>
-                <input
-                  type="text"
-                  placeholder="เช่น นายสมชาย ใจดี"
-                  value={inspectorName}
-                  onChange={(e) => setInspectorName(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="เช่น นายสมชาย ใจดี"
+                    value={inspectorName}
+                    onChange={(e) => setInspectorName(e.target.value)}
+                    className="w-full pl-4 pr-10 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    required
+                  />
+                  <MicButton onResult={(v) => setInspectorName(v)} currentValue={inspectorName} mode="replace" label="พูดชื่อ-นามสกุล" />
+                </div>
               </div>
             </div>
           </div>
@@ -421,54 +567,179 @@ export default function CarParkingPage() {
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1.5">ทะเบียนรถที่พบสิ่งผิดปกติ (ถ้ามี)</label>
               {licensePlates.map((plate, idx) => (
-                <div key={idx} className="flex gap-2 mb-2">
+                <div key={idx} className="flex gap-2 mb-2 relative">
                   <input
                     type="text"
                     placeholder={`ป้ายทะเบียนคันที่ ${idx + 1}`}
                     value={plate}
                     onChange={(e) => handlePlateChange(idx, e.target.value)}
-                    className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-base sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    className="flex-1 pl-4 pr-10 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-base sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  />
+                  <MicButton
+                    onResult={(v) => handlePlateChange(idx, v)}
+                    currentValue={plate}
+                    mode="replace"
+                    label="พูดป้ายทะเบียน"
                   />
                 </div>
               ))}
               <button
                 type="button"
                 onClick={handleAddPlate}
-                className="text-xs text-blue-600 hover:text-blue-800 font-semibold underline mt-1 py-1 inline-block"
+                className="text-xs text-blue-600 hover:text-blue-800 font-semibold underline mt-1 py-1 inline-block cursor-pointer"
               >
                 + เพิ่มป้ายทะเบียน
               </button>
             </div>
+            {/* Quick Presets & Notes */}
+            <div className="pt-4 border-t border-slate-100 space-y-2">
+              <label className="block text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                ข้อสังเกตและสภาพลานจอด (Quick Presets)
+              </label>
+
+              {/* 1-Click Preset Chips */}
+              <div className="flex flex-wrap gap-1.5 py-1">
+                {PARKING_QUICK_PRESETS.map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => {
+                      setParkingNotes((prev) => {
+                        const cur = prev.trim();
+                        if (!cur) return preset;
+                        if (cur.includes(preset)) return prev;
+                        return `${cur}\n- ${preset}`;
+                      });
+                    }}
+                    className="px-2.5 py-1 rounded-lg border border-slate-200 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 text-slate-700 text-xs font-medium transition-all active:scale-95 text-left cursor-pointer"
+                  >
+                    + {preset}
+                  </button>
+                ))}
+              </div>
+
+              <div className="relative">
+                <textarea
+                  rows={2}
+                  placeholder="ระบุข้อสังเกตเพิ่มเติม เช่น สภาพการจอดรถ กีดขวาง หรือความผิดปกติ (ถ้ามี)..."
+                  value={parkingNotes}
+                  onChange={(e) => setParkingNotes(e.target.value)}
+                  className="w-full pl-3.5 pr-11 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                />
+                <MicButton
+                  onResult={(v) => setParkingNotes(v)}
+                  currentValue={parkingNotes}
+                  mode="append"
+                  className="top-2.5 right-2.5"
+                  label="พูดข้อสังเกตและสภาพลานจอด"
+                />
+              </div>
+            </div>
+
+            {/* Photo Capture & Real-time SOC Bridge */}
+            <div className="pt-3 border-t border-slate-100 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                    <Camera className="w-3.5 h-3.5 text-slate-500" />
+                    ถ่ายภาพหลักฐานหน้างาน (ถ้ามี)
+                  </label>
+                  <p className="text-[11px] text-slate-500">กรณีพบรถชน/เฉี่ยว, จอดกีดขวาง, หรือยางแบน</p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = () => setPhotoPreview(reader.result as string);
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-3 py-1.5 rounded-xl border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+                  >
+                    <Camera className="w-3.5 h-3.5" />
+                    <span>{photoPreview ? 'ถ่ายรูปใหม่' : 'เปิดกล้อง / แนบรูป'}</span>
+                  </button>
+                  {photoPreview && (
+                    <button
+                      type="button"
+                      onClick={() => setPhotoPreview(null)}
+                      className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                      title="ลบรูปภาพ"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {photoPreview && (
+                <div className="relative w-32 h-24 rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={photoPreview} alt="หลักฐาน" className="w-full h-full object-cover" />
+                </div>
+              )}
+
+              {/* Real-time SOC Bridge Switch */}
+              <label className="flex items-center gap-2.5 cursor-pointer bg-rose-50 hover:bg-rose-100/80 p-2.5 rounded-xl border border-rose-200 text-rose-900 text-xs font-bold transition-all shadow-2xs">
+                <input
+                  type="checkbox"
+                  checked={notifySoc}
+                  onChange={(e) => setNotifySoc(e.target.checked)}
+                  className="rounded text-rose-600 focus:ring-rose-500 w-4 h-4 cursor-pointer"
+                />
+                <Radio className="w-4 h-4 text-rose-600 animate-pulse flex-shrink-0" />
+                <span>แจ้งเตือนศูนย์ SOC Command Center ทันที (กรณีพบเหตุฉุกเฉิน / เฉี่ยวชนแล้วหนี)</span>
+              </label>
+            </div>
           </div>
 
           {/* Submit */}
-          <div className="pt-4 flex flex-col sm:flex-row justify-center gap-2.5 sm:gap-3">
+          <div className="pt-4 hidden md:flex justify-center gap-2.5 sm:gap-3">
             {editingId !== null && (
               <button
                 type="button"
                 onClick={handleCancelEdit}
-                className="w-full sm:w-auto bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 md:py-3.5 px-6 md:px-10 rounded-xl sm:rounded-full shadow transition-transform active:scale-95 text-sm md:text-base min-h-[44px] flex items-center justify-center"
+                className="w-full sm:w-auto bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 md:py-3.5 px-6 md:px-10 rounded-xl sm:rounded-full shadow transition-transform active:scale-95 text-sm md:text-base min-h-[44px] flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                ✕ ยกเลิกการแก้ไข
+                <X className="w-4 h-4" />
+                <span>ยกเลิกการแก้ไข</span>
               </button>
             )}
             <button
               type="submit"
               disabled={loading}
-              className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 md:py-3.5 px-6 md:px-10 rounded-xl sm:rounded-full shadow-lg transition-transform active:scale-95 text-sm md:text-base disabled:opacity-50 min-h-[44px] flex items-center justify-center"
+              className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 md:py-3.5 px-6 md:px-10 rounded-xl sm:rounded-full shadow-lg transition-transform active:scale-95 text-sm md:text-base disabled:opacity-50 min-h-[44px] flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              {loading ? 'กำลังบันทึก...' : editingId !== null ? '💾 บันทึกการแก้ไข' : '💾 บันทึกรายงานการตรวจเช็ค'}
+              <Save className="w-4 h-4" />
+              <span>{loading ? 'กำลังบันทึก...' : editingId !== null ? 'บันทึกการแก้ไข' : 'บันทึกรายงานการตรวจเช็ค'}</span>
             </button>
           </div>
 
         </form>
 
-        {/* History Table - Exact Legacy Parity */}
-        <div className="bg-white rounded-2xl p-4 md:p-6 shadow-xl border border-slate-200/60">
+        {/* Collapsible History Table */}
+        <CollapsibleHistory
+          title="ประวัติการรายงาน 20 รายการล่าสุด"
+          count={history.length}
+          defaultOpen={false}
+        >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3 mb-4">
-            <h3 className="text-base md:text-lg font-bold text-slate-800 flex items-center gap-2">
-              <Clock className="w-5 h-5 text-blue-600" /> ประวัติการรายงาน 20 รายการล่าสุด
-            </h3>
+            <div className="text-xs text-slate-500">
+              แตะแถวในตารางเพื่อดูรายละเอียดหรือเปรียบเทียบ
+            </div>
             <button
               onClick={() => {
                 const headers = ['วันที่', 'เวลา', 'กะ', 'รหัส', 'ผู้ตรวจ', 'C1 (97)', 'C2 (114)', 'C3/1 (100)', 'C3/2 (264)', 'C4 (415)', 'C5 (53)', 'CB.9 (129)', 'M1 (296)', 'M2 (210)', 'M3/1 (251)', 'ยางอะไหล่', 'ทะเบียนรถ'];
@@ -511,9 +782,10 @@ export default function CarParkingPage() {
                 a.click();
                 URL.revokeObjectURL(url);
               }}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-xl text-xs md:text-sm shadow-md transition flex items-center gap-1.5 self-start sm:self-auto"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-xl text-xs md:text-sm shadow-md transition flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
             >
-              📥 ส่งออกเป็น CSV
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>ส่งออกเป็น CSV</span>
             </button>
           </div>
 
@@ -867,7 +1139,9 @@ export default function CarParkingPage() {
                     <Car className="w-5 h-5 text-blue-600" />
                     รายละเอียดการตรวจเช็คลานจอดรถ
                   </h3>
-                  <button onClick={()=>setSelectedReport(null)} className="p-1.5 hover:bg-slate-100 text-slate-400 rounded-lg">✕</button>
+                  <button onClick={()=>setSelectedReport(null)} className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer">
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
                 
                 <div className="space-y-3 text-sm">
@@ -970,6 +1244,31 @@ export default function CarParkingPage() {
               </div>
             </div>
           )}
+        </CollapsibleHistory>
+      </div>
+
+      {/* Mobile PWA Sticky Bottom Action Dock */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-3 py-2.5 pb-[max(10px,env(safe-area-inset-bottom))] shadow-lg">
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-[11px] text-slate-500 font-mono truncate">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" />
+            <span className="truncate">
+              {lastSavedDraftTime ? `ร่างอัตโนมัติ: ${lastSavedDraftTime}` : 'พร้อมส่งตรวจลานจอด'}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              const form = document.querySelector('form');
+              if (form) form.requestSubmit();
+            }}
+            disabled={loading}
+            className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white text-xs sm:text-sm font-bold shadow-xs transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer flex-shrink-0 min-h-[42px]"
+          >
+            <Send className="w-4 h-4" />
+            <span>{loading ? 'กำลังบันทึก...' : editingId !== null ? 'บันทึกแก้ไข' : 'ส่งรายงาน'}</span>
+          </button>
         </div>
       </div>
     </div>

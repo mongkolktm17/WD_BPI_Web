@@ -1,16 +1,44 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, MessageEvent } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
+import { Subject, Observable, timer, merge, map } from 'rxjs';
 
 @Injectable()
 export class StatsService {
   private readonly CACHE_KEY = 'dashboard_stats_data';
   private readonly CACHE_TTL = 300; // 5 mins cache TTL (matches legacy get_stats_data.php)
+  private readonly telemetryEvents$ = new Subject<{ type: string; payload?: any }>();
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
   ) {}
+
+  emitTelemetryEvent(type: string, payload?: any) {
+    this.telemetryEvents$.next({ type, payload });
+  }
+
+  getTelemetryStream(): Observable<MessageEvent> {
+    const heartbeats$ = timer(0, 15000).pipe(
+      map(
+        () =>
+          ({
+            data: { type: 'heartbeat', timestamp: new Date().toISOString() },
+          }) as MessageEvent,
+      ),
+    );
+
+    const events$ = this.telemetryEvents$.asObservable().pipe(
+      map(
+        (event) =>
+          ({
+            data: { ...event, timestamp: new Date().toISOString() },
+          }) as MessageEvent,
+      ),
+    );
+
+    return merge(heartbeats$, events$);
+  }
 
   async getDashboardStats() {
     // 1. Try Redis cache first
@@ -80,6 +108,7 @@ export class StatsService {
 
   async clearStatsCache() {
     await this.redis.del(this.CACHE_KEY);
+    this.emitTelemetryEvent('cache_cleared');
     return { message: 'ล้างแคชสถิติเรียบร้อยแล้ว' };
   }
 

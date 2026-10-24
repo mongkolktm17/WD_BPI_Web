@@ -1,76 +1,119 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Mic, MicOff } from 'lucide-react';
 
 interface MicButtonProps {
   onResult: (transcript: string) => void;
+  currentValue?: string;
+  mode?: 'replace' | 'append';
   className?: string;
   label?: string;
+  size?: 'sm' | 'md';
 }
 
-export default function MicButton({ onResult, className = '', label }: MicButtonProps) {
+export default function MicButton({
+  onResult,
+  currentValue = '',
+  mode = 'append',
+  className = '',
+  label = 'กดเพื่อพูด (Speech-to-Text)',
+  size = 'md',
+}: MicButtonProps) {
   const [listening, setListening] = useState(false);
   const [supported, setSupported] = useState(true);
   const recognitionRef = useRef<any>(null);
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition =
+        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        setSupported(false);
+      }
+    }
+  }, []);
+
   const toggleRecognition = () => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (typeof window === 'undefined') return;
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
     if (!SpeechRecognition) {
-      alert('เบราว์เซอร์ของคุณไม่รองรับการแปลงเสียงเป็นข้อความ (ใช้ Chrome เท่านั้น)');
       setSupported(false);
       return;
     }
 
     if (listening && recognitionRef.current) {
-      recognitionRef.current.stop();
+      try {
+        recognitionRef.current.stop();
+      } catch {}
+      setListening(false);
       return;
     }
 
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'th-TH';
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'th-TH';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      recognition.continuous = false;
 
-    recognition.onstart = () => setListening(true);
+      recognition.onstart = () => {
+        setListening(true);
+      };
 
-    recognition.onend = () => {
+      recognition.onend = () => {
+        setListening(false);
+        recognitionRef.current = null;
+      };
+
+      recognition.onresult = (event: any) => {
+        const transcript = event.results?.[0]?.[0]?.transcript;
+        if (transcript) {
+          if (mode === 'append' && currentValue && currentValue.trim()) {
+            onResult(`${currentValue.trim()} ${transcript}`);
+          } else {
+            onResult(transcript);
+          }
+        }
+      };
+
+      recognition.onerror = (event: any) => {
+        console.warn('Speech recognition status:', event.error);
+        setListening(false);
+        recognitionRef.current = null;
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch (err) {
+      console.warn('Speech recognition initiation error:', err);
       setListening(false);
-      recognitionRef.current = null;
-    };
-
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      onResult(transcript);
-    };
-
-    recognition.onerror = (event: any) => {
-      console.error('Speech recognition error', event.error);
-      setListening(false);
-      recognitionRef.current = null;
-      if (event.error !== 'no-speech' && event.error !== 'aborted') {
-        alert('เกิดข้อผิดพลาดในการจดจำเสียง: ' + event.error);
-      }
-    };
-
-    recognitionRef.current = recognition;
-    recognition.start();
+    }
   };
 
   if (!supported) return null;
+
+  const defaultPosition = className.includes('top-') || className.includes('relative')
+    ? ''
+    : 'absolute top-1/2 -translate-y-1/2 right-2.5';
+
+  const iconSize = size === 'sm' ? 'w-3.5 h-3.5' : 'w-4 h-4';
 
   return (
     <button
       type="button"
       onClick={toggleRecognition}
-      title={label || 'กดเพื่อพูด'}
-      className={`absolute top-1/2 -translate-y-1/2 right-3 p-1.5 rounded-lg transition-all ${
+      title={label}
+      aria-label={label}
+      className={`p-1.5 rounded-lg transition-all flex items-center justify-center cursor-pointer select-none ${defaultPosition} ${
         listening
-          ? 'text-red-500 bg-red-50 animate-pulse'
-          : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'
+          ? 'text-rose-600 bg-rose-50 ring-2 ring-rose-400 ring-offset-1 animate-pulse'
+          : 'text-slate-400 hover:text-blue-600 hover:bg-slate-100 active:scale-95'
       } ${className}`}
     >
-      {listening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+      {listening ? <MicOff className={iconSize} /> : <Mic className={iconSize} />}
     </button>
   );
 }

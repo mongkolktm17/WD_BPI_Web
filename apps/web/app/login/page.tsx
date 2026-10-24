@@ -15,11 +15,14 @@ export default function LoginPage() {
     e.preventDefault();
     setLoginErr('');
 
-    if (!username.trim()) {
+    const cleanUser = username.trim();
+    const cleanPass = password.trim();
+
+    if (!cleanUser) {
       setLoginErr('กรุณากรอกชื่อผู้ใช้');
       return;
     }
-    if (!password.trim()) {
+    if (!cleanPass) {
       setLoginErr('กรุณากรอกรหัสผ่าน');
       return;
     }
@@ -30,12 +33,12 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username: cleanUser, password: cleanPass }),
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message || 'รหัสผ่านไม่ถูกต้อง');
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
       }
 
       const resData = await res.json();
@@ -45,11 +48,33 @@ export default function LoginPage() {
       }
       if (payload.user) {
         localStorage.setItem('user', JSON.stringify(payload.user));
+        if (payload.user.defaultSiteId) {
+          localStorage.setItem('selected_site_id', String(payload.user.defaultSiteId));
+        }
       }
 
-      router.push('/');
+      const user = payload.user || {};
+      const roleId = user.role?.id ?? user.roleId;
+      const roleName = String(user.role?.name || user.roleName || user.role || '');
+      const isSecurityStaff =
+        roleId === 2 ||
+        roleId === 3 ||
+        roleId === 4 ||
+        roleName.includes('รักษาความปลอดภัย') ||
+        roleName.includes('รปภ') ||
+        roleName.includes('ตรวจตรา') ||
+        roleName.toLowerCase().includes('guard') ||
+        roleName.toLowerCase().includes('patrol') ||
+        cleanUser.toLowerCase() === 'guard' ||
+        cleanUser.toLowerCase() === 'supervisor';
+
+      if (isSecurityStaff) {
+        router.push('/report-page');
+      } else {
+        router.push('/');
+      }
     } catch (err: any) {
-      setLoginErr(err.message || 'ไม่พบชื่อผู้ใช้นี้ในระบบ');
+      setLoginErr(err.message || 'ไม่พบชื่อผู้ใช้นี้ในระบบ หรือรหัสผ่านไม่ถูกต้อง');
     } finally {
       setLoading(false);
     }
@@ -65,9 +90,19 @@ export default function LoginPage() {
                 <div style={{ marginBottom: 0, paddingTop: '20px', marginLeft: 0 }}>
                   <img
                     src="/report_assets/Images/images_logo.png"
-                    alt="Logo"
+                    alt="Western Digital Logo"
                     style={{ width: '200px' }}
                   />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px' }}>
+                    <img
+                      src="/report_assets/Images/PCS_logo.png"
+                      alt="PCS Logo"
+                      style={{ height: '18px', width: 'auto' }}
+                    />
+                    <span style={{ fontSize: '11px', color: '#fff', fontWeight: 600, letterSpacing: '0.02em' }}>
+                      PCS Security & Facility Management
+                    </span>
+                  </div>
                 </div>
 
                 {loginErr && <div className="login__error">{loginErr}</div>}
@@ -78,6 +113,9 @@ export default function LoginPage() {
                     type="text"
                     name="username"
                     autoComplete="username"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
                     className="login__input"
                     placeholder="Username"
                     value={username}
@@ -91,6 +129,9 @@ export default function LoginPage() {
                     type="password"
                     name="password"
                     autoComplete="current-password"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
                     className="login__input"
                     placeholder="Password"
                     value={password}

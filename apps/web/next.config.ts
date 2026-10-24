@@ -17,6 +17,20 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      {
+        source: '/reports/radio',
+        destination: '/radio-inspection',
+        permanent: false,
+      },
+      {
+        source: '/reports/radio/:path*',
+        destination: '/radio-inspection',
+        permanent: false,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

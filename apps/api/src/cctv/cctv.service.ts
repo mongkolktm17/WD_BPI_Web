@@ -171,34 +171,75 @@ export class CctvService {
 
   async createReport(dto: any) {
     // Supports both legacy format and modern DTO format
-    const building = dto.building || (dto.stats?.building) || 'B2';
-    const nvrStatsList = dto.nvrStats || dto.details || [];
+    const building = (dto.building || dto.stats?.building || 'B2').toUpperCase();
+
+    // Collect NVR detail entries from multiple possible formats
+    const detailsToCreate: Array<{
+      nvrName: string;
+      onlineChannels: number;
+      totalChannels: number;
+      channelStatusesJson: string | null;
+    }> = [];
+
+    if (Array.isArray(dto.details)) {
+      for (const item of dto.details) {
+        const statuses = item.channelStatuses || item.channelStatusesJson || item.channel_statuses;
+        detailsToCreate.push({
+          nvrName: item.nvrName || item.nvr || 'Unknown',
+          onlineChannels: item.onlineChannels ?? item.online ?? item.online_channels ?? 0,
+          totalChannels: item.totalChannels ?? item.total ?? item.total_channels ?? 0,
+          channelStatusesJson: typeof statuses === 'object' ? JSON.stringify(statuses) : (statuses || null),
+        });
+      }
+    } else if (Array.isArray(dto.nvrStats)) {
+      for (const item of dto.nvrStats) {
+        const statuses = item.channelStatuses || item.channelStatusesJson || item.channel_statuses;
+        detailsToCreate.push({
+          nvrName: item.nvrName || item.nvr || 'Unknown',
+          onlineChannels: item.onlineChannels ?? item.online ?? item.online_channels ?? 0,
+          totalChannels: item.totalChannels ?? item.total ?? item.total_channels ?? 0,
+          channelStatusesJson: typeof statuses === 'object' ? JSON.stringify(statuses) : (statuses || null),
+        });
+      }
+    } else if (dto.stats?.nvrStats && typeof dto.stats.nvrStats === 'object') {
+      const fullStatus = dto.stats.fullChannelStatusByNVR || {};
+      for (const [nvrName, item] of Object.entries<any>(dto.stats.nvrStats)) {
+        const statuses = item.channel_statuses || item.channelStatuses || fullStatus[nvrName];
+        detailsToCreate.push({
+          nvrName,
+          onlineChannels: item.online_channels ?? item.online ?? 0,
+          totalChannels: item.total_channels ?? item.total ?? 0,
+          channelStatusesJson: statuses ? (typeof statuses === 'object' ? JSON.stringify(statuses) : statuses) : null,
+        });
+      }
+    }
+
+    const totalNormal = dto.totalNormal ?? dto.stats?.online ?? detailsToCreate.reduce((sum, d) => sum + d.onlineChannels, 0);
+    const totalAbnormal = dto.totalAbnormal ?? dto.stats?.offline ?? detailsToCreate.reduce((sum, d) => sum + (d.totalChannels - d.onlineChannels), 0);
+
+    const remarkText = dto.remark
+      ? (dto.remark.includes('Building') ? dto.remark : `Building ${building} - ${dto.remark}`)
+      : `Building ${building}`;
 
     const report = await this.prisma.cctvReport.create({
       data: {
         siteId: dto.siteId || 1,
         reportDate: dto.reportDate ? new Date(dto.reportDate) : new Date(),
-        totalNormal: dto.totalNormal ?? dto.stats?.online ?? 0,
-        totalAbnormal: dto.totalAbnormal ?? dto.stats?.offline ?? 0,
+        totalNormal,
+        totalAbnormal,
         reporterName: dto.reporterName || dto.username || 'System Admin',
-        remark: dto.remark || dto.remarks || dto.summary || `Building ${building}`,
+        remark: remarkText,
       },
     });
 
-    for (const nvrItem of nvrStatsList) {
-      const nvrName = nvrItem.nvrName || nvrItem.nvr || 'Unknown';
-      const online = nvrItem.onlineChannels ?? nvrItem.online ?? 0;
-      const total = nvrItem.totalChannels ?? nvrItem.total ?? 0;
-      const statuses = nvrItem.channelStatuses || nvrItem.channelStatusesJson;
-      const jsonStr = typeof statuses === 'object' ? JSON.stringify(statuses) : (statuses || null);
-
+    for (const d of detailsToCreate) {
       await this.prisma.cctvReportDetail.create({
         data: {
           reportId: report.id,
-          nvrName,
-          onlineChannels: online,
-          totalChannels: total,
-          channelStatusesJson: jsonStr,
+          nvrName: d.nvrName,
+          onlineChannels: d.onlineChannels,
+          totalChannels: d.totalChannels,
+          channelStatusesJson: d.channelStatusesJson,
         },
       });
     }

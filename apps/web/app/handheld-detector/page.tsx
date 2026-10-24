@@ -1,9 +1,20 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Building2, Clock, Mic, X, Shield, Pencil, Trash2 } from 'lucide-react';
+import { Building2, Clock, Mic, X, Shield, Pencil, Trash2, Check, Save, Sun, Moon, RotateCcw, Sparkles, Send } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import { apiFetch } from '@/lib/api';
+import MicButton from '@/components/MicButton';
+import CollapsibleHistory from '@/components/CollapsibleHistory';
+
+const HANDHELD_QUICK_PRESETS = [
+  'เครื่องตรวจจับโลหะทำงานได้ตามปกติ สัญญาณเสียงเตือนชัดเจน',
+  'ทดสอบชิ้นส่วนโลหะมาตรฐานแล้วตรวจจับได้ปกติทุกมุม',
+  'แบตเตอรี่ชาร์จเต็ม พร้อมใช้งานตลอดผลัด',
+  'ส่งเครื่องสำรองทดแทนเนื่องจากแบตเตอรี่เสื่อม',
+];
+
+const DRAFT_KEY = 'wd_pwa_draft_handheld_detector';
 
 const GUARD_POSTS = [
   'Gate 5 B4', 'Gate 6 B4', 'Worker', 'Scan Receiving', 'Receiving',
@@ -35,6 +46,77 @@ export default function HandheldDetectorPage() {
   const [historyLoading, setHistoryLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [hasDraftNotice, setHasDraftNotice] = useState(false);
+  const [lastSavedDraftTime, setLastSavedDraftTime] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw && !editingId) {
+        const d = JSON.parse(raw);
+        if (d.building || d.guardPost || d.batteryStatus || d.remarks) {
+          setHasDraftNotice(true);
+        }
+      }
+    } catch {}
+  }, [editingId]);
+
+  useEffect(() => {
+    if (editingId) return;
+    const timer = setTimeout(() => {
+      try {
+        const payload = {
+          inspectionDate,
+          building,
+          guardPost,
+          shift,
+          batteryStatus,
+          ledStatus,
+          detectionTestStatus,
+          alarmStatus,
+          remarks,
+          timestamp: new Date().toISOString(),
+        };
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
+        setLastSavedDraftTime(new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }));
+      } catch {}
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [inspectionDate, building, guardPost, shift, batteryStatus, ledStatus, detectionTestStatus, alarmStatus, remarks, editingId]);
+
+  const handleRestoreDraft = () => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d.inspectionDate) setInspectionDate(d.inspectionDate);
+        if (d.building) setBuilding(d.building);
+        if (d.guardPost) setGuardPost(d.guardPost);
+        if (d.shift) setShift(d.shift);
+        if (d.batteryStatus) setBatteryStatus(d.batteryStatus);
+        if (d.ledStatus) setLedStatus(d.ledStatus);
+        if (d.detectionTestStatus) setDetectionTestStatus(d.detectionTestStatus);
+        if (d.alarmStatus) setAlarmStatus(d.alarmStatus);
+        if (d.remarks) setRemarks(d.remarks);
+        setMessage('กู้คืนข้อมูลร่างล่าสุดเรียบร้อยแล้ว');
+      }
+    } catch {}
+    setHasDraftNotice(false);
+  };
+
+  const handleDiscardDraft = () => {
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch {}
+    setHasDraftNotice(false);
+  };
+
+  const handleQuickPassAll = () => {
+    setBatteryStatus('พร้อมใช้งาน');
+    setLedStatus('ผ่านการทดสอบ');
+    setDetectionTestStatus('ผ่านการทดสอบ');
+    setAlarmStatus('ผ่านการทดสอบ');
+  };
 
   useEffect(() => {
     setInspectionDate(new Date().toISOString().split('T')[0]);
@@ -186,6 +268,9 @@ export default function HandheldDetectorPage() {
         }),
       });
       setMessage(editingId ? 'แก้ไขรายงานเรียบร้อยแล้ว' : 'ส่งรายงานการตรวจเช็คเรียบร้อยแล้ว');
+      if (!editingId) {
+        try { localStorage.removeItem(DRAFT_KEY); } catch {}
+      }
       setEditingId(null);
       fetchHistory();
     } catch (err) {
@@ -196,7 +281,7 @@ export default function HandheldDetectorPage() {
   };
 
   return (
-    <div className="gradient-bg min-h-screen py-4 md:py-8 px-3 md:px-4 font-sans">
+    <div className="gradient-bg min-h-screen py-4 md:py-8 px-3 md:px-4 font-sans pb-28 md:pb-8">
       <div className="max-w-4xl mx-auto space-y-4 md:space-y-6">
 
         <PageHeader
@@ -204,6 +289,31 @@ export default function HandheldDetectorPage() {
           subtitle="Handheld Metal Detector"
           icon={<Shield className="w-5 h-5 md:w-6 h-6 text-white" />}
         />
+
+        {hasDraftNotice && !editingId && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-900 shadow-sm animate-fade-in">
+            <div className="flex items-center gap-2">
+              <RotateCcw className="w-4 h-4 text-amber-600 shrink-0" />
+              <span className="text-sm font-medium">พบข้อมูลร่างการตรวจเช็คที่บันทึกค้างไว้ในเครื่องนี้</span>
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <button
+                type="button"
+                onClick={handleRestoreDraft}
+                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors"
+              >
+                กู้คืนข้อมูลร่าง
+              </button>
+              <button
+                type="button"
+                onClick={handleDiscardDraft}
+                className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200 transition-colors"
+              >
+                ละทิ้ง
+              </button>
+            </div>
+          </div>
+        )}
 
         {message && (
           <div className={`p-4 rounded-xl text-center font-medium shadow ${message.includes('เรียบร้อย') ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}`}>
@@ -236,7 +346,7 @@ export default function HandheldDetectorPage() {
                 className="w-full px-5 py-4 rounded-2xl border border-slate-200 bg-slate-50 text-slate-800 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                 required
               >
-                <option value="" disabled selected>เลือกอาคาร</option>
+                <option value="" disabled>เลือกอาคาร</option>
                 <option value="B2">B2</option>
                 <option value="B3">B3</option>
                 <option value="B4">B4</option>
@@ -254,7 +364,7 @@ export default function HandheldDetectorPage() {
               className="w-full px-5 py-4 rounded-2xl border border-slate-200 bg-slate-50 text-slate-800 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               required
             >
-              <option value="" disabled selected>เลือกจุดรักษาการณ์</option>
+              <option value="" disabled>เลือกจุดรักษาการณ์</option>
               {GUARD_POSTS.map((p) => (
                 <option key={p} value={p}>{p}</option>
               ))}
@@ -265,14 +375,17 @@ export default function HandheldDetectorPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">4. รหัสพนักงาน PCS <span className="text-rose-500">*</span></label>
-              <input
-                type="text"
-                placeholder="กรอกรหัสพนักงาน"
-                value={inspectorCode}
-                onChange={(e) => setInspectorCode(e.target.value)}
-                className="w-full px-5 py-4 rounded-2xl border border-slate-200 bg-slate-50 text-slate-800 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                required
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="กรอกรหัสพนักงาน"
+                  value={inspectorCode}
+                  onChange={(e) => setInspectorCode(e.target.value)}
+                  className="w-full pl-5 pr-12 py-4 rounded-2xl border border-slate-200 bg-slate-50 text-slate-800 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  required
+                />
+                <MicButton onResult={(v) => setInspectorCode(v)} currentValue={inspectorCode} mode="replace" label="พูดรหัสพนักงาน" />
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">5. ชื่อ-นามสกุล <span className="text-rose-500">*</span></label>
@@ -283,12 +396,10 @@ export default function HandheldDetectorPage() {
                   placeholder="กรอกชื่อ-นามสกุล หรือใช้ไมโครโฟน"
                   value={inspectorName}
                   onChange={(e) => setInspectorName(e.target.value)}
-                  className="w-full px-5 py-4 pr-12 rounded-2xl border border-slate-200 bg-slate-50 text-slate-800 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className="w-full pl-5 pr-12 py-4 rounded-2xl border border-slate-200 bg-slate-50 text-slate-800 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   required
                 />
-                <button type="button" onClick={() => startSpeechRecognition('inspector_name')} className="absolute top-1/2 -translate-y-1/2 right-4 text-slate-400 hover:text-blue-600">
-                  <Mic className="w-5 h-5" />
-                </button>
+                <MicButton onResult={(v) => setInspectorName(v)} currentValue={inspectorName} mode="replace" label="พูดชื่อ-นามสกุล" />
               </div>
             </div>
           </div>
@@ -300,22 +411,39 @@ export default function HandheldDetectorPage() {
               <button
                 type="button"
                 onClick={() => setShift('กะเช้า')}
-                className={`flex-1 px-6 py-4 border-2 rounded-2xl font-medium transition-all ${shift === 'กะเช้า' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-600 hover:border-blue-300 hover:bg-blue-50'}`}
+                className={`flex-1 px-6 py-4 border-2 rounded-2xl font-medium transition-all flex items-center justify-center gap-2 ${shift === 'กะเช้า' ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm' : 'border-slate-200 text-slate-600 hover:border-blue-300 hover:bg-blue-50'}`}
               >
-                🌅 เช้า
+                <Sun className="w-5 h-5 text-amber-500" />
+                <span>เช้า</span>
               </button>
               <button
                 type="button"
                 onClick={() => setShift('กะดึก')}
-                className={`flex-1 px-6 py-4 border-2 rounded-2xl font-medium transition-all ${shift === 'กะดึก' ? 'border-purple-500 bg-purple-50 text-purple-700' : 'border-slate-200 text-slate-600 hover:border-purple-300 hover:bg-purple-50'}`}
+                className={`flex-1 px-6 py-4 border-2 rounded-2xl font-medium transition-all flex items-center justify-center gap-2 ${shift === 'กะดึก' ? 'border-indigo-500 bg-indigo-50 text-indigo-700 shadow-sm' : 'border-slate-200 text-slate-600 hover:border-indigo-300 hover:bg-indigo-50'}`}
               >
-                🌙 ดึก
+                <Moon className="w-5 h-5 text-indigo-500" />
+                <span>ดึก</span>
               </button>
             </div>
             <input type="hidden" value={shift} required />
           </div>
 
           <div className="border-t border-slate-200 pt-5 space-y-5">
+            {/* Quick preset 1-click */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200/80">
+              <div className="text-xs text-slate-600">
+                รายการตรวจความพร้อมเครื่องตรวจจับโลหะ 4 ข้อ
+              </div>
+              <button
+                type="button"
+                onClick={handleQuickPassAll}
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-semibold transition-all active:scale-95 self-start sm:self-auto"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                ตั้งค่าผ่านปกติทุกรายการ (Quick Pass All)
+              </button>
+            </div>
+
             {/* 7. ตรวจสอบแบตเตอรี่ */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-3">7. ตรวจสอบแบตเตอรี่ก่อนใช้งาน <span className="text-rose-500">*</span></label>
@@ -323,16 +451,18 @@ export default function HandheldDetectorPage() {
                 <button
                   type="button"
                   onClick={() => setBatteryStatus('พร้อมใช้งาน')}
-                  className={`flex-1 px-6 py-4 border-2 rounded-2xl font-medium transition-all ${batteryStatus === 'พร้อมใช้งาน' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-600 hover:border-emerald-300 hover:bg-emerald-50'}`}
+                  className={`flex-1 px-6 py-4 border-2 rounded-2xl font-medium transition-all flex items-center justify-center gap-2 ${batteryStatus === 'พร้อมใช้งาน' ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm' : 'border-slate-200 text-slate-600 hover:border-emerald-300 hover:bg-emerald-50'}`}
                 >
-                  <span className="text-lg">✓</span> พร้อมใช้งาน
+                  <Check className="w-5 h-5 text-emerald-600" />
+                  <span>พร้อมใช้งาน</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setBatteryStatus('ไม่พร้อมใช้งาน')}
-                  className={`flex-1 px-6 py-4 border-2 rounded-2xl font-medium transition-all ${batteryStatus === 'ไม่พร้อมใช้งาน' ? 'border-rose-500 bg-rose-50 text-rose-700' : 'border-slate-200 text-slate-600 hover:border-rose-300 hover:bg-rose-50'}`}
+                  className={`flex-1 px-6 py-4 border-2 rounded-2xl font-medium transition-all flex items-center justify-center gap-2 ${batteryStatus === 'ไม่พร้อมใช้งาน' ? 'border-rose-500 bg-rose-50 text-rose-700 shadow-sm' : 'border-slate-200 text-slate-600 hover:border-rose-300 hover:bg-rose-50'}`}
                 >
-                  <span className="text-lg">✗</span> ไม่พร้อมใช้งาน
+                  <X className="w-5 h-5 text-rose-600" />
+                  <span>ไม่พร้อมใช้งาน</span>
                 </button>
               </div>
               <input type="hidden" value={batteryStatus} required />
@@ -345,16 +475,18 @@ export default function HandheldDetectorPage() {
                 <button
                   type="button"
                   onClick={() => setLedStatus('ผ่านการทดสอบ')}
-                  className={`flex-1 px-6 py-4 border-2 rounded-2xl font-medium transition-all ${ledStatus === 'ผ่านการทดสอบ' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-600 hover:border-emerald-300 hover:bg-emerald-50'}`}
+                  className={`flex-1 px-6 py-4 border-2 rounded-2xl font-medium transition-all flex items-center justify-center gap-2 ${ledStatus === 'ผ่านการทดสอบ' ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm' : 'border-slate-200 text-slate-600 hover:border-emerald-300 hover:bg-emerald-50'}`}
                 >
-                  <span className="text-lg">✓</span> ผ่านการทดสอบ
+                  <Check className="w-5 h-5 text-emerald-600" />
+                  <span>ผ่านการทดสอบ</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setLedStatus('ไม่ผ่านการทดสอบ')}
-                  className={`flex-1 px-6 py-4 border-2 rounded-2xl font-medium transition-all ${ledStatus === 'ไม่ผ่านการทดสอบ' ? 'border-rose-500 bg-rose-50 text-rose-700' : 'border-slate-200 text-slate-600 hover:border-rose-300 hover:bg-rose-50'}`}
+                  className={`flex-1 px-6 py-4 border-2 rounded-2xl font-medium transition-all flex items-center justify-center gap-2 ${ledStatus === 'ไม่ผ่านการทดสอบ' ? 'border-rose-500 bg-rose-50 text-rose-700 shadow-sm' : 'border-slate-200 text-slate-600 hover:border-rose-300 hover:bg-rose-50'}`}
                 >
-                  <span className="text-lg">✗</span> ไม่ผ่านการทดสอบ
+                  <X className="w-5 h-5 text-rose-600" />
+                  <span>ไม่ผ่านการทดสอบ</span>
                 </button>
               </div>
               <input type="hidden" value={ledStatus} required />
@@ -367,16 +499,18 @@ export default function HandheldDetectorPage() {
                 <button
                   type="button"
                   onClick={() => setDetectionTestStatus('ผ่านการทดสอบ')}
-                  className={`flex-1 px-6 py-4 border-2 rounded-2xl font-medium transition-all ${detectionTestStatus === 'ผ่านการทดสอบ' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-600 hover:border-emerald-300 hover:bg-emerald-50'}`}
+                  className={`flex-1 px-6 py-4 border-2 rounded-2xl font-medium transition-all flex items-center justify-center gap-2 ${detectionTestStatus === 'ผ่านการทดสอบ' ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm' : 'border-slate-200 text-slate-600 hover:border-emerald-300 hover:bg-emerald-50'}`}
                 >
-                  <span className="text-lg">✓</span> ผ่านการทดสอบ
+                  <Check className="w-5 h-5 text-emerald-600" />
+                  <span>ผ่านการทดสอบ</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setDetectionTestStatus('ไม่ผ่านการทดสอบ')}
-                  className={`flex-1 px-6 py-4 border-2 rounded-2xl font-medium transition-all ${detectionTestStatus === 'ไม่ผ่านการทดสอบ' ? 'border-rose-500 bg-rose-50 text-rose-700' : 'border-slate-200 text-slate-600 hover:border-rose-300 hover:bg-rose-50'}`}
+                  className={`flex-1 px-6 py-4 border-2 rounded-2xl font-medium transition-all flex items-center justify-center gap-2 ${detectionTestStatus === 'ไม่ผ่านการทดสอบ' ? 'border-rose-500 bg-rose-50 text-rose-700 shadow-sm' : 'border-slate-200 text-slate-600 hover:border-rose-300 hover:bg-rose-50'}`}
                 >
-                  <span className="text-lg">✗</span> ไม่ผ่านการทดสอบ
+                  <X className="w-5 h-5 text-rose-600" />
+                  <span>ไม่ผ่านการทดสอบ</span>
                 </button>
               </div>
               <input type="hidden" value={detectionTestStatus} required />
@@ -389,16 +523,18 @@ export default function HandheldDetectorPage() {
                 <button
                   type="button"
                   onClick={() => setAlarmStatus('ผ่านการทดสอบ')}
-                  className={`flex-1 px-6 py-4 border-2 rounded-2xl font-medium transition-all ${alarmStatus === 'ผ่านการทดสอบ' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-600 hover:border-emerald-300 hover:bg-emerald-50'}`}
+                  className={`flex-1 px-6 py-4 border-2 rounded-2xl font-medium transition-all flex items-center justify-center gap-2 ${alarmStatus === 'ผ่านการทดสอบ' ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm' : 'border-slate-200 text-slate-600 hover:border-emerald-300 hover:bg-emerald-50'}`}
                 >
-                  <span className="text-lg">✓</span> ผ่านการทดสอบ
+                  <Check className="w-5 h-5 text-emerald-600" />
+                  <span>ผ่านการทดสอบ</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setAlarmStatus('ไม่ผ่านการทดสอบ')}
-                  className={`flex-1 px-6 py-4 border-2 rounded-2xl font-medium transition-all ${alarmStatus === 'ไม่ผ่านการทดสอบ' ? 'border-rose-500 bg-rose-50 text-rose-700' : 'border-slate-200 text-slate-600 hover:border-rose-300 hover:bg-rose-50'}`}
+                  className={`flex-1 px-6 py-4 border-2 rounded-2xl font-medium transition-all flex items-center justify-center gap-2 ${alarmStatus === 'ไม่ผ่านการทดสอบ' ? 'border-rose-500 bg-rose-50 text-rose-700 shadow-sm' : 'border-slate-200 text-slate-600 hover:border-rose-300 hover:bg-rose-50'}`}
                 >
-                  <span className="text-lg">✗</span> ไม่ผ่านการทดสอบ
+                  <X className="w-5 h-5 text-rose-600" />
+                  <span>ไม่ผ่านการทดสอบ</span>
                 </button>
               </div>
               <input type="hidden" value={alarmStatus} required />
@@ -407,29 +543,53 @@ export default function HandheldDetectorPage() {
 
           {/* 11. หมายเหตุ */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">11. หมายเหตุ</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-slate-700">11. หมายเหตุ</label>
+              {lastSavedDraftTime && !editingId && (
+                <span className="text-xs text-slate-400">บันทึกร่างอัตโนมัติ {lastSavedDraftTime} น.</span>
+              )}
+            </div>
+
+            {/* Quick presets */}
+            <div className="flex flex-wrap gap-1.5 mb-2.5">
+              {HANDHELD_QUICK_PRESETS.map((preset, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setRemarks((prev) => (prev ? `${prev} / ${preset}` : preset))}
+                  className="px-2.5 py-1 text-xs bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-600 rounded-lg border border-slate-200 transition-colors text-left"
+                >
+                  + {preset}
+                </button>
+              ))}
+            </div>
+
             <div className="relative">
               <textarea
                 id="remarks"
                 rows={3}
-                placeholder="กรอกหมายเหตุ (ถ้ามี) หรือใช้ไมโครโฟน"
+                placeholder="กรอกหมายเหตุ (ถ้ามี) หรือคลิกเลือกข้อความด่วนด้านบน"
                 value={remarks}
                 onChange={(e) => setRemarks(e.target.value)}
                 className="w-full px-5 py-4 pr-12 rounded-2xl border border-slate-200 bg-slate-50 text-slate-800 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
               />
-              <button type="button" onClick={() => startSpeechRecognition('remarks')} className="absolute top-4 right-4 text-slate-400 hover:text-blue-600">
-                <Mic className="w-5 h-5" />
-              </button>
+              <MicButton
+                onResult={(v) => setRemarks(v)}
+                currentValue={remarks}
+                mode="append"
+                className="top-3 right-3"
+                label="พูดหมายเหตุ"
+              />
             </div>
           </div>
 
           {/* Submit */}
-          <div className="text-center pt-4 flex flex-col sm:flex-row justify-center gap-2.5 sm:gap-3">
+          <div className="text-center pt-4 hidden md:flex justify-center gap-2.5 sm:gap-3">
             {editingId && (
               <button
                 type="button"
                 onClick={handleCancelEdit}
-                className="w-full sm:w-auto bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3.5 px-8 rounded-xl sm:rounded-full text-base shadow transition-transform active:scale-95 min-h-[44px] flex items-center justify-center"
+                className="w-full sm:w-auto bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3.5 px-8 rounded-xl sm:rounded-full text-base shadow transition-transform active:scale-95 min-h-[44px] flex items-center justify-center cursor-pointer"
               >
                 ยกเลิก
               </button>
@@ -437,20 +597,51 @@ export default function HandheldDetectorPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-12 rounded-xl sm:rounded-full text-base shadow-lg transition-transform active:scale-95 disabled:opacity-50 min-h-[44px] flex items-center justify-center"
+              className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-12 rounded-xl sm:rounded-full text-base shadow-lg transition-transform active:scale-95 disabled:opacity-50 min-h-[44px] flex items-center justify-center gap-2 cursor-pointer"
             >
-              {loading ? 'กำลังบันทึก...' : editingId ? '💾 บันทึกการแก้ไข' : 'ส่งรายงาน'}
+              {loading ? (
+                'กำลังบันทึก...'
+              ) : editingId ? (
+                <>
+                  <Save className="w-5 h-5" />
+                  <span>บันทึกการแก้ไข</span>
+                </>
+              ) : (
+                <>
+                  <Send className="w-5 h-5" />
+                  <span>ส่งรายงาน</span>
+                </>
+              )}
             </button>
           </div>
 
         </form>
 
-        {/* History Section */}
-        <div className="bg-white rounded-2xl shadow-xl border border-slate-200/60 p-4 md:p-6">
-          <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-            <Clock className="w-5 h-5 text-blue-600" />
-            รายงานย้อนหลัง Hand Held Checks
-          </h2>
+        {/* Mobile Sticky Bottom Action Dock */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-2.5 pb-[max(10px,env(safe-area-inset-bottom))] shadow-lg flex items-center justify-between gap-3">
+          <div className="text-xs text-slate-500 truncate">
+            {lastSavedDraftTime ? `ร่างล่าสุด ${lastSavedDraftTime} น.` : 'พร้อมบันทึก'}
+          </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              const form = document.querySelector('form');
+              if (form) form.requestSubmit();
+            }}
+            disabled={loading}
+            className="px-5 py-2.5 bg-emerald-600 active:bg-emerald-700 text-white font-semibold text-sm rounded-xl shadow-md flex items-center gap-2 shrink-0 disabled:opacity-50 cursor-pointer"
+          >
+            {editingId ? <Save className="w-4 h-4" /> : <Send className="w-4 h-4" />}
+            <span>{loading ? 'บันทึก...' : editingId ? 'บันทึกแก้ไข' : 'ส่งรายงาน'}</span>
+          </button>
+        </div>
+
+        {/* Collapsible History Section */}
+        <CollapsibleHistory
+          title="รายงานย้อนหลัง Hand Held Checks"
+          count={history.length}
+          defaultOpen={false}
+        >
 
           {historyLoading ? (
             <div className="text-center py-8 text-slate-400">กำลังโหลดข้อมูล...</div>
@@ -476,7 +667,17 @@ export default function HandheldDetectorPage() {
                       </td>
                       <td className="py-3 px-3">
                         <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${isStatusPass(item.status) ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
-                          {isStatusPass(item.status) ? '✓ ผ่าน' : '✗ ไม่ผ่าน'}
+                          {isStatusPass(item.status) ? (
+                            <>
+                              <Check className="w-3.5 h-3.5" />
+                              <span>ผ่าน</span>
+                            </>
+                          ) : (
+                            <>
+                              <X className="w-3.5 h-3.5" />
+                              <span>ไม่ผ่าน</span>
+                            </>
+                          )}
                         </span>
                       </td>
                       <td className="py-3 px-3 text-slate-700">{item.inspector || '-'}</td>
@@ -577,7 +778,17 @@ export default function HandheldDetectorPage() {
                         <div>
                           <p className="text-xs text-slate-500">สถานะ</p>
                           <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${isStatusPass(selectedReport.status) ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
-                            {isStatusPass(selectedReport.status) ? '✓ ผ่าน' : '✗ ไม่ผ่าน'}
+                            {isStatusPass(selectedReport.status) ? (
+                              <>
+                                <Check className="w-3.5 h-3.5" />
+                                <span>ผ่าน</span>
+                              </>
+                            ) : (
+                              <>
+                                <X className="w-3.5 h-3.5" />
+                                <span>ไม่ผ่าน</span>
+                              </>
+                            )}
                           </span>
                         </div>
                         <div>
@@ -597,7 +808,17 @@ export default function HandheldDetectorPage() {
                           <div>
                             <p className="text-xs text-slate-500">สถานะ</p>
                             <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${isStatusPass(selectedReport.status) ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
-                              {isStatusPass(selectedReport.status) ? '✓ ผ่าน' : '✗ ไม่ผ่าน'}
+                              {isStatusPass(selectedReport.status) ? (
+                                <>
+                                  <Check className="w-3.5 h-3.5" />
+                                  <span>ผ่าน</span>
+                                </>
+                              ) : (
+                                <>
+                                  <X className="w-3.5 h-3.5" />
+                                  <span>ไม่ผ่าน</span>
+                                </>
+                              )}
                             </span>
                           </div>
                         </div>
@@ -616,7 +837,7 @@ export default function HandheldDetectorPage() {
               </div>
             </div>
           )}
-        </div>
+        </CollapsibleHistory>
 
       </div>
     </div>

@@ -22,6 +22,7 @@ import { LegacyModule } from './legacy/legacy.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { SitesModule } from './sites/sites.module';
 import { DynamicFormsModule } from './dynamic-forms/dynamic-forms.module';
+import { AiReportsModule } from './ai-reports/ai-reports.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -49,6 +50,7 @@ import { HealthController } from './health.controller';
     MetricsModule,
     SitesModule,
     DynamicFormsModule,
+    AiReportsModule,
   ],
   controllers: [HealthController],
   providers: [

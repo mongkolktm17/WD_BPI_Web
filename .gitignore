@@ -55,6 +55,8 @@ legacy/unuse/
 # Local cache files
 cache/
 legacy/cache/
+*.tsbuildinfo
+.gemini/
 
 # Legacy PHP system (in legacy/ folder)
 legacy/config.php

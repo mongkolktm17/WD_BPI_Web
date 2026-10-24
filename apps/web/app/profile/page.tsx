@@ -113,10 +113,10 @@ export default function ProfilePage() {
         }),
       });
       if (result.success) {
-        setPasswordMessage({ type: 'success', text: result.message });
+        setPasswordMessage({ type: 'success', text: result.message || 'เปลี่ยนรหัสผ่านสำเร็จ' });
         setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
       } else {
-        setPasswordMessage({ type: 'error', text: result.message });
+        setPasswordMessage({ type: 'error', text: result.message || 'ไม่สามารถเปลี่ยนรหัสผ่านได้' });
       }
     } catch (err: any) {
       setPasswordMessage({ type: 'error', text: err.message || 'ไม่สามารถเปลี่ยนรหัสผ่านได้' });
@@ -130,7 +130,7 @@ export default function ProfilePage() {
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <RefreshCw className="w-8 h-8 text-blue-500 animate-spin mx-auto mb-3" />
-          <p className="text-slate-400 text-sm">กำลังโหลดข้อมูล...</p>
+          <p className="text-slate-500 text-sm">กำลังโหลดข้อมูล...</p>
         </div>
       </div>
     );
@@ -152,8 +152,8 @@ export default function ProfilePage() {
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
       <PageHeader
-        title="โปรไฟล์"
-        subtitle="Profile"
+        title="โปรไฟล์ส่วนตัว"
+        subtitle="User Profile & Account Settings"
         icon={<User className="w-5 h-5 md:w-6 md:h-6 text-white" />}
         backHref="/report-page"
       />
@@ -256,6 +256,7 @@ export default function ProfilePage() {
             <label className="block text-xs font-medium text-slate-600 mb-1">รหัสผ่านปัจจุบัน *</label>
             <input
               type="password"
+              autoComplete="current-password"
               value={passwordForm.currentPassword}
               onChange={e => setPasswordForm({...passwordForm, currentPassword: e.target.value})}
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
@@ -278,6 +279,7 @@ export default function ProfilePage() {
               <label className="block text-xs font-medium text-slate-600 mb-1">ยืนยันรหัสผ่านใหม่ *</label>
               <input
                 type="password"
+                autoComplete="new-password"
                 value={passwordForm.confirmPassword}
                 onChange={e => setPasswordForm({...passwordForm, confirmPassword: e.target.value})}
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"

@@ -132,8 +132,18 @@ export function to7Points(history: (number | null)[], fallback: number): number[
 
 export function formatTimeTH(dateStr: string | null | undefined): string {
   if (!dateStr) return 'ยังไม่มีข้อมูล';
+  const str = String(dateStr).trim();
+  if (
+    str.toUpperCase().includes('INVALID') ||
+    str === 'null' ||
+    str === 'undefined' ||
+    str === 'NaN' ||
+    str === '-'
+  ) {
+    return 'ยังไม่มีข้อมูล';
+  }
   const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return String(dateStr);
+  if (isNaN(d.getTime())) return 'ยังไม่มีข้อมูล';
   const now = new Date();
   const diffMinutes = Math.floor((now.getTime() - d.getTime()) / 60000);
   const timeStr = d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
@@ -145,3 +155,4 @@ export function formatTimeTH(dateStr: string | null | undefined): string {
   if (d.toDateString() === yesterday.toDateString()) return `เมื่อวาน ${timeStr}`;
   return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()} ${timeStr}`;
 }
+

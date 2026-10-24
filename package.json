@@ -1,6 +1,6 @@
 {
   "name": "wdbpi-monorepo",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "packageManager": "npm@11.17.0",
   "private": true,
   "scripts": {

@@ -2,8 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from '@/lib/api';
-import { Radio, Eye, Trash2, Edit3, X, Check } from 'lucide-react';
+import { Radio, Eye, Trash2, Edit3, X, Check, Save, RotateCcw, Sparkles, Send, Download, Building2, FileSpreadsheet, AlertTriangle } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
+import MicButton from '@/components/MicButton';
+import CollapsibleHistory from '@/components/CollapsibleHistory';
+
+const DRAFT_KEY = 'wd_pwa_draft_nvr_recording';
 
 interface NvrDevice {
   id: number;
@@ -80,6 +84,65 @@ export default function NvrRecordingPage() {
   const [recordingDays, setRecordingDays] = useState<Record<string, string>>({});
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
+  const [hasDraftNotice, setHasDraftNotice] = useState(false);
+  const [lastSavedDraftTime, setLastSavedDraftTime] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d.recordingDays && Object.keys(d.recordingDays).length > 0) {
+          setHasDraftNotice(true);
+        }
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        if (Object.keys(recordingDays).length > 0) {
+          const payload = {
+            selectedBuilding,
+            recordingDays,
+            timestamp: new Date().toISOString(),
+          };
+          localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
+          setLastSavedDraftTime(new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }));
+        }
+      } catch {}
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [selectedBuilding, recordingDays]);
+
+  const handleRestoreDraft = () => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d.selectedBuilding) setSelectedBuilding(d.selectedBuilding);
+        if (d.recordingDays) setRecordingDays(d.recordingDays);
+        setMessage('กู้คืนข้อมูลร่างจำนวนวัน NVR เรียบร้อยแล้ว');
+      }
+    } catch {}
+    setHasDraftNotice(false);
+  };
+
+  const handleDiscardDraft = () => {
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch {}
+    setHasDraftNotice(false);
+  };
+
+  const handleFillAllTargets = () => {
+    const next: Record<string, string> = { ...recordingDays };
+    filteredNvrs.forEach((nvr) => {
+      next[nvr.id] = '62';
+    });
+    setRecordingDays(next);
+  };
 
   // Modal Detail / Edit State
   const [activeModalRound, setActiveModalRound] = useState<NvrRoundReport | null>(null);
@@ -136,7 +199,7 @@ export default function NvrRecordingPage() {
     if (!confirm(`ยืนยันการลบรายงานรอบ ${roundId} ทั้งหมด?`)) return;
     try {
       await apiFetch(`/api/cctv/nvr-recordings/rounds/${roundId}`, { method: 'DELETE' });
-      setMessage('✅ ลบรายงานรอบเรียบร้อยแล้ว');
+      setMessage('ลบรายงานรอบเรียบร้อยแล้ว');
       await fetchRounds();
     } catch {
       setMessage('เกิดข้อผิดพลาดในการลบข้อมูลรอบ');
@@ -162,7 +225,7 @@ export default function NvrRecordingPage() {
         method: 'PUT',
         body: JSON.stringify(editRoundData),
       });
-      setMessage('✅ อัปเดตข้อมูลรอบบันทึกเรียบร้อยแล้ว');
+      setMessage('อัปเดตข้อมูลรอบบันทึกเรียบร้อยแล้ว');
       setActiveModalRound(null);
       await fetchRounds();
     } catch {
@@ -192,6 +255,7 @@ export default function NvrRecordingPage() {
       });
       await Promise.all(batch);
       setMessage(`บันทึกรายงาน NVR อาคาร ${buildings.find((b) => String(b.id) === selectedBuilding)?.buildingCode || buildings.find((b) => String(b.id) === selectedBuilding)?.code || ''} เรียบร้อยแล้ว`);
+      try { localStorage.removeItem(DRAFT_KEY); } catch {}
       await fetchRounds();
     } catch {
       setMessage('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
@@ -236,13 +300,38 @@ export default function NvrRecordingPage() {
   }
 
   return (
-    <div className="gradient-bg min-h-screen py-4 md:py-8 px-3 md:px-4 font-sans">
+    <div className="gradient-bg min-h-screen py-4 md:py-8 px-3 md:px-4 font-sans pb-28 md:pb-8">
       <div className="max-w-7xl mx-auto space-y-4 md:space-y-6">
         <PageHeader
           title="บันทึกวันบันทึก NVR"
           subtitle="NVR Recording Days"
           icon={<Radio className="w-5 h-5 md:w-6 h-6 text-white" />}
         />
+
+        {hasDraftNotice && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-900 shadow-sm animate-fade-in">
+            <div className="flex items-center gap-2">
+              <RotateCcw className="w-4 h-4 text-amber-600 shrink-0" />
+              <span className="text-sm font-medium">พบข้อมูลร่างจำนวนวัน NVR ที่บันทึกค้างไว้ในเครื่องนี้</span>
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <button
+                type="button"
+                onClick={handleRestoreDraft}
+                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors"
+              >
+                กู้คืนข้อมูลร่าง
+              </button>
+              <button
+                type="button"
+                onClick={handleDiscardDraft}
+                className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200 transition-colors"
+              >
+                ละทิ้ง
+              </button>
+            </div>
+          </div>
+        )}
 
         {message && (
           <div
@@ -274,7 +363,7 @@ export default function NvrRecordingPage() {
                       : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                   }`}
                 >
-                  <span className="text-lg">🏢</span>
+                  <Building2 className="w-5 h-5 text-current" />
                   <span>{displayText}</span>
                 </button>
               );
@@ -287,19 +376,36 @@ export default function NvrRecordingPage() {
           onSubmit={handleSubmit}
           className="bg-white rounded-2xl p-4 md:p-6 shadow-xl border border-slate-200/60 space-y-4 md:space-y-6"
         >
-          <h3 className="text-base md:text-xl font-bold text-slate-800 border-b border-slate-200 pb-2 md:pb-3 flex items-center gap-2">
-            <span>📋 บันทึกจำนวนวันย้อนหลัง -</span>
-            <span className="text-blue-600">
-              {(() => {
-                const currentBldg = buildings.find((b) => String(b.id) === selectedBuilding);
-                if (!currentBldg) return '';
-                const code = currentBldg.buildingCode || currentBldg.code || '';
-                const name = currentBldg.buildingName || currentBldg.name || `อาคาร ${code}`;
-                return name.includes(code) ? name : `${name} (${code})`;
-              })()}
-            </span>
-            <span className="text-slate-500 font-normal text-xs md:text-sm">(เกณฑ์มาตรฐาน ≥62 วัน)</span>
-          </h3>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 pb-2 md:pb-3 gap-2">
+            <h3 className="text-base md:text-xl font-bold text-slate-800 flex items-center gap-2 flex-wrap">
+              <FileSpreadsheet className="w-5 h-5 text-blue-600" />
+              <span>บันทึกจำนวนวันย้อนหลัง -</span>
+              <span className="text-blue-600">
+                {(() => {
+                  const currentBldg = buildings.find((b) => String(b.id) === selectedBuilding);
+                  if (!currentBldg) return '';
+                  const code = currentBldg.buildingCode || currentBldg.code || '';
+                  const name = currentBldg.buildingName || currentBldg.name || `อาคาร ${code}`;
+                  return name.includes(code) ? name : `${name} (${code})`;
+                })()}
+              </span>
+              <span className="text-slate-500 font-normal text-xs md:text-sm">(เกณฑ์มาตรฐาน ≥62 วัน)</span>
+            </h3>
+
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              {lastSavedDraftTime && (
+                <span className="text-xs text-slate-400 mr-1">ร่างล่าสุด {lastSavedDraftTime} น.</span>
+              )}
+              <button
+                type="button"
+                onClick={handleFillAllTargets}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-semibold transition-all active:scale-95"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                ตั้งค่าตามเป้าหมาย (62 วัน ทุกตัว)
+              </button>
+            </div>
+          </div>
 
           {filteredNvrs.length === 0 ? (
             <div className="text-center py-8 text-slate-400">ไม่พบข้อมูล NVR ในอาคารนี้</div>
@@ -333,23 +439,44 @@ export default function NvrRecordingPage() {
                       </div>
                     )}
 
-                    <div className="flex gap-3 items-center pt-1">
-                      <input
-                        type="number"
-                        placeholder="จำนวนวันที่บันทึกได้"
-                        value={valStr}
-                        onChange={(e) => handleDaysChange(nvr.id, e.target.value)}
-                        className="flex-1 px-4 py-2 rounded-xl border border-slate-300 text-slate-800 font-bold focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
+                    <div className="flex gap-2 items-center pt-1">
+                      <div className="relative flex-1">
+                        <input
+                          type="number"
+                          placeholder="จำนวนวันที่บันทึกได้"
+                          value={valStr}
+                          onChange={(e) => handleDaysChange(nvr.id, e.target.value)}
+                          className="w-full pl-3 pr-9 py-2 rounded-xl border border-slate-300 text-slate-800 font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                        <MicButton
+                          onResult={(t) => {
+                            const num = t.replace(/\D/g, '');
+                            if (num) handleDaysChange(nvr.id, num);
+                          }}
+                          currentValue={valStr}
+                          mode="replace"
+                          className="top-1/2 -translate-y-1/2 right-2"
+                        />
+                      </div>
                       {valStr !== '' && (
                         <span
-                          className={`text-xs px-2.5 py-1.5 rounded-full font-bold whitespace-nowrap ${
+                          className={`text-xs px-2.5 py-1.5 rounded-full font-bold whitespace-nowrap inline-flex items-center gap-1 shrink-0 ${
                             isPassed
                               ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                               : 'bg-rose-100 text-rose-800 border border-rose-300'
                           }`}
                         >
-                          {isPassed ? '✓ ผ่าน' : '✕ ต่ำกว่า'}
+                          {isPassed ? (
+                            <>
+                              <Check className="w-3 h-3" />
+                              <span>ผ่าน</span>
+                            </>
+                          ) : (
+                            <>
+                              <X className="w-3 h-3" />
+                              <span>ต่ำกว่า</span>
+                            </>
+                          )}
                         </span>
                       )}
                     </div>
@@ -359,52 +486,74 @@ export default function NvrRecordingPage() {
             </div>
           )}
 
-          <div className="pt-4 flex justify-center">
+          <div className="pt-4 hidden md:flex justify-center">
             <button
               type="submit"
               disabled={saving || filteredNvrs.length === 0}
-              className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-8 md:px-12 rounded-xl sm:rounded-full shadow-lg transition-transform active:scale-95 text-sm md:text-base disabled:opacity-50 min-h-[44px] flex items-center justify-center"
+              className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-8 md:px-12 rounded-xl sm:rounded-full shadow-lg transition-transform active:scale-95 text-sm md:text-base disabled:opacity-50 min-h-[44px] flex items-center justify-center gap-2"
             >
-              {saving ? 'กำลังบันทึก...' : '💾 บันทึกรายงาน NVR Recording Days'}
+              <Save className="w-5 h-5" />
+              <span>{saving ? 'กำลังบันทึก...' : 'บันทึกรายงาน NVR Recording Days'}</span>
             </button>
           </div>
         </form>
 
-        {/* History Table (Round-Grouped Matrix) */}
-        <div className="bg-white rounded-2xl p-4 md:p-6 shadow-xl border border-slate-200/60 space-y-4">
-          <div className="flex items-center justify-between flex-wrap gap-4 border-b border-slate-200 pb-3">
-            <div>
-              <h3 className="text-base md:text-lg font-bold text-slate-800">
-                📊 ประวัติบันทึก NVR ย้อนหลัง (สรุปรวมตามรอบรายงาน)
-              </h3>
-              <p className="text-xs text-slate-500">
-                แสดงผล 1 แถวต่อ 1 รอบการตรวจ และกระจายคอลัมน์ NVR แต่ละตัว (ช่องสีแดงคือ &lt; 62 วัน)
-              </p>
-            </div>
+        {/* Mobile Sticky Bottom Action Dock */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-2.5 pb-[max(10px,env(safe-area-inset-bottom))] shadow-lg flex items-center justify-between gap-3">
+          <div className="text-xs text-slate-500 truncate">
+            {lastSavedDraftTime ? `ร่างล่าสุด ${lastSavedDraftTime} น.` : `${filteredNvrs.length} NVRs`}
+          </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              const form = document.querySelector('form');
+              if (form) form.requestSubmit();
+            }}
+            disabled={saving || filteredNvrs.length === 0}
+            className="px-5 py-2.5 bg-emerald-600 active:bg-emerald-700 text-white font-semibold text-sm rounded-xl shadow-md flex items-center gap-2 shrink-0 disabled:opacity-50"
+          >
+            <Save className="w-4 h-4" />
+            <span>{saving ? 'บันทึก...' : 'บันทึก NVR'}</span>
+          </button>
+        </div>
 
-            <div className="flex items-center gap-3 flex-wrap">
+        {/* History Table (Round-Grouped Matrix) */}
+        <CollapsibleHistory
+          title="ประวัติบันทึก NVR ย้อนหลัง (สรุปรวมตามรอบรายงาน)"
+          count={rounds.length}
+          defaultOpen={false}
+          headerActions={
+            <div className="flex items-center gap-2 flex-wrap">
               {/* Building Filter for History */}
               <div className="flex bg-slate-100 p-1 rounded-xl text-xs font-bold text-slate-600">
                 {['ALL', 'B2', 'B3', 'B4', 'B9'].map((b) => (
                   <button
                     key={b}
                     onClick={() => setHistoryBuildingFilter(b)}
-                    className={`px-3 py-1.5 rounded-lg transition-colors ${
+                    className={`px-2.5 py-1 rounded-lg transition-colors ${
                       historyBuildingFilter === b ? 'bg-white text-blue-600 shadow-sm' : 'hover:text-slate-900'
                     }`}
                   >
-                    {b === 'ALL' ? 'ทุกอาคาร' : b}
+                    {b === 'ALL' ? 'ทั้งหมด' : b}
                   </button>
                 ))}
               </div>
 
               <button
+                type="button"
                 onClick={exportCsv}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1.5 px-3.5 rounded-xl transition-colors shadow-md flex items-center gap-1.5 text-xs md:text-sm"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1.5 px-3 rounded-xl transition-colors shadow-sm flex items-center gap-1.5 text-xs"
               >
-                📥 ส่งออก CSV
+                <Download className="w-3.5 h-3.5" />
+                <span>CSV</span>
               </button>
             </div>
+          }
+        >
+          <div className="mb-3">
+            <p className="text-xs text-slate-500">
+              แสดงผล 1 แถวต่อ 1 รอบการตรวจ และกระจายคอลัมน์ NVR แต่ละตัว (ช่องสีแดงคือ &lt; 62 วัน)
+            </p>
           </div>
 
           {rounds.length === 0 ? (
@@ -447,13 +596,22 @@ export default function NvrRecordingPage() {
                         </td>
                         <td className="px-2 py-2.5 text-center whitespace-nowrap">
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${
                               rnd.isAllPassed
                                 ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                                 : 'bg-rose-100 text-rose-800 border border-rose-200'
                             }`}
                           >
-                            {rnd.passedNvrs}/{rnd.totalNvrs} {rnd.isAllPassed ? '✓ ผ่าน' : 'ต่ำกว่า'}
+                            <span>{rnd.passedNvrs}/{rnd.totalNvrs}</span>
+                            {rnd.isAllPassed ? (
+                              <span className="inline-flex items-center gap-0.5">
+                                <Check className="w-3 h-3 text-emerald-700" /> ผ่าน
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-0.5">
+                                <AlertTriangle className="w-3 h-3 text-rose-700" /> ต่ำกว่า
+                              </span>
+                            )}
                           </span>
                         </td>
 
@@ -509,7 +667,7 @@ export default function NvrRecordingPage() {
               </table>
             </div>
           )}
-        </div>
+        </CollapsibleHistory>
 
         {/* Modal: View & Edit Round Detail */}
         {activeModalRound && (
@@ -559,11 +717,19 @@ export default function NvrRecordingPage() {
                             {nvrCol.building} - {nvrCol.nvrName}
                           </span>
                           <span
-                            className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                            className={`text-[10px] px-2 py-0.5 rounded-full font-bold inline-flex items-center gap-1 ${
                               isPass ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
                             }`}
                           >
-                            {isPass ? '✓ ≥62 วัน' : '✕ ต่ำกว่า'}
+                            {isPass ? (
+                              <>
+                                <Check className="w-2.5 h-2.5 text-emerald-700" /> ≥62 วัน
+                              </>
+                            ) : (
+                              <>
+                                <X className="w-2.5 h-2.5 text-rose-700" /> ต่ำกว่า
+                              </>
+                            )}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">

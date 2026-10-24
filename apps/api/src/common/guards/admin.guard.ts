@@ -2,7 +2,8 @@ import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@
 
 /**
  * Admin-only guard (backend counterpart of useRequireAdmin).
- * Admin = roleId 1, admin role name, or explicit all/admin permission.
+ * Admin = roleId 1, roleId 6 (Corporate Executive), username admin/itadmin,
+ * admin role name, or explicit all/admin permission.
  */
 @Injectable()
 export class AdminGuard implements CanActivate {
@@ -21,17 +22,20 @@ export class AdminGuard implements CanActivate {
     (user.permissions || []).forEach(collect);
 
     const role = user.role;
+    const roleName = String(user.roleName || role?.roleName || role?.name || '');
+    const roleId = Number(user.roleId ?? role?.id ?? 0);
+
     const isAdmin =
       perms.includes('all') ||
       perms.includes('admin') ||
-      user.roleId === 1 ||
-      role?.id === 1 ||
-      user.roleName === 'admin' ||
-      user.roleName === 'ผู้ดูแลระบบ' ||
-      role?.roleName === 'admin' ||
-      role?.name === 'admin' ||
-      role?.roleName === 'ผู้ดูแลระบบ' ||
-      role?.name === 'ผู้ดูแลระบบ';
+      roleId === 1 ||
+      roleId === 6 ||
+      user.username === 'admin' ||
+      user.username === 'itadmin' ||
+      user.isExecutive === true ||
+      roleName.toLowerCase().includes('admin') ||
+      roleName.includes('ผู้ดูแลระบบ') ||
+      roleName.includes('ผู้บริหาร');
 
     if (!isAdmin) {
       throw new ForbiddenException('ต้องเป็นผู้ดูแลระบบเท่านั้น');

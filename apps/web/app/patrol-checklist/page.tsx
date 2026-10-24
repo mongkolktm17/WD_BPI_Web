@@ -1,13 +1,18 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   ShieldCheck, RefreshCw, CheckCircle2, XCircle, Clock,
-  ChevronDown, ChevronUp, Eye, Pencil, Trash2, X
+  ChevronDown, ChevronUp, Eye, Pencil, Trash2, X, Check,
+  Save, RotateCcw, Sparkles, Send, Sun, Moon, Camera, Radio
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import Pagination from '@/components/Pagination';
 import PageHeader from '@/components/PageHeader';
+import MicButton from '@/components/MicButton';
+import CollapsibleHistory from '@/components/CollapsibleHistory';
+
+const DRAFT_KEY = 'wd_pwa_draft_patrol_checklist';
 
 interface PatrolRecord {
   id: number;
@@ -64,15 +69,17 @@ const TIME_SLOTS = Array.from({ length: 24 }, (_, i) => {
 
 const BUILDING_OPTIONS = ['อาคาร 1', 'อาคาร 2', 'อาคาร 3', 'อาคาร 4', 'อาคาร 6', 'อาคาร 9'];
 
-function ToggleGroup({ label, value, options, onChange }: { label: string; value: string; options: { val: string; label: string; color: string }[]; onChange: (v: string) => void }) {
+function ToggleGroup({ label, value, options, onChange }: { label: string; value: string; options: { val: string; label: string; icon?: React.ReactNode; color: string }[]; onChange: (v: string) => void }) {
   return (
     <div>
       <label className="block text-sm font-medium text-slate-700 mb-2">{label} <span className="text-rose-500">*</span></label>
       <div className="grid grid-cols-2 sm:flex gap-2 flex-wrap">
         {options.map((opt) => (
           <button key={opt.val} type="button" onClick={() => onChange(opt.val)}
-            className={`px-4 py-3 sm:py-2.5 min-h-[44px] flex items-center justify-center border-2 rounded-xl font-medium text-sm transition-all ${value === opt.val ? opt.color : 'border-slate-200 text-slate-600 hover:border-slate-300 bg-white'}`}>
-            {value === opt.val && <span className="mr-1">✓</span>}{opt.label}
+            className={`px-4 py-3 sm:py-2.5 min-h-[44px] flex items-center justify-center border-2 rounded-xl font-medium text-sm transition-all cursor-pointer ${value === opt.val ? opt.color : 'border-slate-200 text-slate-600 hover:border-slate-300 bg-white'}`}>
+            {value === opt.val && <Check className="w-3.5 h-3.5 mr-1 inline" />}
+            {opt.icon && <span className="mr-1">{opt.icon}</span>}
+            {opt.label}
           </button>
         ))}
       </div>
@@ -99,6 +106,10 @@ export default function PatrolChecklistPage() {
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
+
+  // Draft state
+  const [hasDraftNotice, setHasDraftNotice] = useState(false);
+  const [lastSavedDraftTime, setLastSavedDraftTime] = useState<string | null>(null);
 
   // Toggle field states (15 perimeter + 12 interior = 27)
   const [perimeter, setPerimeter] = useState<Record<string, string>>({
@@ -131,7 +142,79 @@ export default function PatrolChecklistPage() {
       if (name) setEmployeeName(name);
     }).catch(() => {});
     fetchRecords();
+
+    // Check for draft in localStorage
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      if (saved) {
+        const p = JSON.parse(saved);
+        if (p.reportCondition || p.shift || p.patrolTime || (p.selectedBuildings && p.selectedBuildings.length > 0)) {
+          setHasDraftNotice(true);
+          setLastSavedDraftTime(p._savedAt || 'ก่อนหน้านี้');
+        }
+      }
+    } catch {}
   }, [fetchRecords]);
+
+  // Debounced auto-save draft
+  useEffect(() => {
+    if (editingId !== null) return;
+    const timer = setTimeout(() => {
+      const hasData = reportCondition || shift || patrolTime || selectedBuildings.length > 0 || Object.values(perimeter).some(Boolean) || Object.values(interior).some(Boolean);
+      if (hasData) {
+        try {
+          const toSave = {
+            patrolDate,
+            reportCondition,
+            shift,
+            patrolTime,
+            selectedBuildings,
+            perimeter,
+            interior,
+            _savedAt: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }),
+          };
+          localStorage.setItem(DRAFT_KEY, JSON.stringify(toSave));
+          setLastSavedDraftTime(toSave._savedAt);
+        } catch {}
+      }
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [patrolDate, reportCondition, shift, patrolTime, selectedBuildings, perimeter, interior, editingId]);
+
+  const handleRestoreDraft = () => {
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      if (saved) {
+        const p = JSON.parse(saved);
+        if (p.reportCondition) setReportCondition(p.reportCondition);
+        if (p.shift) setShift(p.shift);
+        if (p.patrolTime) setPatrolTime(p.patrolTime);
+        if (p.selectedBuildings) setSelectedBuildings(p.selectedBuildings);
+        if (p.perimeter) setPerimeter(p.perimeter);
+        if (p.interior) setInterior(p.interior);
+        setHasDraftNotice(false);
+      }
+    } catch {}
+  };
+
+  const handleDiscardDraft = () => {
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+      setHasDraftNotice(false);
+      setLastSavedDraftTime(null);
+    } catch {}
+  };
+
+  const handleQuickPassAll = () => {
+    setReportCondition('ภาวะปกติ');
+    const pNormal: Record<string, string> = {};
+    perimeterFields.forEach(f => { pNormal[f.key] = f.pass; });
+    setPerimeter(pNormal);
+
+    const iNormal: Record<string, string> = {};
+    interiorFields.forEach(f => { iNormal[f.key] = f.pass; });
+    setInterior(iNormal);
+  };
 
   const toggleBuilding = (b: string) => {
     setSelectedBuildings(prev => prev.includes(b) ? prev.filter(x => x !== b) : [...prev, b]);
@@ -227,6 +310,11 @@ export default function PatrolChecklistPage() {
         await apiFetch('/api/patrol', { method: 'POST', body: JSON.stringify(payload) });
         setMessage('บันทึกรายงานการลาดตระเวนเรียบร้อยแล้ว');
       }
+      try {
+        localStorage.removeItem(DRAFT_KEY);
+        setHasDraftNotice(false);
+        setLastSavedDraftTime(null);
+      } catch {}
       fetchRecords();
     } catch { setMessage('เกิดข้อผิดพลาดในการบันทึกข้อมูล'); }
     finally { setSubmitting(false); }
@@ -262,7 +350,7 @@ export default function PatrolChecklistPage() {
   const normalRecords = records.filter(r => r.status === 'normal');
 
   return (
-    <div className="gradient-bg min-h-screen py-4 md:py-8 px-3 md:px-4 font-sans">
+    <div className="gradient-bg min-h-screen py-4 md:py-8 px-3 md:px-4 font-sans pb-28">
       <div className="max-w-5xl mx-auto space-y-4 md:space-y-6">
 
         {/* Header */}
@@ -272,7 +360,7 @@ export default function PatrolChecklistPage() {
           icon={<ShieldCheck className="w-5 h-5 md:w-6 md:h-6 text-white" />}
           actions={
             <button onClick={() => setMode(mode === 'form' ? 'list' : 'form')}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl transition-colors text-sm">
+              className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl transition-colors text-sm cursor-pointer">
               {mode === 'form' ? <><Eye className="w-4 h-4" />ดูรายการ</> : <><ShieldCheck className="w-4 h-4" />กรอกรายงาน</>}
             </button>
           }
@@ -284,17 +372,74 @@ export default function PatrolChecklistPage() {
           </div>
         )}
 
+        {/* Auto-save Draft Notice Banner */}
+        {mode === 'form' && hasDraftNotice && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center text-amber-700 flex-shrink-0">
+                <RotateCcw className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs sm:text-sm font-bold text-amber-900">
+                  พบข้อมูลฉบับร่างที่บันทึกไว้ ({lastSavedDraftTime})
+                </p>
+                <p className="text-[11px] sm:text-xs text-amber-700">
+                  คุณต้องการกู้คืนข้อมูลการเดินตรวจที่กรอกค้างไว้หรือไม่?
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                type="button"
+                onClick={handleRestoreDraft}
+                className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+              >
+                กู้คืนข้อมูล
+              </button>
+              <button
+                type="button"
+                onClick={handleDiscardDraft}
+                className="px-2.5 py-1.5 rounded-lg border border-amber-300 text-amber-800 hover:bg-amber-100/60 text-xs font-semibold transition-all cursor-pointer"
+              >
+                ล้างร่าง
+              </button>
+            </div>
+          </div>
+        )}
+
         {mode === 'form' ? (
           /* ========== PATROL FORM ========== */
           <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
             {editingId !== null && (
               <div className="bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 flex items-center justify-between gap-2">
-                <span className="text-sm font-bold text-amber-800">✏️ กำลังแก้ไขรายการ #{editingId} — บันทึกจะใช้ PUT /api/patrol/{editingId}</span>
-                <button type="button" onClick={handleCancelEdit} className="inline-flex items-center gap-1 text-xs font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-300 rounded-lg px-3 py-1.5">
+                <span className="text-sm font-bold text-amber-800 flex items-center gap-1.5">
+                  <Pencil className="w-4 h-4 text-amber-700" />
+                  กำลังแก้ไขรายการ #{editingId} — บันทึกจะใช้ PUT /api/patrol/{editingId}
+                </span>
+                <button type="button" onClick={handleCancelEdit} className="inline-flex items-center gap-1 text-xs font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-300 rounded-lg px-3 py-1.5 cursor-pointer">
                   <X className="w-3.5 h-3.5" />ยกเลิก
                 </button>
               </div>
             )}
+
+            {/* Quick Action: 1-Click Pass All */}
+            <div className="bg-blue-50/70 border border-blue-200/80 rounded-2xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+              <div className="flex items-center gap-2.5">
+                <Sparkles className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                <div>
+                  <h4 className="text-xs sm:text-sm font-bold text-blue-900">ตัวช่วยบันทึกผลการตรวจด่วน (Quick Presets)</h4>
+                  <p className="text-[11px] text-blue-700">คลิกเดียวเพื่อตั้งค่าผลตรวจรอบรั้วและภายในอาคารทั้งหมดเป็น &quot;ปกติ&quot;</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleQuickPassAll}
+                className="w-full sm:w-auto px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span>ตั้งค่าปกติทุกรายการ (Pass All)</span>
+              </button>
+            </div>
 
             {/* Section 1: General Info */}
             <div className="bg-white rounded-2xl p-4 md:p-6 shadow-xl border border-slate-200/60 space-y-4">
@@ -308,16 +453,26 @@ export default function PatrolChecklistPage() {
                 <ToggleGroup label="ตรวจสอบภาวะ" value={reportCondition} onChange={setReportCondition}
                   options={[{ val: 'ภาวะปกติ', label: 'ภาวะปกติ', color: 'border-emerald-500 bg-emerald-50 text-emerald-700' }, { val: 'ภาวะฉุกเฉิน', label: 'ภาวะฉุกเฉิน', color: 'border-rose-500 bg-rose-50 text-rose-700' }]} />
                 <ToggleGroup label="กะ" value={shift} onChange={setShift}
-                  options={[{ val: 'เช้า', label: '🌅 เช้า', color: 'border-blue-500 bg-blue-50 text-blue-700' }, { val: 'บ่าย', label: '☀️ บ่าย', color: 'border-orange-500 bg-orange-50 text-orange-700' }, { val: 'ดึก', label: '🌙 ดึก', color: 'border-purple-500 bg-purple-50 text-purple-700' }]} />
+                  options={[
+                    { val: 'เช้า', label: 'เช้า', icon: <Sun className="w-3.5 h-3.5 text-amber-500 inline" />, color: 'border-blue-500 bg-blue-50 text-blue-700' },
+                    { val: 'บ่าย', label: 'บ่าย', icon: <Sun className="w-3.5 h-3.5 text-orange-500 inline" />, color: 'border-orange-500 bg-orange-50 text-orange-700' },
+                    { val: 'ดึก', label: 'ดึก', icon: <Moon className="w-3.5 h-3.5 text-indigo-500 inline" />, color: 'border-purple-500 bg-purple-50 text-purple-700' }
+                  ]} />
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">รหัสพนักงาน <span className="text-rose-500">*</span></label>
-                  <input type="text" value={employeeCode} onChange={e => setEmployeeCode(e.target.value)} placeholder="รหัสพนักงาน"
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-blue-500 outline-none" required />
+                  <div className="relative">
+                    <input type="text" value={employeeCode} onChange={e => setEmployeeCode(e.target.value)} placeholder="รหัสพนักงาน"
+                      className="w-full pl-4 pr-10 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-blue-500 outline-none" required />
+                    <MicButton onResult={v => setEmployeeCode(v)} currentValue={employeeCode} mode="replace" label="พูดรหัสพนักงาน" />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">ชื่อนามสกุล <span className="text-rose-500">*</span></label>
-                  <input type="text" value={employeeName} onChange={e => setEmployeeName(e.target.value)} placeholder="ชื่อ-นามสกุล"
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-blue-500 outline-none" required />
+                  <div className="relative">
+                    <input type="text" value={employeeName} onChange={e => setEmployeeName(e.target.value)} placeholder="ชื่อ-นามสกุล"
+                      className="w-full pl-4 pr-10 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-blue-500 outline-none" required />
+                    <MicButton onResult={v => setEmployeeName(v)} currentValue={employeeName} mode="replace" label="พูดชื่อ-นามสกุล" />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">เวลาทำการเดินตรวจ <span className="text-rose-500">*</span></label>
@@ -333,8 +488,8 @@ export default function PatrolChecklistPage() {
                 <div className="flex gap-2 flex-wrap">
                   {BUILDING_OPTIONS.map(b => (
                     <button key={b} type="button" onClick={() => toggleBuilding(b)}
-                      className={`px-4 py-2 border-2 rounded-xl font-medium text-sm transition-all ${selectedBuildings.includes(b) ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-600 hover:border-emerald-300 bg-white'}`}>
-                      {selectedBuildings.includes(b) && <span className="mr-1">✓</span>}{b}
+                      className={`px-4 py-2 border-2 rounded-xl font-medium text-sm transition-all cursor-pointer ${selectedBuildings.includes(b) ? 'border-emerald-500 bg-emerald-50 text-emerald-700 font-bold' : 'border-slate-200 text-slate-600 hover:border-emerald-300 bg-white'}`}>
+                      {selectedBuildings.includes(b) && <Check className="w-3.5 h-3.5 mr-1 inline" />}{b}
                     </button>
                   ))}
                 </div>
@@ -349,12 +504,12 @@ export default function PatrolChecklistPage() {
                   <label className="block text-sm font-medium text-slate-700 mb-2">{f.label} <span className="text-rose-500">*</span></label>
                   <div className="flex gap-2">
                     <button type="button" onClick={() => setPerimeter({ ...perimeter, [f.key]: f.pass })}
-                      className={`flex-1 px-4 py-2.5 border-2 rounded-xl font-medium text-sm transition-all ${perimeter[f.key] === f.pass ? f.passColor : 'border-slate-200 text-slate-600 hover:border-emerald-300 bg-white'}`}>
-                      {perimeter[f.key] === f.pass && <span className="mr-1">✓</span>}{f.pass}
+                      className={`flex-1 px-4 py-2.5 border-2 rounded-xl font-medium text-sm transition-all cursor-pointer ${perimeter[f.key] === f.pass ? f.passColor : 'border-slate-200 text-slate-600 hover:border-emerald-300 bg-white'}`}>
+                      {perimeter[f.key] === f.pass && <Check className="w-3.5 h-3.5 mr-1 inline" />}{f.pass}
                     </button>
                     <button type="button" onClick={() => setPerimeter({ ...perimeter, [f.key]: f.fail })}
-                      className={`flex-1 px-4 py-2.5 border-2 rounded-xl font-medium text-sm transition-all ${perimeter[f.key] === f.fail ? f.failColor : 'border-slate-200 text-slate-600 hover:border-rose-300 bg-white'}`}>
-                      {perimeter[f.key] === f.fail && <span className="mr-1">✗</span>}{f.fail}
+                      className={`flex-1 px-4 py-2.5 border-2 rounded-xl font-medium text-sm transition-all cursor-pointer ${perimeter[f.key] === f.fail ? f.failColor : 'border-slate-200 text-slate-600 hover:border-rose-300 bg-white'}`}>
+                      {perimeter[f.key] === f.fail && <X className="w-3.5 h-3.5 mr-1 inline" />}{f.fail}
                     </button>
                   </div>
                   <input type="hidden" value={perimeter[f.key]} required />
@@ -391,79 +546,125 @@ export default function PatrolChecklistPage() {
               </div>
             </div>
 
-            <div className="pt-2 flex justify-center gap-3 flex-wrap">
+            <div className="pt-2 hidden md:flex justify-center gap-3 flex-wrap">
               <button type="submit" disabled={submitting}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-10 rounded-full shadow-lg transition-transform active:scale-95 text-sm md:text-base disabled:opacity-50">
-                {submitting ? 'กำลังบันทึก...' : editingId !== null ? '💾 บันทึกการแก้ไข (PUT)' : '💾 บันทึกรายงานการลาดตระเวน'}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-10 rounded-full shadow-lg transition-transform active:scale-95 text-sm md:text-base disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer min-h-[44px]">
+                <Save className="w-4 h-4" />
+                <span>{submitting ? 'กำลังบันทึก...' : editingId !== null ? 'บันทึกการแก้ไข (PUT)' : 'บันทึกรายงานการลาดตระเวน'}</span>
               </button>
               {editingId !== null && (
                 <button type="button" onClick={handleCancelEdit}
-                  className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3.5 px-8 rounded-full shadow transition-colors text-sm md:text-base inline-flex items-center gap-2">
-                  <X className="w-4 h-4" />ยกเลิกการแก้ไข
+                  className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3.5 px-8 rounded-full shadow transition-colors text-sm md:text-base inline-flex items-center gap-2 cursor-pointer min-h-[44px]">
+                  <X className="w-4 h-4" /><span>ยกเลิกการแก้ไข</span>
                 </button>
               )}
             </div>
           </form>
         ) : (
           /* ========== LIST MODE ========== */
-          <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-3">
-              <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-4 text-center">
-                <div className="text-2xl font-black text-slate-800">{records.length}</div>
-                <div className="text-xs text-slate-500">รายการทั้งหมด</div>
+          <CollapsibleHistory
+            title="ประวัติการตรวจตราย้อนหลัง"
+            count={records.length}
+            defaultOpen={true}
+            headerActions={
+              <button
+                type="button"
+                onClick={fetchRecords}
+                disabled={loading}
+                title="รีเฟรชประวัติ"
+                className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 transition-colors cursor-pointer"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+            }
+          >
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-slate-50 rounded-2xl shadow-sm border border-slate-200/60 p-4 text-center">
+                  <div className="text-2xl font-black text-slate-800">{records.length}</div>
+                  <div className="text-xs text-slate-500">รายการทั้งหมด</div>
+                </div>
+                <div className="bg-emerald-50/50 rounded-2xl shadow-sm border border-emerald-200/60 p-4 text-center">
+                  <div className="text-2xl font-black text-emerald-600">{normalRecords.length}</div>
+                  <div className="text-xs text-slate-500">ปกติ</div>
+                </div>
+                <div className="bg-rose-50/50 rounded-2xl shadow-sm border border-rose-200/60 p-4 text-center">
+                  <div className="text-2xl font-black text-rose-600">{abnormalRecords.length}</div>
+                  <div className="text-xs text-slate-500">ผิดปกติ</div>
+                </div>
               </div>
-              <div className="bg-white rounded-2xl shadow-lg border border-emerald-200/60 p-4 text-center">
-                <div className="text-2xl font-black text-emerald-600">{normalRecords.length}</div>
-                <div className="text-xs text-slate-500">ปกติ</div>
-              </div>
-              <div className="bg-white rounded-2xl shadow-lg border border-rose-200/60 p-4 text-center">
-                <div className="text-2xl font-black text-rose-600">{abnormalRecords.length}</div>
-                <div className="text-xs text-slate-500">ผิดปกติ</div>
-              </div>
-            </div>
 
-            {loading ? (
-              <div className="bg-white rounded-2xl p-12 text-center"><RefreshCw className="w-6 h-6 animate-spin text-blue-500 mx-auto mb-2" /><p className="text-slate-400 text-sm">กำลังโหลด...</p></div>
-            ) : records.length === 0 ? (
-              <div className="bg-white rounded-2xl p-12 text-center"><ShieldCheck className="w-12 h-12 text-slate-300 mx-auto mb-3" /><p className="text-slate-400">ยังไม่มีรายงาน</p></div>
-            ) : (
-              <>
-                {records.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(rec => {
-                  const items = parseNotes(rec.notes || '{}');
-                  return (
-                    <div key={rec.id} className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-5">
-                      <div className="flex items-center gap-3 mb-2 flex-wrap">
-                        <div className={`w-2.5 h-2.5 rounded-full ${rec.status === 'normal' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                        <span className="font-bold text-slate-800 text-sm">{rec.patrolRoute || 'ไม่ระบุเส้นทาง'}</span>
-                        <span className="text-xs text-slate-500">{formatDate(rec.patrolDate || rec.createdAt)}</span>
-                        <span className="text-xs text-slate-500">{rec.officerName}</span>
-                        <span className="ml-auto inline-flex gap-1">
-                          <button type="button" onClick={() => handleEdit(rec)} title="แก้ไข" className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                          <button type="button" onClick={() => handleDelete(rec.id)} title="ลบ" className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </span>
-                      </div>
-                      {items.length > 0 && (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5 mt-2">
-                          {items.filter(i => i.key !== 'buildings').map(item => (
-                            <div key={item.key} className={`text-[10px] px-2 py-1 rounded-lg ${item.pass ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
-                              {item.pass ? '✓' : '✗'} {item.label}: {item.value}
-                            </div>
-                          ))}
+              {loading ? (
+                <div className="bg-white rounded-2xl p-12 text-center"><RefreshCw className="w-6 h-6 animate-spin text-blue-500 mx-auto mb-2" /><p className="text-slate-400 text-sm">กำลังโหลด...</p></div>
+              ) : records.length === 0 ? (
+                <div className="bg-white rounded-2xl p-12 text-center"><ShieldCheck className="w-12 h-12 text-slate-300 mx-auto mb-3" /><p className="text-slate-400">ยังไม่มีรายงาน</p></div>
+              ) : (
+                <>
+                  {records.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(rec => {
+                    const items = parseNotes(rec.notes || '{}');
+                    return (
+                      <div key={rec.id} className="bg-slate-50/70 rounded-2xl shadow-sm border border-slate-200/60 p-4 md:p-5">
+                        <div className="flex items-center gap-3 mb-2 flex-wrap">
+                          <div className={`w-2.5 h-2.5 rounded-full ${rec.status === 'normal' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                          <span className="font-bold text-slate-800 text-sm">{rec.patrolRoute || 'ไม่ระบุเส้นทาง'}</span>
+                          <span className="text-xs text-slate-500">{formatDate(rec.patrolDate || rec.createdAt)}</span>
+                          <span className="text-xs text-slate-500">{rec.officerName}</span>
+                          <span className="ml-auto inline-flex gap-1">
+                            <button type="button" onClick={() => handleEdit(rec)} title="แก้ไข" className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer">
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button type="button" onClick={() => handleDelete(rec.id)} title="ลบ" className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </span>
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
-                {records.length > PAGE_SIZE && <Pagination page={page} totalItems={records.length} pageSize={PAGE_SIZE} onPageChange={setPage} />}
-              </>
-            )}
-          </div>
+                        {items.length > 0 && (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5 mt-2">
+                            {items.filter(i => i.key !== 'buildings').map(item => (
+                              <div key={item.key} className={`text-[10px] px-2 py-1 rounded-lg flex items-center gap-1 ${item.pass ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+                                {item.pass ? <Check className="w-3 h-3 text-emerald-600 flex-shrink-0" /> : <X className="w-3 h-3 text-rose-600 flex-shrink-0" />}
+                                <span className="truncate">{item.label}: {item.value}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {records.length > PAGE_SIZE && <Pagination page={page} totalItems={records.length} pageSize={PAGE_SIZE} onPageChange={setPage} />}
+                </>
+              )}
+            </div>
+          </CollapsibleHistory>
         )}
       </div>
+
+      {/* Mobile PWA Sticky Bottom Action Dock */}
+      {mode === 'form' && (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-3 py-2.5 pb-[max(10px,env(safe-area-inset-bottom))] shadow-lg">
+          <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-[11px] text-slate-500 font-mono truncate">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" />
+              <span className="truncate">
+                {lastSavedDraftTime ? `ร่างอัตโนมัติ: ${lastSavedDraftTime}` : 'พร้อมส่งรายงานตรวจตรา'}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                const form = document.querySelector('form');
+                if (form) form.requestSubmit();
+              }}
+              disabled={submitting}
+              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white text-xs sm:text-sm font-bold shadow-xs transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer flex-shrink-0 min-h-[42px]"
+            >
+              <Send className="w-4 h-4" />
+              <span>{submitting ? 'กำลังบันทึก...' : editingId !== null ? 'บันทึกแก้ไข' : 'ส่งรายงาน'}</span>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -475,12 +676,14 @@ function ToggleField({ field, value, onChange }: { field: { key: string; label: 
         <span className="text-sm font-medium text-slate-700">{field.label}</span>
         <div className="flex gap-2 shrink-0">
           <button type="button" onClick={() => onChange(field.pass)}
-            className={`flex-1 sm:flex-initial px-4 py-2 min-h-[40px] sm:min-h-[36px] flex items-center justify-center border rounded-xl font-medium text-xs transition-all ${value === field.pass ? 'border-emerald-500 bg-emerald-50 text-emerald-700 font-bold' : 'border-slate-200 text-slate-500 hover:border-emerald-300 bg-white'}`}>
-            {value === field.pass && '✓ '}{field.pass}
+            className={`flex-1 sm:flex-initial px-4 py-2 min-h-[40px] sm:min-h-[36px] flex items-center justify-center border rounded-xl font-medium text-xs transition-all cursor-pointer ${value === field.pass ? 'border-emerald-500 bg-emerald-50 text-emerald-700 font-bold' : 'border-slate-200 text-slate-500 hover:border-emerald-300 bg-white'}`}>
+            {value === field.pass && <Check className="w-3.5 h-3.5 mr-1 inline" />}
+            {field.pass}
           </button>
           <button type="button" onClick={() => onChange(field.fail)}
-            className={`flex-1 sm:flex-initial px-4 py-2 min-h-[40px] sm:min-h-[36px] flex items-center justify-center border rounded-xl font-medium text-xs transition-all ${value === field.fail ? 'border-rose-500 bg-rose-50 text-rose-700 font-bold' : 'border-slate-200 text-slate-500 hover:border-rose-300 bg-white'}`}>
-            {value === field.fail && '✗ '}{field.fail}
+            className={`flex-1 sm:flex-initial px-4 py-2 min-h-[40px] sm:min-h-[36px] flex items-center justify-center border rounded-xl font-medium text-xs transition-all cursor-pointer ${value === field.fail ? 'border-rose-500 bg-rose-50 text-rose-700 font-bold' : 'border-slate-200 text-slate-500 hover:border-rose-300 bg-white'}`}>
+            {value === field.fail && <X className="w-3.5 h-3.5 mr-1 inline" />}
+            {field.fail}
           </button>
         </div>
         <input type="hidden" value={value} required />

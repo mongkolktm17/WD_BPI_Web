@@ -41,88 +41,86 @@ export function ExecutiveDualView({ onSelectSite }: { onSelectSite: (siteId: num
     const contractGuards = (guards?.morningContract || guards?.morning || 0) + (guards?.eveningContract || guards?.evening || 0);
 
     return (
-      <div className={`bg-white rounded-3xl p-5 border-2 shadow-lg flex flex-col justify-between relative overflow-hidden ${
-        code === 'BPI' ? 'border-blue-200' : 'border-emerald-200'
+      <div className={`bg-white rounded-xl p-5 border shadow-2xs flex flex-col justify-between relative overflow-hidden ${
+        code === 'BPI' ? 'border-[#0052CC]/40 ring-1 ring-[#0052CC]/10' : 'border-emerald-300 ring-1 ring-emerald-500/10'
       }`}>
-        <div className="absolute top-0 right-0 transform translate-x-4 -translate-y-4 w-32 h-32 bg-slate-50 rounded-full pointer-events-none opacity-60" />
-        
         <div>
           {/* Header */}
-          <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+          <div className="flex items-center justify-between mb-4 border-b border-slate-200/80 pb-3">
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black text-white text-sm shadow-md ${
-                code === 'BPI' ? 'bg-gradient-to-br from-blue-600 to-sky-500' : 'bg-gradient-to-br from-emerald-600 to-teal-500'
+              <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold font-mono text-white text-xs shadow-xs ${
+                code === 'BPI' ? 'bg-[#0052CC]' : 'bg-emerald-600'
               }`}>
                 {code}
               </div>
               <div>
-                <h2 className="text-base font-black text-slate-900 leading-tight">{title}</h2>
-                <p className="text-xs text-slate-400">
+                <h2 className="text-base font-bold text-slate-900 leading-tight">{title}</h2>
+                <p className="text-xs text-slate-500">
                   {code === 'BPI' ? 'นิคมอุตสาหกรรมไฮเทค อยุธยา' : 'นิคมอุตสาหกรรม 304 ปราจีนบุรี'}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-black">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-              <span>Operational 98%</span>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-300/80 rounded-md text-[11px] font-bold font-mono">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span>OPERATIONAL 98%</span>
             </div>
           </div>
 
           {/* Key Metrics Grid */}
-          <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="grid grid-cols-2 gap-2.5 mb-4">
             {/* Guards */}
-            <div className="bg-slate-50/80 rounded-2xl p-3 border border-slate-100">
-              <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold mb-1">
-                <Users className="w-3.5 h-3.5 text-blue-600" />
-                <span>กำลังพล รปภ.</span>
+            <div className="bg-slate-50/80 rounded-lg p-3 border border-slate-200/80">
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 font-mono mb-1">
+                <Users className="w-3.5 h-3.5 text-[#0052CC]" />
+                <span className="font-semibold">กำลังพล รปภ.</span>
               </div>
-              <div className="text-xl font-black text-slate-900">
-                {activeGuards} <span className="text-xs text-slate-400 font-normal">/ {contractGuards} นาย</span>
+              <div className="text-xl font-bold font-mono tabular-nums text-slate-900">
+                {activeGuards} <span className="text-xs text-slate-500 font-normal">/ {contractGuards} นาย</span>
               </div>
-              <div className="text-[11px] text-emerald-600 font-medium mt-0.5">
+              <div className="text-[11px] text-emerald-700 font-mono mt-0.5">
                 กะเช้า {guards?.morning || 0} · กะดึก {guards?.evening || 0}
               </div>
             </div>
 
             {/* Surveillance */}
-            <div className="bg-slate-50/80 rounded-2xl p-3 border border-slate-100">
-              <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold mb-1">
-                <Camera className="w-3.5 h-3.5 text-indigo-600" />
-                <span>กล้อง CCTV</span>
+            <div className="bg-slate-50/80 rounded-lg p-3 border border-slate-200/80">
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 font-mono mb-1">
+                <Camera className="w-3.5 h-3.5 text-[#0052CC]" />
+                <span className="font-semibold">กล้อง CCTV</span>
               </div>
-              <div className="text-xl font-black text-slate-900">
+              <div className="text-xl font-bold font-mono tabular-nums text-slate-900">
                 {cctvPercent}%
               </div>
-              <div className="text-[11px] text-slate-500 font-medium mt-0.5">
-                ออนไลน์ {cctvOnline} จาก {cctvTotal} กล้อง
+              <div className="text-[11px] text-slate-500 font-mono mt-0.5">
+                {cctvOnline} / {cctvTotal} กล้องออนไลน์
               </div>
             </div>
 
             {/* Parking */}
-            <div className="bg-slate-50/80 rounded-2xl p-3 border border-slate-100">
-              <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold mb-1">
-                <Car className="w-3.5 h-3.5 text-sky-600" />
-                <span>ลานจอดรถยนต์</span>
+            <div className="bg-slate-50/80 rounded-lg p-3 border border-slate-200/80">
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 font-mono mb-1">
+                <Car className="w-3.5 h-3.5 text-[#0052CC]" />
+                <span className="font-semibold">ลานจอดรถยนต์</span>
               </div>
-              <div className="text-xl font-black text-slate-900">
-                {carUsed} <span className="text-xs text-slate-400 font-normal">/ {carCap} ช่อง</span>
+              <div className="text-xl font-bold font-mono tabular-nums text-slate-900">
+                {carUsed} <span className="text-xs text-slate-500 font-normal">/ {carCap} ช่อง</span>
               </div>
-              <div className="text-[11px] text-slate-500 font-medium mt-0.5">
+              <div className="text-[11px] text-slate-500 font-mono mt-0.5">
                 จยย. {motoUsed} / {motoCap} คัน
               </div>
             </div>
 
             {/* Security Devices */}
-            <div className="bg-slate-50/80 rounded-2xl p-3 border border-slate-100">
-              <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold mb-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-teal-600" />
-                <span>เครื่องคัดกรองบุคคล</span>
+            <div className="bg-slate-50/80 rounded-lg p-3 border border-slate-200/80">
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 font-mono mb-1">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="font-semibold">เครื่องคัดกรองบุคคล</span>
               </div>
-              <div className="text-xl font-black text-emerald-600">
-                พร้อมใช้งาน 100%
+              <div className="text-xl font-bold font-mono tabular-nums text-emerald-800">
+                100%
               </div>
-              <div className="text-[11px] text-slate-500 font-medium mt-0.5">
+              <div className="text-[11px] text-slate-500 font-mono mt-0.5">
                 Walkthrough & Handheld
               </div>
             </div>
@@ -132,13 +130,13 @@ export function ExecutiveDualView({ onSelectSite }: { onSelectSite: (siteId: num
         {/* Footer Button */}
         <button
           onClick={() => onSelectSite(siteId)}
-          className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all text-white shadow-md cursor-pointer ${
+          className={`w-full py-2.5 px-4 rounded-lg text-xs font-bold font-mono flex items-center justify-center gap-1.5 transition-all text-white shadow-xs cursor-pointer ${
             code === 'BPI'
-              ? 'bg-blue-600 hover:bg-blue-700'
+              ? 'bg-[#0052CC] hover:bg-[#00388A]'
               : 'bg-emerald-600 hover:bg-emerald-700'
           }`}
         >
-          <span>เปิดดู Dashboard ละเอียดสาขานี้</span>
+          <span>OPEN SITE DASHBOARD ({code})</span>
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>

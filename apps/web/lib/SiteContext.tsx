@@ -97,8 +97,12 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
           setIsExecutive(isExec);
 
           // If user is not executive and has default site, enforce it
-          if (!isExec && u.defaultSiteId) {
-            setCurrentSiteId(u.defaultSiteId);
+          if (!isExec) {
+            const assignedSite = u.defaultSiteId || 1;
+            setCurrentSiteId(assignedSite);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('selected_site_id', String(assignedSite));
+            }
           }
         }
       })
@@ -107,6 +111,9 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
 
   const switchSite = useCallback(
     (siteCodeOrId: string | number) => {
+      // Security Guards and Supervisors cannot switch sites
+      if (!isExecutive) return;
+
       let target: SiteInfo | undefined;
       if (typeof siteCodeOrId === 'number') {
         target = sites.find((s) => s.id === siteCodeOrId);
@@ -123,7 +130,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
         }
       }
     },
-    [sites, rotationSeconds],
+    [sites, rotationSeconds, isExecutive],
   );
 
   const toggleRotation = useCallback(() => {

@@ -45,7 +45,6 @@ export class CctvController {
 
   // ─── Buildings ────────────────────────────────────────────────
 
-  @RequirePermission('nvr_recording:read')
   @Get('buildings')
   async findAllBuildings() {
     return this.cctvService.findAllBuildings();

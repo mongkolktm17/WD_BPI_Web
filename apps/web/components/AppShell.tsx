@@ -39,6 +39,7 @@ export function AppShell({ children }: AppShellProps) {
   const [currentTime, setCurrentTime] = useState<string>('');
   const [userName, setUserName] = useState('Admin User');
   const [userRole, setUserRole] = useState('Administrator');
+  const [isAdmin, setIsAdmin] = useState(false);
   const currentPathname = usePathname() || '';
   const [pathname, setPathname] = useState('');
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
@@ -80,7 +81,8 @@ export function AppShell({ children }: AppShellProps) {
   }, []);
 
   useEffect(() => {
-    if (!mounted || effectivePathname === '/login' || effectivePathname === '/' || effectivePathname === '/dashboard') return;
+    const isPwa = effectivePathname === '/login' || effectivePathname === '/' || effectivePathname === '/dashboard' || effectivePathname === '/report-page' || effectivePathname === '/select-building' || effectivePathname === '/car-parking' || effectivePathname === '/guard-duty-log' || effectivePathname === '/patrol-checklist' || effectivePathname === '/handheld-detector' || effectivePathname === '/walkthrough-detector' || effectivePathname === '/radio-inspection' || effectivePathname === '/cctv-inspection' || effectivePathname === '/cctv-angle-check' || effectivePathname === '/nvr-recording' || effectivePathname === '/cctv-report' || effectivePathname === '/visual-report' || effectivePathname === '/manage-officers' || effectivePathname.startsWith('/report-building');
+    if (!mounted || isPwa) return;
     const token = localStorage.getItem('token');
     if (!token) return;
     apiFetch<{ first_name?: string; last_name?: string; name?: string; role?: string; role_name?: string }>('/api/auth/me')
@@ -88,6 +90,14 @@ export function AppShell({ children }: AppShellProps) {
         const name = data.name || [data.first_name, data.last_name].filter(Boolean).join(' ');
         if (name) setUserName(name);
         if (data.role_name || data.role) setUserRole(data.role_name || data.role || 'Administrator');
+        const u: any = data;
+        const rName = String(u.role_name || u.role?.name || u.role || '');
+        const roleId = Number(u.role?.id ?? u.roleId ?? 0);
+        const perms: string[] = [];
+        (u.role?.permissions || []).forEach((p: any) => perms.push(typeof p === 'string' ? p : p?.name));
+        (u.permissions || []).forEach((p: any) => perms.push(typeof p === 'string' ? p : p?.name));
+        const admin = perms.includes('all') || perms.includes('admin') || roleId === 1 || roleId === 6 || u.isExecutive === true || rName.toLowerCase().includes('admin') || rName.includes('ผู้ดูแลระบบ') || rName.includes('ผู้บริหาร');
+        setIsAdmin(admin);
       })
       .catch(() => {});
   }, [mounted, effectivePathname]);
@@ -119,7 +129,7 @@ export function AppShell({ children }: AppShellProps) {
     }
   };
 
-  if (!mounted || effectivePathname === '/login' || effectivePathname === '/' || effectivePathname === '/dashboard') {
+  if (!mounted || effectivePathname === '/login' || effectivePathname === '/' || effectivePathname === '/dashboard' || effectivePathname === '/report-page' || effectivePathname === '/select-building' || effectivePathname === '/car-parking' || effectivePathname === '/guard-duty-log' || effectivePathname === '/patrol-checklist' || effectivePathname === '/handheld-detector' || effectivePathname === '/walkthrough-detector' || effectivePathname === '/radio-inspection' || effectivePathname === '/cctv-inspection' || effectivePathname === '/cctv-angle-check' || effectivePathname === '/nvr-recording' || effectivePathname === '/cctv-report' || effectivePathname === '/visual-report' || effectivePathname === '/manage-officers' || effectivePathname.startsWith('/report-building')) {
     return <>{children}</>;
   }
 
@@ -147,7 +157,7 @@ export function AppShell({ children }: AppShellProps) {
       items: [
         { name: 'เวรประจำวัน', href: '/guard-duty-log', icon: UserCheck },
         { name: 'ตรวจตราความเรียบร้อย', href: '/patrol-checklist', icon: ShieldCheck },
-        { name: 'จัดการเจ้าหน้าที่', href: '/manage-officers', icon: Users },
+        ...(isAdmin ? [{ name: 'จัดการเจ้าหน้าที่', href: '/manage-officers', icon: Users }] : []),
       ],
     },
     {

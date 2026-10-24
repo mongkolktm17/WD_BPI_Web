@@ -3,8 +3,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/api';
 import MicButton from '@/components/MicButton';
-import { RefreshCw, Camera, Eye, Edit, Building2, Cctv, ChevronDown, Upload, Trash2, X } from 'lucide-react';
+import CollapsibleHistory from '@/components/CollapsibleHistory';
+import { RefreshCw, Camera, Eye, Edit, Building2, Cctv, ChevronDown, Upload, Trash2, X, Check, Save, RotateCcw, Sparkles, Send, FileSpreadsheet } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
+
+const DRAFT_KEY = 'wd_pwa_draft_cctv_angle_check';
 
 interface ImageMapResponse {
   imageMap: Record<string, string>;
@@ -226,8 +229,9 @@ function CameraImportPanel({ buildings: buildingsProp, onImported }: { buildings
             className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm font-mono focus:ring-2 focus:ring-blue-500 outline-none"
           />
           <div className="flex flex-wrap items-center gap-2">
-            <label className="text-xs px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 cursor-pointer font-medium text-slate-600">
-              📁 เลือกไฟล์ .csv
+            <label className="text-xs px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 cursor-pointer font-medium text-slate-600 inline-flex items-center gap-1.5">
+              <Upload className="w-3.5 h-3.5" />
+              <span>เลือกไฟล์ .csv</span>
               <input type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />
             </label>
             <span className="text-[11px] text-slate-400">{rows.length > 0 ? `${rows.length} แถว` : ''}</span>
@@ -309,6 +313,69 @@ export default function CctvAngleCheckPage() {
   const [buildings, setBuildings] = useState<any[]>([]);
   const [channelRemarks, setChannelRemarks] = useState<Record<number, string>>({});
   const [selectedChannel, setSelectedChannel] = useState<number | null>(null);
+  const [hasDraftNotice, setHasDraftNotice] = useState(false);
+  const [lastSavedDraftTime, setLastSavedDraftTime] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d.channelStatuses && Object.keys(d.channelStatuses).length > 0) {
+          setHasDraftNotice(true);
+        }
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        if (Object.keys(channelStatuses).length > 0) {
+          const payload = {
+            selectedBuilding,
+            selectedNvr,
+            channelStatuses,
+            channelRemarks,
+            timestamp: new Date().toISOString(),
+          };
+          localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
+          setLastSavedDraftTime(new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }));
+        }
+      } catch {}
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [selectedBuilding, selectedNvr, channelStatuses, channelRemarks]);
+
+  const handleRestoreDraft = () => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d.selectedBuilding) setSelectedBuilding(d.selectedBuilding);
+        if (d.selectedNvr) setSelectedNvr(d.selectedNvr);
+        if (d.channelStatuses) setChannelStatuses(d.channelStatuses);
+        if (d.channelRemarks) setChannelRemarks(d.channelRemarks);
+        setMessage('กู้คืนข้อมูลร่างการตรวจมุมกล้องเรียบร้อยแล้ว');
+      }
+    } catch {}
+    setHasDraftNotice(false);
+  };
+
+  const handleDiscardDraft = () => {
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch {}
+    setHasDraftNotice(false);
+  };
+
+  const handlePassAllCameras = () => {
+    const next: Record<number, 'correct' | 'incorrect'> = {};
+    for (let i = 1; i <= channelCount; i++) {
+      next[i] = 'correct';
+    }
+    setChannelStatuses(next);
+  };
 
   const nvrNum = parseInt(selectedNvr.replace('NVR-', ''), 10);
   const nvrCount = (NVR_CAMERA_CONFIG[selectedBuilding] || []).length;
@@ -375,7 +442,7 @@ export default function CctvAngleCheckPage() {
     if (!confirm('ยืนยันการลบผลการตรวจสอบมุมกล้องรอบนี้ทั้งหมด?')) return;
     try {
       await apiFetch(`/api/cctv/camera-checks/rounds/${encodeURIComponent(roundKey)}`, { method: 'DELETE' });
-      setMessage('✅ ลบรายการรอบเรียบร้อยแล้ว');
+      setMessage('ลบรายการรอบเรียบร้อยแล้ว');
       fetchReports();
     } catch {
       setMessage('เกิดข้อผิดพลาดในการลบข้อมูล');
@@ -468,6 +535,7 @@ export default function CctvAngleCheckPage() {
         body: JSON.stringify(checks),
       });
       setMessage('บันทึกการตรวจสอบมุมกล้องเรียบร้อยแล้ว');
+      try { localStorage.removeItem(DRAFT_KEY); } catch {}
     } catch (e: any) {
       setMessage(e?.message || 'เกิดข้อผิดพลาดในการบันทึก');
     } finally {
@@ -477,9 +545,19 @@ export default function CctvAngleCheckPage() {
 
   const getStatusBadge = (status: string) => {
     if (status === 'pass' || status === 'normal' || status === 'correct') {
-      return <span className="text-[10px] md:text-xs px-1.5 md:px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-700">✓ ปกติ</span>;
+      return (
+        <span className="text-[10px] md:text-xs px-1.5 md:px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-700 inline-flex items-center gap-1">
+          <Check className="w-3 h-3" />
+          <span>ปกติ</span>
+        </span>
+      );
     }
-    return <span className="text-[10px] md:text-xs px-1.5 md:px-2 py-0.5 rounded-full font-bold bg-rose-100 text-rose-700">✕ ผิดปกติ</span>;
+    return (
+      <span className="text-[10px] md:text-xs px-1.5 md:px-2 py-0.5 rounded-full font-bold bg-rose-100 text-rose-700 inline-flex items-center gap-1">
+        <X className="w-3 h-3" />
+        <span>ผิดปกติ</span>
+      </span>
+    );
   };
 
   const getChannelFromRemark = (remark: string) => {
@@ -505,7 +583,7 @@ export default function CctvAngleCheckPage() {
   const displayImageMap = mode === 'view' ? buildViewChannelStatuses().imageMapLocal : imageMap;
 
   return (
-    <div className="gradient-bg min-h-screen py-4 md:py-8 px-3 md:px-4 font-sans">
+    <div className="gradient-bg min-h-screen py-4 md:py-8 px-3 md:px-4 font-sans pb-28 md:pb-8">
       <div className="max-w-7xl mx-auto space-y-4 md:space-y-6">
 
         {/* Header */}
@@ -524,6 +602,31 @@ export default function CctvAngleCheckPage() {
           }
         />
 
+        {hasDraftNotice && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-900 shadow-sm animate-fade-in">
+            <div className="flex items-center gap-2">
+              <RotateCcw className="w-4 h-4 text-amber-600 shrink-0" />
+              <span className="text-sm font-medium">พบข้อมูลร่างการตรวจมุมกล้องที่บันทึกค้างไว้ในเครื่องนี้</span>
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <button
+                type="button"
+                onClick={handleRestoreDraft}
+                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors"
+              >
+                กู้คืนข้อมูลร่าง
+              </button>
+              <button
+                type="button"
+                onClick={handleDiscardDraft}
+                className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200 transition-colors"
+              >
+                ละทิ้ง
+              </button>
+            </div>
+          </div>
+        )}
+
         {message && (
           <div className={`p-3 md:p-4 rounded-xl text-center font-medium text-sm ${message.includes('เรียบร้อย') ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}`}>
             {message}
@@ -533,16 +636,26 @@ export default function CctvAngleCheckPage() {
         {mode === 'view' ? (
           /* VIEW MODE - ROUND BASED */
           <div className="space-y-4">
-            <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
-              <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-4 flex-wrap gap-2">
-                <div>
-                  <h3 className="text-base md:text-lg font-bold text-slate-800">
-                    📋 รายงานตรวจสอบมุมกล้องย้อนหลัง (สรุปรวมตามรอบรายงาน)
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    แสดงผล 1 แถวต่อ 1 รอบตรวจมุมกล้อง สามารถคลิกไอคอนดวงตาเพื่อดูและตรวจเช็คภาพกล้องรายตัวได้
-                  </p>
-                </div>
+            <CollapsibleHistory
+              title="รายงานตรวจสอบมุมกล้องย้อนหลัง (สรุปรวมตามรอบรายงาน)"
+              count={viewReports.length}
+              defaultOpen={true}
+              headerActions={
+                <button
+                  type="button"
+                  onClick={fetchReports}
+                  disabled={loadingReports}
+                  className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-colors"
+                  title="รีเฟรชข้อมูล"
+                >
+                  <RefreshCw className={`w-4 h-4 ${loadingReports ? 'animate-spin' : ''}`} />
+                </button>
+              }
+            >
+              <div className="mb-3">
+                <p className="text-xs text-slate-500">
+                  แสดงผล 1 แถวต่อ 1 รอบตรวจมุมกล้อง สามารถคลิกไอคอนดวงตาเพื่อดูและตรวจเช็คภาพกล้องรายตัวได้
+                </p>
               </div>
 
               {loadingReports ? (
@@ -577,13 +690,14 @@ export default function CctvAngleCheckPage() {
                             <td className="py-3 px-3 font-semibold text-slate-700">{rnd.nvr}</td>
                             <td className="py-3 px-3 text-center">
                               <span
-                                className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                                className={`px-2.5 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 ${
                                   isAllPass
                                     ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                                     : 'bg-rose-100 text-rose-800 border border-rose-200'
                                 }`}
                               >
-                                {isAllPass ? '✓' : '✕'} ถูกต้อง {rnd.passedCameras}/{rnd.totalCameras} กล้อง
+                                {isAllPass ? <Check className="w-3.5 h-3.5" /> : <X className="w-3.5 h-3.5" />}
+                                <span>ถูกต้อง {rnd.passedCameras}/{rnd.totalCameras} กล้อง</span>
                               </span>
                             </td>
                             <td className="py-3 px-4 text-slate-700">{rnd.checkedBy || '-'}</td>
@@ -614,7 +728,7 @@ export default function CctvAngleCheckPage() {
                   </table>
                 </div>
               )}
-            </div>
+            </CollapsibleHistory>
 
             {/* Modal: View Cameras for Round */}
             {activeViewRound && (
@@ -666,7 +780,17 @@ export default function CctvAngleCheckPage() {
                                   cam.isPass ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
                                 }`}
                               >
-                                {cam.isPass ? '✓ ปกติ' : '✕ ผิดมุม'}
+                                {cam.isPass ? (
+                                  <span className="inline-flex items-center gap-1">
+                                    <Check className="w-3 h-3" />
+                                    <span>ปกติ</span>
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1">
+                                    <X className="w-3 h-3" />
+                                    <span>ผิดมุม</span>
+                                  </span>
+                                )}
                               </span>
                             </div>
 
@@ -712,7 +836,7 @@ export default function CctvAngleCheckPage() {
               <label className="block text-xs font-medium text-slate-600 mb-1.5">ชื่อผู้ที่ส่งรายงาน</label>
               <div className="relative">
                 <input type="text" placeholder="ชื่อ-นามสกุล" value={checkerName} onChange={e => setCheckerName(e.target.value)} className="w-full px-4 py-2.5 pr-10 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" />
-                <MicButton onResult={(t) => setCheckerName(prev => prev ? prev + ' ' + t : t)} />
+                <MicButton onResult={setCheckerName} currentValue={checkerName} mode="replace" className="top-1/2 -translate-y-1/2 right-2.5" />
               </div>
             </div>
 
@@ -805,22 +929,38 @@ export default function CctvAngleCheckPage() {
 
             {/* Channel Grid */}
             <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-4 md:p-6">
-              <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 pb-3 mb-4 gap-2">
                 <div>
-                  <h3 className="text-base md:text-lg font-bold text-slate-800">
-                    📷 อาคาร {selectedBuilding} — {selectedNvr}
+                  <h3 className="text-base md:text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <Camera className="w-5 h-5 text-blue-600" />
+                    <span>อาคาร {selectedBuilding} — {selectedNvr}</span>
                   </h3>
-                  <p className="text-xs text-slate-400 mt-0.5">คลิกการ์ดเพื่อสลับสถานะ · {channelCount} กล้อง</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <p className="text-xs text-slate-400">คลิกการ์ดเพื่อสลับสถานะ · {channelCount} กล้อง</p>
+                    {lastSavedDraftTime && (
+                      <span className="text-xs text-slate-400">• บันทึกร่าง {lastSavedDraftTime} น.</span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex gap-2 text-xs">
-                  <span className="flex items-center gap-1 px-2 py-1 bg-emerald-50 text-emerald-600 rounded-lg font-semibold">
-                    <span className="w-2 h-2 bg-emerald-500 rounded-full" />
-                    {Object.values(channelStatuses).filter(s => s === 'correct').length || channelCount}
-                  </span>
-                  <span className="flex items-center gap-1 px-2 py-1 bg-rose-50 text-rose-600 rounded-lg font-semibold">
-                    <span className="w-2 h-2 bg-rose-500 rounded-full" />
-                    {Object.values(channelStatuses).filter(s => s === 'incorrect').length}
-                  </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handlePassAllCameras}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-semibold transition-all active:scale-95"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                    ตั้งค่ามุมถูกต้องทุกกล้อง (Quick Pass All)
+                  </button>
+                  <div className="flex gap-2 text-xs">
+                    <span className="flex items-center gap-1 px-2 py-1 bg-emerald-50 text-emerald-600 rounded-lg font-semibold">
+                      <span className="w-2 h-2 bg-emerald-500 rounded-full" />
+                      {Object.values(channelStatuses).filter(s => s === 'correct').length || channelCount}
+                    </span>
+                    <span className="flex items-center gap-1 px-2 py-1 bg-rose-50 text-rose-600 rounded-lg font-semibold">
+                      <span className="w-2 h-2 bg-rose-500 rounded-full" />
+                      {Object.values(channelStatuses).filter(s => s === 'incorrect').length}
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -850,10 +990,10 @@ export default function CctvAngleCheckPage() {
                             <span className="font-bold text-[10px] md:text-xs text-slate-700">
                               CH-{ch < 10 ? `0${ch}` : ch}
                             </span>
-                            <span className={`text-[8px] md:text-[9px] px-1 py-0.5 rounded font-bold ${
+                            <span className={`text-[8px] md:text-[9px] px-1 py-0.5 rounded font-bold inline-flex items-center gap-0.5 ${
                               isCorrect ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'
                             }`}>
-                              {isCorrect ? '✓' : '✕'}
+                              {isCorrect ? <Check className="w-2.5 h-2.5" /> : <X className="w-2.5 h-2.5" />}
                             </span>
                           </div>
                           <div onClick={() => toggleStatus(ch)} className="w-full aspect-video bg-slate-100 rounded-lg flex items-center justify-center overflow-hidden cursor-pointer">
@@ -863,7 +1003,10 @@ export default function CctvAngleCheckPage() {
                               <Camera className="w-5 h-5 md:w-6 md:h-6 text-slate-300" />
                             )}
                           </div>
-                          <button onClick={()=>openChannelModal(ch)} className="mt-1.5 w-full text-[9px] md:text-[10px] py-1 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 font-medium text-slate-600">🔍 ดูภาพอ้างอิง</button>
+                          <button onClick={()=>openChannelModal(ch)} className="mt-1.5 w-full text-[9px] md:text-[10px] py-1 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 font-medium text-slate-600 inline-flex items-center justify-center gap-1">
+                            <Eye className="w-3 h-3" />
+                            <span>ดูภาพอ้างอิง</span>
+                          </button>
                         </div>
                       </div>
                     );
@@ -871,11 +1014,28 @@ export default function CctvAngleCheckPage() {
                 </div>
               )}
 
-              <div className="pt-4 md:pt-6 flex justify-center">
-                <button onClick={handleSave} disabled={loading} className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-8 md:px-12 rounded-xl sm:rounded-full shadow-lg transition-transform active:scale-95 disabled:opacity-50 text-sm md:text-base min-h-[44px] flex items-center justify-center">
-                  {loading ? 'กำลังบันทึก...' : '💾 บันทึกผลการตรวจมุมกล้อง'}
+              <div className="pt-4 md:pt-6 hidden md:flex justify-center">
+                <button onClick={handleSave} disabled={loading} className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-8 md:px-12 rounded-xl sm:rounded-full shadow-lg transition-transform active:scale-95 disabled:opacity-50 text-sm md:text-base min-h-[44px] flex items-center justify-center gap-2">
+                  <Save className="w-5 h-5" />
+                  <span>{loading ? 'กำลังบันทึก...' : 'บันทึกผลการตรวจมุมกล้อง'}</span>
                 </button>
               </div>
+            </div>
+
+            {/* Mobile Sticky Bottom Action Dock */}
+            <div className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-2.5 pb-[max(10px,env(safe-area-inset-bottom))] shadow-lg flex items-center justify-between gap-3">
+              <div className="text-xs text-slate-500 truncate">
+                {lastSavedDraftTime ? `ร่างล่าสุด ${lastSavedDraftTime} น.` : `${channelCount} กล้อง`}
+              </div>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={loading}
+                className="px-5 py-2.5 bg-emerald-600 active:bg-emerald-700 text-white font-semibold text-sm rounded-xl shadow-md flex items-center gap-2 shrink-0 disabled:opacity-50"
+              >
+                <Save className="w-4 h-4" />
+                <span>{loading ? 'บันทึก...' : 'บันทึกมุมกล้อง'}</span>
+              </button>
             </div>
           </>
         )}
@@ -887,7 +1047,9 @@ export default function CctvAngleCheckPage() {
               <div className="p-5">
                 <div className="flex justify-between items-center mb-3">
                   <h3 className="text-base font-bold text-slate-800">อาคาร {selectedBuilding} {selectedNvr} — CH-{selectedChannel < 10 ? `0${selectedChannel}` : selectedChannel}</h3>
-                  <button onClick={()=>setSelectedChannel(null)} className="p-1 hover:bg-slate-100 rounded-lg text-slate-500">✕</button>
+                  <button onClick={()=>setSelectedChannel(null)} className="p-1 hover:bg-slate-100 rounded-lg text-slate-500">
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
                 <div className="aspect-video bg-slate-100 rounded-xl flex items-center justify-center overflow-hidden mb-3">
                   {(() => {
@@ -898,15 +1060,34 @@ export default function CctvAngleCheckPage() {
                 </div>
                 {/* Toggle */}
                 <div className="flex gap-2 mb-3">
-                  <button onClick={()=>setChannelStatuses(prev=>({...prev,[selectedChannel]:'correct'}))} className={`flex-1 py-2 rounded-xl font-bold text-sm border-2 ${(channelStatuses[selectedChannel]||'correct')==='correct'?'bg-emerald-500 text-white border-emerald-500':'bg-white text-emerald-600 border-emerald-200'}`}>✓ มุมถูกต้อง</button>
-                  <button onClick={()=>setChannelStatuses(prev=>({...prev,[selectedChannel]:'incorrect'}))} className={`flex-1 py-2 rounded-xl font-bold text-sm border-2 ${(channelStatuses[selectedChannel]||'correct')==='incorrect'?'bg-rose-500 text-white border-rose-500':'bg-white text-rose-600 border-rose-200'}`}>✕ ไม่ถูกต้อง</button>
+                  <button onClick={()=>setChannelStatuses(prev=>({...prev,[selectedChannel]:'correct'}))} className={`flex-1 py-2 rounded-xl font-bold text-sm border-2 inline-flex items-center justify-center gap-1.5 ${(channelStatuses[selectedChannel]||'correct')==='correct'?'bg-emerald-500 text-white border-emerald-500':'bg-white text-emerald-600 border-emerald-200'}`}>
+                    <Check className="w-4 h-4" />
+                    <span>มุมถูกต้อง</span>
+                  </button>
+                  <button onClick={()=>setChannelStatuses(prev=>({...prev,[selectedChannel]:'incorrect'}))} className={`flex-1 py-2 rounded-xl font-bold text-sm border-2 inline-flex items-center justify-center gap-1.5 ${(channelStatuses[selectedChannel]||'correct')==='incorrect'?'bg-rose-500 text-white border-rose-500':'bg-white text-rose-600 border-rose-200'}`}>
+                    <X className="w-4 h-4" />
+                    <span>ไม่ถูกต้อง</span>
+                  </button>
                 </div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">หมายเหตุ</label>
                 <div className="relative mb-3">
-                  <textarea value={channelRemarks[selectedChannel]||''} onChange={e=>setChannelRemarks(prev=>({...prev,[selectedChannel]:e.target.value}))} placeholder="พิมพ์หมายเหตุ..." className="w-full px-3 py-2 pr-10 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none min-h-[60px]" />
-                  <MicButton onResult={(t)=>setChannelRemarks(prev=>({...prev,[selectedChannel]:(prev[selectedChannel] ? prev[selectedChannel]+' '+t : t)}))} />
+                  <textarea
+                    value={channelRemarks[selectedChannel] || ''}
+                    onChange={e => setChannelRemarks(prev => ({ ...prev, [selectedChannel]: e.target.value }))}
+                    placeholder="พิมพ์หรือกดไมค์เพื่อระบุหมายเหตุ..."
+                    className="w-full px-3 py-2 pr-10 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none min-h-[60px]"
+                  />
+                  <MicButton
+                    onResult={(t) => setChannelRemarks(prev => ({ ...prev, [selectedChannel]: (prev[selectedChannel] ? prev[selectedChannel] + ' ' + t : t) }))}
+                    currentValue={channelRemarks[selectedChannel] || ''}
+                    mode="append"
+                    className="top-2.5 right-2.5"
+                  />
                 </div>
-                <button onClick={saveSingleChannel} disabled={loading} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl disabled:opacity-50">💾 บันทึกเฉพาะกล้องนี้</button>
+                <button onClick={saveSingleChannel} disabled={loading} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl disabled:opacity-50 flex items-center justify-center gap-2">
+                  <Save className="w-4 h-4" />
+                  <span>บันทึกเฉพาะกล้องนี้</span>
+                </button>
               </div>
             </div>
           </div>

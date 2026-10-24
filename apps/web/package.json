@@ -1,6 +1,6 @@
 {
   "name": "@wdbpi/web",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbo",
@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.104.4",
     "chart.js": "^4.5.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.475.0",

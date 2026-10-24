@@ -12,8 +12,13 @@ export class AuthService {
   ) {}
 
   async login(dto: LoginDto) {
-    const user = await this.prisma.user.findUnique({
-      where: { username: dto.username },
+    const cleanUsername = (dto.username || '').trim();
+    const cleanPassword = (dto.password || '').trim();
+
+    const user = await this.prisma.user.findFirst({
+      where: {
+        username: { equals: cleanUsername, mode: 'insensitive' },
+      },
       include: {
         role: {
           include: {
@@ -27,7 +32,13 @@ export class AuthService {
       throw new UnauthorizedException('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง หรือบัญชีถูกระงับ');
     }
 
-    const isPasswordValid = await bcrypt.compare(dto.password, user.password);
+    let isPasswordValid = await bcrypt.compare(cleanPassword, user.password);
+    if (!isPasswordValid && cleanPassword.length > 0) {
+      // Tolerate mobile keyboard auto-capitalization on first letter (e.g. "Password123" vs "password123")
+      const altPassword = cleanPassword.charAt(0).toLowerCase() + cleanPassword.slice(1);
+      isPasswordValid = await bcrypt.compare(altPassword, user.password);
+    }
+
     if (!isPasswordValid) {
       throw new UnauthorizedException('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
     }
